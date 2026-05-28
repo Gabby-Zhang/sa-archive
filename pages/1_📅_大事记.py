@@ -13,6 +13,34 @@ st.caption("记录 Attal 与 Séjourné 的重要事件与新闻")
 
 st.divider()
 
+# ── 管理员：快速添加（顶部）────────────────────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("➕ 添加新条目", expanded=False):
+        with st.form("quick_add_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                new_date = st.date_input("日期")
+                new_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "两人"])
+            with c2:
+                new_source = st.text_input("消息来源")
+                new_source_url = st.text_input("来源链接（可选）")
+            new_title = st.text_input("事件/新闻标题 *")
+            new_note = st.text_area("备注", height=68)
+            if st.form_submit_button("✅ 添加", use_container_width=True):
+                if new_title:
+                    add_event({
+                        "date": str(new_date),
+                        "person": new_person,
+                        "title": new_title,
+                        "source": new_source,
+                        "source_url": new_source_url,
+                        "note": new_note,
+                    })
+                    st.success("已添加！")
+                    st.rerun()
+                else:
+                    st.warning("请填写标题")
+
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([2, 2, 3])
 with col1:
