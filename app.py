@@ -10,13 +10,34 @@ st.set_page_config(
 # 隐藏 Streamlit Cloud 的 "Created by" 头像徽章
 st.markdown("""
 <style>
+[data-testid="stDecoration"],
+[data-testid="stDeployButton"],
 .viewerBadge_container__r5tak,
 .viewerBadge_link__qRIco,
-[data-testid="stDecoration"],
-#stDecoration {
+[class*="viewerBadge"],
+[class*="ViewerBadge"] {
     display: none !important;
 }
 </style>
+<script>
+(function() {
+    function hideBadge() {
+        var selectors = [
+            '[data-testid="stDecoration"]',
+            '[data-testid="stDeployButton"]',
+            '[class*="viewerBadge"]',
+            '[class*="ViewerBadge"]'
+        ];
+        selectors.forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(el) {
+                el.style.setProperty('display', 'none', 'important');
+            });
+        });
+    }
+    hideBadge();
+    new MutationObserver(hideBadge).observe(document.documentElement, {subtree: true, childList: true});
+})();
+</script>
 """, unsafe_allow_html=True)
 
 pg = st.navigation({
