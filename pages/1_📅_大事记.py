@@ -4,6 +4,18 @@ import plotly.express as px
 from utils.database import get_events, add_event, update_event, delete_event
 from utils.auth import admin_sidebar
 
+# ── Google Drive 链接转换 ─────────────────────────────────
+def gdrive_to_img_url(url: str) -> str:
+    if not url:
+        return ""
+    if "/file/d/" in url:
+        file_id = url.split("/file/d/")[1].split("/")[0]
+        return f"https://lh3.googleusercontent.com/d/{file_id}"
+    if "id=" in url:
+        file_id = url.split("id=")[1].split("&")[0]
+        return f"https://lh3.googleusercontent.com/d/{file_id}"
+    return url
+
 admin_sidebar()
 
 st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout="wide")
@@ -26,6 +38,14 @@ if st.session_state.get("is_admin"):
                 new_source_url = st.text_input("来源链接（可选）")
             new_title = st.text_input("事件/新闻标题 *")
             new_note = st.text_area("备注", height=68)
+            new_image_url = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...")
+            if new_image_url:
+                _prev = gdrive_to_img_url(new_image_url)
+                st.caption("图片预览：")
+                try:
+                    st.image(_prev, width=200)
+                except Exception:
+                    st.warning("无法预览，请确认链接已设为公开")
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if new_title:
                     add_event({
@@ -35,6 +55,7 @@ if st.session_state.get("is_admin"):
                         "source": new_source,
                         "source_url": new_source_url,
                         "note": new_note,
+                        "image_url": new_image_url or None,
                     })
                     st.success("已添加！")
                     st.rerun()
@@ -101,6 +122,7 @@ if not df.empty:
                         e_source_url = st.text_input("来源链接", value=row.get("source_url", "") or "")
                     e_title = st.text_input("事件/新闻标题", value=row.get("title", ""))
                     e_note = st.text_area("备注", value=row.get("note", "") or "", height=80)
+                    e_image_url = st.text_input("图片链接（Google Drive，可选）", value=row.get("image_url", "") or "")
                     sc1, sc2 = st.columns(2)
                     with sc1:
                         save = st.form_submit_button("💾 保存", use_container_width=True)
@@ -114,6 +136,7 @@ if not df.empty:
                             "source": e_source,
                             "source_url": e_source_url,
                             "note": e_note,
+                            "image_url": e_image_url or None,
                         })
                         st.session_state.editing_id = None
                         st.rerun()
@@ -134,6 +157,8 @@ if not df.empty:
 
             note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{row["note"]}</div>' if row.get("note") else ""
 
+            img_url = gdrive_to_img_url(row.get("image_url", "") or "")
+
             st.markdown(f"""
             <div style="
                 border-left: 4px solid {color};
@@ -153,6 +178,12 @@ if not df.empty:
                 {note_html}
             </div>
             """, unsafe_allow_html=True)
+
+            if img_url:
+                try:
+                    st.image(img_url, width=280)
+                except Exception:
+                    pass
 
             # 编辑和删除按钮（仅管理员可见）
             if st.session_state.get("is_admin"):
@@ -182,6 +213,7 @@ with st.expander("➕ 手动添加新条目"):
             new_source_url = st.text_input("来源链接（可选）")
         new_title = st.text_input("事件/新闻标题 *")
         new_note = st.text_area("备注（Note）", height=80)
+        new_image_url_b = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...", key="bottom_img_url")
         submitted = st.form_submit_button("添加")
         if submitted:
             if new_title:
@@ -192,6 +224,7 @@ with st.expander("➕ 手动添加新条目"):
                     "source": new_source,
                     "source_url": new_source_url,
                     "note": new_note,
+                    "image_url": new_image_url_b or None,
                 })
                 st.success("已添加！")
                 st.rerun()
