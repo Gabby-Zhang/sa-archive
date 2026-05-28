@@ -7,17 +7,17 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── 全局样式：CSS 变量（深色默认）+ 徽章 + 手机端 + 字体 ──────
+# ── 全局样式：CSS 变量（日间默认）+ 徽章 + 手机端 + 字体 ──────
 st.markdown("""
 <style>
-/* ── CSS 主题变量（深色默认）── */
+/* ── CSS 主题变量（日间默认，与 config.toml 保持一致）── */
 :root {
-    --cb:  #16213e;   /* card background        */
-    --cb2: #0f1a30;   /* card background darker */
-    --t1:  #e0e0e0;   /* primary card text      */
-    --t2:  #aaa;      /* secondary / meta text  */
-    --t3:  #888;      /* tertiary / dim text    */
-    --bd:  #2a3a5c;   /* border / divider color */
+    --cb:  #edf1ff;   /* card background        */
+    --cb2: #e4eaff;   /* card background darker */
+    --t1:  #1a1a2e;   /* primary card text      */
+    --t2:  #5a5a72;   /* secondary / meta text  */
+    --t3:  #6a6a80;   /* tertiary / dim text    */
+    --bd:  #b0bcd8;   /* border / divider color */
 }
 
 /* ── 中文字形缩放：仅针对文字内容元素，不破坏图标字体 ── */
@@ -126,80 +126,70 @@ h3 { font-size: 1.05rem !important; }
 """, unsafe_allow_html=True)
 
 # ── 日间模式 CSS 变量覆盖 ──────────────────────────────────
-_LIGHT_CSS = """
+_DARK_CSS = """
 <style>
-/* ── 日间模式：覆盖 CSS 变量 ── */
+/* ── 夜间模式：覆盖 CSS 变量为深色 ── */
 :root {
-    --cb:  #edf1ff;
-    --cb2: #e4eaff;
-    --t1:  #1a1a2e;
-    --t2:  #5a5a72;
-    --t3:  #6a6a80;
-    --bd:  #b0bcd8;
+    --cb:  #16213e;
+    --cb2: #0f1a30;
+    --t1:  #e0e0e0;
+    --t2:  #aaa;
+    --t3:  #888;
+    --bd:  #2a3a5c;
 }
 
-/* ── Streamlit 原生组件背景 ── */
+/* ── Streamlit 原生组件背景（深色）── */
 .stApp,
 [data-testid="stAppViewContainer"],
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"] {
-    background-color: #f4f6fb !important;
-    color: #1a1a2e !important;
+    background-color: #1a1a2e !important;
+    color: #e0e0e0 !important;
 }
 [data-testid="stSidebar"],
 [data-testid="stSidebarContent"] {
-    background-color: #e8ecf5 !important;
+    background-color: #16213e !important;
 }
 [data-testid="stHeader"] {
-    background-color: rgba(244,246,251,0.95) !important;
+    background-color: rgba(26,26,46,0.95) !important;
 }
 p, .stMarkdown p, label,
 .stSelectbox label, .stTextInput label,
 .stTextArea label,
-[data-testid="stWidgetLabel"]   { color: #1a1a2e !important; }
-[data-testid="stCaptionContainer"] p { color: #5a5a7a !important; }
-hr { border-color: #c4c8de !important; }
-[data-testid="stExpander"]          { border-color: #c4c8de !important; }
-[data-testid="stExpanderDetails"]   { background-color: #edf1ff !important; }
-.stApp [data-testid="stButton"] > button,
-.stApp [data-testid="stDownloadButton"] > button,
-.stApp [data-testid="stFormSubmitButton"] > button {
-    border-color: #bfc4d8 !important;
-    color: #1a1a2e !important;
-    background-color: #f0f4ff !important;
+[data-testid="stWidgetLabel"]   { color: #e0e0e0 !important; }
+[data-testid="stCaptionContainer"] p { color: #aaa !important; }
+hr { border-color: #2a3a5c !important; }
+[data-testid="stExpander"]          { border-color: #2a3a5c !important; }
+[data-testid="stExpanderDetails"]   { background-color: #16213e !important; }
+[data-testid="stButton"] > button,
+[data-testid="stDownloadButton"] > button,
+[data-testid="stFormSubmitButton"] > button {
+    border-color: #2a3a5c !important;
+    color: #e0e0e0 !important;
+    background-color: #16213e !important;
 }
-.stApp [data-testid="stButton"] > button:hover,
-.stApp [data-testid="stDownloadButton"] > button:hover {
-    background-color: #dde5ff !important;
-    border-color: #8fa8d8 !important;
-}
-[data-testid="stInfo"]  { background-color: #e2eaff !important; }
+[data-testid="stInfo"] { background-color: #1e2d4a !important; }
 
-/* ── Streamlit 原生 baseweb 组件（下拉框、输入框等）── */
-/* Select / Input 容器背景 */
+/* ── Streamlit baseweb 组件（深色）── */
 [data-baseweb="select"] > div,
 [data-baseweb="input"] > div,
 [data-baseweb="textarea"] > div,
 [data-baseweb="base-input"] {
-    background-color: #ffffff !important;
-    border-color: #bfc4d8 !important;
-    color: #1a1a2e !important;
+    background-color: #0f1a30 !important;
+    border-color: #2a3a5c !important;
+    color: #e0e0e0 !important;
 }
-/* Select 当前值文字 & 箭头 */
 [data-baseweb="select"] span,
-[data-baseweb="select"] div { color: #1a1a2e !important; }
-[data-baseweb="select"] svg { fill: #5a5a7a !important; }
-/* 输入框内文字 */
+[data-baseweb="select"] div { color: #e0e0e0 !important; }
+[data-baseweb="select"] svg { fill: #aaa !important; }
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea {
-    background-color: #ffffff !important;
-    color: #1a1a2e !important;
-    caret-color: #1a1a2e !important;
+    background-color: #0f1a30 !important;
+    color: #e0e0e0 !important;
+    caret-color: #e0e0e0 !important;
 }
-/* 占位符文字 */
 [data-baseweb="input"] input::placeholder,
-[data-baseweb="textarea"] textarea::placeholder { color: #9a9ab0 !important; }
-/* 下拉弹出菜单：覆盖所有层级的容器 */
+[data-baseweb="textarea"] textarea::placeholder { color: #555 !important; }
 [data-baseweb="popover"],
 [data-baseweb="popover"] div,
 [data-baseweb="menu"],
@@ -208,65 +198,40 @@ hr { border-color: #c4c8de !important; }
 [data-baseweb="list"] div,
 [role="listbox"],
 [role="listbox"] div {
-    background-color: #ffffff !important;
-    border-color: #bfc4d8 !important;
+    background-color: #16213e !important;
+    border-color: #2a3a5c !important;
 }
-/* 下拉选项文字与背景 */
 [data-baseweb="option"],
 [role="option"],
 [data-baseweb="menu"] li,
 li[data-baseweb="list-item"] {
-    color: #1a1a2e !important;
-    background-color: #ffffff !important;
+    color: #e0e0e0 !important;
+    background-color: #16213e !important;
     opacity: 1 !important;
 }
-/* hover 状态 */
 [data-baseweb="option"]:hover,
 [role="option"]:hover {
-    background-color: #dde5ff !important;
-    color: #1a1a2e !important;
+    background-color: #1e3a5f !important;
+    color: #e0e0e0 !important;
 }
-/* 已选中状态 */
 [data-baseweb="option"][aria-selected="true"],
 [role="option"][aria-selected="true"] {
-    background-color: #c8d8ff !important;
-    color: #1a1a2e !important;
+    background-color: #2a4a70 !important;
+    color: #e0e0e0 !important;
 }
-/* Checkbox / Radio */
 [data-baseweb="checkbox"] span,
-[data-baseweb="radio"] span { color: #1a1a2e !important; }
-/* Tab / 分页 */
-[data-baseweb="tab"] { color: #1a1a2e !important; }
-[data-baseweb="tab-list"] { background-color: #edf1ff !important; }
-/* Number input 按钮 */
-[data-testid="stNumberInput"] button { background-color: #edf1ff !important; color: #1a1a2e !important; }
-/* Toggle */
-[data-testid="stToggle"] span { color: #1a1a2e !important; }
-/* Expander title */
-[data-testid="stExpanderToggleIcon"] { color: #1a1a2e !important; }
-summary[data-testid="stExpanderSummary"] { color: #1a1a2e !important; }
-/* Progress bar */
-[data-testid="stProgress"] > div { background-color: #dce5ff !important; }
+[data-baseweb="radio"] span { color: #e0e0e0 !important; }
+[data-baseweb="tab"] { color: #e0e0e0 !important; }
+[data-baseweb="tab-list"] { background-color: #16213e !important; }
+[data-testid="stNumberInput"] button { background-color: #16213e !important; color: #e0e0e0 !important; }
+[data-testid="stToggle"] span { color: #e0e0e0 !important; }
+[data-testid="stExpanderToggleIcon"] { color: #e0e0e0 !important; }
+summary[data-testid="stExpanderSummary"] { color: #e0e0e0 !important; }
+[data-testid="stProgress"] > div { background-color: #1e3a5f !important; }
 
-/* ── 首页 CSS 类 ── */
-.profile-card {
-    background: var(--cb) !important;
-    border-color: #4A90D955 !important;
-}
-.profile-card .role  { color: var(--t2) !important; }
-.profile-card .bio   { color: var(--t1) !important; }
-.stat-box            { background: var(--cb) !important; }
-.stat-box .label     { color: var(--t2) !important; }
-.hero p              { color: var(--t2) !important; }
-
-/* ── 图库 CSS 类 ── */
-.gallery-card        { background: var(--cb) !important; }
-.gallery-card .g-title { color: var(--t1) !important; }
-.gallery-card .g-meta  { color: var(--t3) !important; }
-
-/* ── 多来源徽章 ── */
-a[style*="color:#4A90D9"] { color: #1a5db5 !important; }
-a[style*="color:#888"]    { color: #5a6080 !important; }
+/* ── 首页 / 图库 CSS 类（深色由 :root 变量驱动，此处仅补充链接色）── */
+a[style*="color:#4A90D9"] { color: #4A90D9 !important; }
+a[style*="color:#888"]    { color: #888 !important; }
 </style>
 """
 
@@ -288,7 +253,7 @@ pg = st.navigation({
 
 # ── 侧边栏底部：主题切换（所有用户可见）────────────────────
 if "light_mode" not in st.session_state:
-    st.session_state.light_mode = False
+    st.session_state.light_mode = True   # 默认日间模式
 
 with st.sidebar:
     st.divider()
@@ -297,7 +262,7 @@ with st.sidebar:
         st.session_state.light_mode = light
         st.rerun()
 
-if st.session_state.light_mode:
-    st.markdown(_LIGHT_CSS, unsafe_allow_html=True)
+if not st.session_state.light_mode:
+    st.markdown(_DARK_CSS, unsafe_allow_html=True)
 
 pg.run()
