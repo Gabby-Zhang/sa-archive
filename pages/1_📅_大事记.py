@@ -133,7 +133,7 @@ if not df.empty and tag_filter != "全部":
 st.caption(f"共找到 {len(df)} 条记录")
 
 # ── 批量加载当前页所有事件的相关内容 ──────────────────────────
-from utils.database import get_supabase as _get_db
+from utils.database import get_supabase as _get_db, get_supabase_admin as _get_admin_db
 
 def _fetch_all_links(event_ids):
     if not event_ids:
@@ -333,7 +333,7 @@ if not df_page.empty:
                         )
                         if st.session_state.get("is_admin"):
                             if st.button("🗑️", key=f"del_lk_{lk['id']}"):
-                                _get_db().table("event_links").delete().eq("id", lk["id"]).execute()
+                                _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
                                 st.rerun()
 
             # ── 管理员：操作按钮（紧凑 emoji 风格）────────────
@@ -369,7 +369,7 @@ if not df_page.empty:
                     ls1, ls2 = st.columns(2)
                     with ls1:
                         if st.form_submit_button("💾 保存", use_container_width=True):
-                            _get_db().table("event_links").insert({
+                            _get_admin_db().table("event_links").insert({
                                 "event_id": str(event_id),
                                 "title":    lk_title_new,
                                 "url":      lk_url_new,
@@ -431,7 +431,7 @@ if not df_page.empty:
                                     sug_key = f"auto_lk_{event_id}_{str(sug.get('id',''))[:8]}"
                                     if st.button("📌", key=sug_key, help="关联到此事件"):
                                         try:
-                                            _get_db().table("event_links").insert({
+                                            _get_admin_db().table("event_links").insert({
                                                 "event_id": event_id,   # 直接传原始值
                                                 "title":    sug.get("title",""),
                                                 "url":      sug.get("url",""),
@@ -495,7 +495,7 @@ if not df_page.empty:
                                 with se2:
                                     sev_key = f"auto_ev_{event_id}_{sug_ev.get('id','')}"
                                     if st.button("📌", key=sev_key, help="关联到此事件"):
-                                        _get_db().table("event_links").insert({
+                                        _get_admin_db().table("event_links").insert({
                                             "event_id": str(event_id),
                                             "title":    sug_ev.get("title",""),
                                             "url":      sug_ev.get("source_url","") or "",

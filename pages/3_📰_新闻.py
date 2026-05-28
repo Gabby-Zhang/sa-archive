@@ -3,7 +3,7 @@ from utils.auth import admin_sidebar
 
 admin_sidebar()
 from datetime import datetime
-from utils.database import get_news, add_news_manual, add_event, delete_news, get_supabase
+from utils.database import get_news, add_news_manual, add_event, delete_news, get_supabase, get_supabase_admin
 from utils.news_fetcher import fetch_all_news
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
@@ -145,8 +145,8 @@ for item in news:
                     if st.button("✅ 确认关联", key=f"do_link_{item_id}", use_container_width=True):
                         if _sel_ev:
                             try:
-                                get_supabase().table("event_links").insert({
-                                    "event_id": _sel_ev["id"],   # 直接传原始值，不转 str
+                                get_supabase_admin().table("event_links").insert({
+                                    "event_id": _sel_ev["id"],
                                     "title":    item.get("title", ""),
                                     "url":      url,
                                     "type":     "📰 新闻报道",

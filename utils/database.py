@@ -7,6 +7,14 @@ def get_supabase() -> Client:
     key = st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
+@st.cache_resource
+def get_supabase_admin() -> Client:
+    """使用 Service Role Key，绕过 RLS，用于管理员写操作"""
+    url = st.secrets["SUPABASE_URL"]
+    # 优先用 service role key；若未配置则回退到普通 key
+    key = st.secrets.get("SUPABASE_SERVICE_KEY", st.secrets["SUPABASE_KEY"])
+    return create_client(url, key)
+
 # ── 大事记 ──────────────────────────────────────────────
 def get_events(person=None, keyword=None):
     db = get_supabase()
