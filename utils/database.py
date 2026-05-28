@@ -41,7 +41,7 @@ def get_news(person=None, keyword=None, limit=50):
 
 def upsert_news(items: list):
     db = get_supabase()
-    return db.table("news").upsert(items, on_conflict="url").execute()
+    return db.table("news").upsert(items, on_conflict="id").execute()
 
 def add_news_manual(data: dict):
     db = get_supabase()

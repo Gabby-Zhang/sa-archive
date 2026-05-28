@@ -7,6 +7,27 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── 管理员登录（侧边栏）──────────────────────────────────
+if "is_admin" not in st.session_state:
+    st.session_state.is_admin = False
+
+with st.sidebar:
+    st.divider()
+    if not st.session_state.is_admin:
+        with st.expander("🔐 管理员登录"):
+            pwd = st.text_input("密码", type="password", key="admin_pwd")
+            if st.button("登录"):
+                if pwd == st.secrets.get("ADMIN_PASSWORD", ""):
+                    st.session_state.is_admin = True
+                    st.rerun()
+                else:
+                    st.error("密码错误")
+    else:
+        st.success("✅ 已登录管理员")
+        if st.button("退出登录"):
+            st.session_state.is_admin = False
+            st.rerun()
+
 # ── 样式 ────────────────────────────────────────────────
 st.markdown("""
 <style>

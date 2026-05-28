@@ -123,16 +123,17 @@ if not df.empty:
             </div>
             """, unsafe_allow_html=True)
 
-            # 编辑和删除按钮
-            bc1, bc2, bc3 = st.columns([6, 1, 1])
-            with bc2:
-                if st.button("✏️", key=f"edit_{event_id}", help="编辑"):
-                    st.session_state.editing_id = event_id
-                    st.rerun()
-            with bc3:
-                if st.button("🗑️", key=f"del_{event_id}", help="删除"):
-                    delete_event(event_id)
-                    st.rerun()
+            # 编辑和删除按钮（仅管理员可见）
+            if st.session_state.get("is_admin"):
+                bc1, bc2, bc3 = st.columns([6, 1, 1])
+                with bc2:
+                    if st.button("✏️", key=f"edit_{event_id}", help="编辑"):
+                        st.session_state.editing_id = event_id
+                        st.rerun()
+                with bc3:
+                    if st.button("🗑️", key=f"del_{event_id}", help="删除"):
+                        delete_event(event_id)
+                        st.rerun()
 else:
     st.info("暂无数据，请先在下方添加或导入数据。")
 
