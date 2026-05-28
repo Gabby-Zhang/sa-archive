@@ -122,7 +122,7 @@ for item in news:
             search_q = st.text_input(
                 "搜索大事记标题关键词",
                 key=f"ev_search_{item_id}",
-                placeholder="留空显示最近 20 条…",
+                placeholder="输入关键词搜索…",
             )
             try:
                 _db = get_supabase()
