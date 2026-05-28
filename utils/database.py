@@ -52,6 +52,10 @@ def add_news_manual(data: dict):
     db = get_supabase()
     return db.table("news").insert(data).execute()
 
+def delete_news(news_id: str):
+    db = get_supabase()
+    return db.table("news").delete().eq("id", news_id).execute()
+
 # ── 文件上传记录 ─────────────────────────────────────────
 def get_files(person=None):
     db = get_supabase()

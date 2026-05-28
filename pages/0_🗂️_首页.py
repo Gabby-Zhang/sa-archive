@@ -81,12 +81,13 @@ st.subheader("📊 档案馆概览")
 try:
     db = get_supabase()
     events_count = len(db.table("events").select("id").execute().data)
-    news_count = len(db.table("news").select("id").execute().data)
-    files_count = len(db.table("files").select("id").execute().data)
+    news_count   = len(db.table("news").select("id").execute().data)
+    files_count  = len(db.table("files").select("id").execute().data)
+    images_count = len(db.table("images").select("id").execute().data)
 except Exception:
-    events_count = news_count = files_count = "—"
+    events_count = news_count = files_count = images_count = "—"
 
-c1, c2, c3 = st.columns(3)
+c1, c2, c3, c4 = st.columns(4)
 with c1:
     st.markdown(f"""
     <div class="stat-box">
@@ -104,6 +105,12 @@ with c3:
     <div class="stat-box">
         <div class="num">{files_count}</div>
         <div class="label">📁 上传文件</div>
+    </div>""", unsafe_allow_html=True)
+with c4:
+    st.markdown(f"""
+    <div class="stat-box">
+        <div class="num">{images_count}</div>
+        <div class="label">🖼️ 图库图片</div>
     </div>""", unsafe_allow_html=True)
 
 st.divider()

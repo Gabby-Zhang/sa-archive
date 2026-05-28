@@ -9,6 +9,38 @@ st.set_page_config(page_title="图库 · 档案馆", page_icon="🖼️", layout
 st.title("🖼️ 图库")
 st.caption("照片、截图存档 — 图片存于 Google Drive")
 
+# ── 灯箱 CSS + JS ─────────────────────────────────────────
+st.markdown("""
+<style>
+#lb-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 99999;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+#lb-overlay.open { display: flex; }
+#lb-overlay img { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: 6px; }
+#lb-close { position: absolute; top: 1rem; right: 1.5rem; color: #fff;
+             font-size: 2rem; cursor: pointer; user-select: none; }
+.lb-thumb { cursor: zoom-in; width: 100%; border-radius: 8px 8px 0 0; }
+</style>
+<div id="lb-overlay" onclick="document.getElementById('lb-overlay').classList.remove('open')">
+    <span id="lb-close">✕</span>
+    <img id="lb-img" src="">
+</div>
+<script>
+function openLB(src) {
+    document.getElementById('lb-img').src = src;
+    document.getElementById('lb-overlay').classList.add('open');
+}
+</script>
+""", unsafe_allow_html=True)
+
 # ── Google Drive 链接转换为可显示的图片 URL ───────────────
 def gdrive_to_img_url(url: str) -> str:
     """把 Google Drive 分享链接转成直接可显示的图片链接"""
@@ -80,10 +112,10 @@ if images:
             color = PERSON_COLOR.get(img.get("person", ""), "#888")
 
             if img_url:
-                try:
-                    st.image(img_url, use_container_width=True)
-                except Exception:
-                    st.markdown("🖼️ 图片无法加载")
+                st.markdown(
+                    f'<img class="lb-thumb" src="{img_url}" onclick="openLB(\'{img_url}\')" '
+                    f'onerror="this.style.display=\'none\'">',
+                    unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style="background:#16213e;padding:0.5rem 0.8rem;

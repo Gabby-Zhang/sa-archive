@@ -121,6 +121,20 @@ if not df.empty and year_filter != "全部":
 
 st.caption(f"共找到 {len(df)} 条记录")
 
+# ── 导出 Excel ────────────────────────────────────────────
+if not df.empty:
+    import io
+    out = io.BytesIO()
+    export_cols = [c for c in ['date','person','title','source','source_url','note'] if c in df.columns]
+    df_exp = df[export_cols].copy()
+    df_exp.columns = [{'date':'日期','person':'人物','title':'事件标题',
+                        'source':'消息来源','source_url':'来源链接','note':'内容摘要'}.get(c,c)
+                      for c in export_cols]
+    df_exp.to_excel(out, index=False, engine='openpyxl')
+    st.download_button("📥 导出 Excel", data=out.getvalue(),
+                       file_name="大事记.xlsx",
+                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 # ── 时间轴展示 ───────────────────────────────────────────
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
@@ -128,12 +142,44 @@ PERSON_COLOR = {
     "S&A": "#FF6B9D",
 }
 
+# ── 分页 ──────────────────────────────────────────────────
+ITEMS_PER_PAGE = 50
+total = len(df)
+total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
+
+if "timeline_page" not in st.session_state:
+    st.session_state.timeline_page = 1
+# 筛选条件变化时重置到第一页
+filter_key = f"{person_filter}_{year_filter}_{keyword}"
+if st.session_state.get("_last_filter") != filter_key:
+    st.session_state.timeline_page = 1
+    st.session_state["_last_filter"] = filter_key
+
+page = st.session_state.timeline_page
+start = (page - 1) * ITEMS_PER_PAGE
+df_page = df.iloc[start : start + ITEMS_PER_PAGE] if not df.empty else df
+
+if total_pages > 1:
+    pc1, pc2, pc3 = st.columns([1, 3, 1])
+    with pc1:
+        if st.button("◀ 上一页", disabled=(page <= 1)):
+            st.session_state.timeline_page -= 1
+            st.rerun()
+    with pc2:
+        st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>"
+                    f"第 {page} / {total_pages} 页（每页 {ITEMS_PER_PAGE} 条）</div>",
+                    unsafe_allow_html=True)
+    with pc3:
+        if st.button("下一页 ▶", disabled=(page >= total_pages)):
+            st.session_state.timeline_page += 1
+            st.rerun()
+
 # 初始化编辑状态
 if "editing_id" not in st.session_state:
     st.session_state.editing_id = None
 
-if not df.empty:
-    for _, row in df.iterrows():
+if not df_page.empty:
+    for _, row in df_page.iterrows():
         event_id = row.get("id")
         color = PERSON_COLOR.get(row.get("person", ""), "#888")
 

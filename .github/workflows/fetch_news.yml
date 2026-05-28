@@ -1,0 +1,25 @@
+name: 定时抓取新闻
+
+on:
+  schedule:
+    - cron: '0 6,14,22 * * *'   # 每天北京时间 14:00、22:00、次日 06:00
+  workflow_dispatch:              # 允许手动触发
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install supabase feedparser
+
+      - name: 抓取新闻
+        run: python scripts/fetch_news.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
