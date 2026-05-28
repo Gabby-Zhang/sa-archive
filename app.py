@@ -12,32 +12,17 @@ st.markdown("""
 <style>
 [data-testid="stDecoration"],
 [data-testid="stDeployButton"],
+[data-testid="stToolbarActions"],
 .viewerBadge_container__r5tak,
 .viewerBadge_link__qRIco,
 [class*="viewerBadge"],
-[class*="ViewerBadge"] {
+[class*="ViewerBadge"],
+header[data-testid="stHeader"] a,
+header[data-testid="stHeader"] img {
     display: none !important;
+    visibility: hidden !important;
 }
 </style>
-<script>
-(function() {
-    function hideBadge() {
-        var selectors = [
-            '[data-testid="stDecoration"]',
-            '[data-testid="stDeployButton"]',
-            '[class*="viewerBadge"]',
-            '[class*="ViewerBadge"]'
-        ];
-        selectors.forEach(function(sel) {
-            document.querySelectorAll(sel).forEach(function(el) {
-                el.style.setProperty('display', 'none', 'important');
-            });
-        });
-    }
-    hideBadge();
-    new MutationObserver(hideBadge).observe(document.documentElement, {subtree: true, childList: true});
-})();
-</script>
 """, unsafe_allow_html=True)
 
 pg = st.navigation({
