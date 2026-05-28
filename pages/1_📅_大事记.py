@@ -22,6 +22,7 @@ st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout
 
 TAG_OPTIONS = [
     "📰 新闻报道",
+    "📅 大事记",
     "📸 IG 快拍",
     "📷 IG 帖子",
     "🎵 TikTok",
@@ -35,6 +36,7 @@ TAG_OPTIONS = [
 
 TAG_COLOR = {
     "📰 新闻报道": "#4A90D9",
+    "📅 大事记":   "#8B6FD4",
     "📸 IG 快拍":  "#E1306C",
     "📷 IG 帖子":  "#E1306C",
     "🎵 TikTok":   "#69C9D0",
@@ -434,6 +436,68 @@ if not df_page.empty:
                                             "url":      sug.get("url",""),
                                             "type":     "📰 新闻报道",
                                             "source":   sug.get("source",""),
+                                        }).execute()
+                                        st.rerun()
+                except Exception:
+                    pass
+
+                # ── 相关大事记推荐（同期条目，一键关联）─────────────
+                try:
+                    ev_date_str2 = str(row.get("date", ""))
+                    ev_person2   = row.get("person", "")
+                    if ev_date_str2 and ev_person2:
+                        d2      = _dt.fromisoformat(ev_date_str2).date()
+                        d2_s    = (d2 - _td(days=7)).isoformat()
+                        d2_e    = (d2 + _td(days=7)).isoformat()
+                        linked_titles = {lk.get("title","") for lk in all_links.get(str(event_id), [])}
+                        # 查同人物或 S&A 的同期大事记（排除自身）
+                        person_filter_ev = ev_person2
+                        sug_events = (
+                            _get_db().table("events")
+                            .select("id,title,date,person,source_url")
+                            .gte("date", d2_s)
+                            .lte("date", d2_e)
+                            .order("date", desc=True)
+                            .limit(10)
+                            .execute().data
+                        )
+                        # 排除自身 & 已关联的
+                        sug_events = [
+                            e for e in sug_events
+                            if str(e.get("id","")) != str(event_id)
+                            and e.get("title","") not in linked_titles
+                        ]
+                        if sug_events:
+                            st.markdown(
+                                f'<div style="background:#0f1a30;border:1px solid #3d2a6e;'
+                                f'border-radius:6px;padding:0.6rem 1rem;margin-top:0.4rem">'
+                                f'<span style="color:#8B6FD4;font-size:0.8rem;font-weight:bold">'
+                                f'📅 同期找到 {len(sug_events)} 条相关大事记，点击 📌 一键关联</span>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                            for sug_ev in sug_events:
+                                se1, se2 = st.columns([11, 1])
+                                with se1:
+                                    ev_p_color = PERSON_COLOR.get(sug_ev.get("person",""), "#888")
+                                    st.markdown(
+                                        f'<span style="color:#666;font-size:0.73rem">'
+                                        f'{str(sug_ev.get("date",""))[:10]}</span>'
+                                        f' <span style="color:{ev_p_color};font-size:0.73rem;font-weight:bold">'
+                                        f'{sug_ev.get("person","")}</span>'
+                                        f' <span style="color:#ccc;font-size:0.82rem">'
+                                        f'{(sug_ev.get("title","") or "")[:90]}</span>',
+                                        unsafe_allow_html=True
+                                    )
+                                with se2:
+                                    sev_key = f"auto_ev_{event_id}_{sug_ev.get('id','')}"
+                                    if st.button("📌", key=sev_key, help="关联到此事件"):
+                                        _get_db().table("event_links").insert({
+                                            "event_id": str(event_id),
+                                            "title":    sug_ev.get("title",""),
+                                            "url":      sug_ev.get("source_url","") or "",
+                                            "type":     "📅 大事记",
+                                            "source":   sug_ev.get("person",""),
                                         }).execute()
                                         st.rerun()
                 except Exception:
