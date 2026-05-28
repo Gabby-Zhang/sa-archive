@@ -20,6 +20,22 @@ st.markdown("""
     --bd:  #2a3a5c;   /* border / divider color */
 }
 
+/* ── 中文字形缩放：使 CJK 视觉大小与西文匹配 ── */
+@font-face {
+    font-family: "CJKScaled";
+    src: local("PingFang SC"), local("Hiragino Sans GB"),
+         local("Noto Sans SC"), local("Microsoft YaHei UI"),
+         local("Microsoft YaHei"), local("WenQuanYi Micro Hei");
+    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+F900-FAFF,
+                   U+2E80-2EFF, U+3000-303F, U+FF00-FFEF,
+                   U+FE30-FE4F;
+    size-adjust: 85%;
+}
+/* 全局字体栈：西文用 Source Sans Pro，中文用缩放版 */
+.stApp, .stApp *:not(code):not(pre) {
+    font-family: "Source Sans Pro", "CJKScaled", sans-serif !important;
+}
+
 /* ── 隐藏 Created by 徽章 ── */
 [data-testid="stDecoration"],
 [data-testid="stDeployButton"],
