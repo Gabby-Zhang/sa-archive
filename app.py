@@ -1,137 +1,24 @@
 import streamlit as st
 
 st.set_page_config(
-    page_title="档案馆 · Attal & Séjourné",
+    page_title="S&A 档案馆",
     page_icon="🗂️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── 管理员登录（侧边栏）──────────────────────────────────
-if "is_admin" not in st.session_state:
-    st.session_state.is_admin = False
-
-with st.sidebar:
-    st.divider()
-    if not st.session_state.is_admin:
-        with st.expander("🔐 管理员登录"):
-            pwd = st.text_input("密码", type="password", key="admin_pwd")
-            if st.button("登录"):
-                if pwd == st.secrets.get("ADMIN_PASSWORD", ""):
-                    st.session_state.is_admin = True
-                    st.rerun()
-                else:
-                    st.error("密码错误")
-    else:
-        st.success("✅ 已登录管理员")
-        if st.button("退出登录"):
-            st.session_state.is_admin = False
-            st.rerun()
-
-# ── 样式 ────────────────────────────────────────────────
-st.markdown("""
-<style>
-.hero { text-align: center; padding: 2rem 0 1rem 0; }
-.hero h1 { font-size: 2.5rem; color: #4A90D9; letter-spacing: 2px; }
-.hero p { color: #aaa; font-size: 1.1rem; }
-.profile-card {
-    background: #16213e;
-    border: 1px solid #4A90D944;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 0.5rem;
-    text-align: center;
-}
-.profile-card h2 { color: #4A90D9; margin-bottom: 0.5rem; }
-.profile-card .role { color: #aaa; font-size: 0.9rem; margin-bottom: 1rem; }
-.profile-card .bio { color: #ccc; font-size: 0.95rem; line-height: 1.6; }
-.stat-box {
-    background: #16213e;
-    border-left: 4px solid #4A90D9;
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    margin: 0.5rem 0;
-}
-.stat-box .num { font-size: 2rem; font-weight: bold; color: #4A90D9; }
-.stat-box .label { color: #aaa; font-size: 0.9rem; }
-</style>
-""", unsafe_allow_html=True)
-
-# ── 首页标题 ─────────────────────────────────────────────
-st.markdown("""
-<div class="hero">
-    <h1>🗂️ 档案馆</h1>
-    <p>Le Parcours de Séjourné et Attal — 持续建设中</p>
-</div>
-""", unsafe_allow_html=True)
-
-st.divider()
-
-# ── 人物卡片 ─────────────────────────────────────────────
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("""
-    <div class="profile-card">
-        <h2>Stéphane Séjourné</h2>
-        <div class="role">🇪🇺 欧盟委员会执行副主席 · 工业战略专员</div>
-        <div class="bio">
-            1985年生，法国政治人物，复兴党（RE）创始成员之一。<br>
-            曾任欧洲议会议员（2019–2024）、欧洲议会复兴党团主席、
-            法国外交部长（2024）。<br>
-            现任欧盟委员会执行副主席。
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    <div class="profile-card">
-        <h2>Gabriel Attal</h2>
-        <div class="role">🏛️ 法国国民议会议员 · 复兴党（RE）主席</div>
-        <div class="bio">
-            1989年生，法国迄今最年轻的总理（2024年1月–9月）。<br>
-            曾任教育部长、预算部长、政府发言人。<br>
-            现任复兴党主席及国民议会议员（上塞纳省）。
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.divider()
-
-# ── 统计数字 ─────────────────────────────────────────────
-st.subheader("📊 档案馆概览")
-
-try:
-    from utils.database import get_supabase
-    db = get_supabase()
-    events_count = len(db.table("events").select("id").execute().data)
-    news_count = len(db.table("news").select("id").execute().data)
-    files_count = len(db.table("files").select("id").execute().data)
-except Exception:
-    events_count = news_count = files_count = "—"
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{events_count}</div>
-        <div class="label">📅 大事记条目</div>
-    </div>""", unsafe_allow_html=True)
-with c2:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{news_count}</div>
-        <div class="label">📰 新闻条目</div>
-    </div>""", unsafe_allow_html=True)
-with c3:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{files_count}</div>
-        <div class="label">📁 上传文件</div>
-    </div>""", unsafe_allow_html=True)
-
-st.divider()
-
-# ── 导航提示 ─────────────────────────────────────────────
-st.info("👈 使用左侧导航栏切换各个板块")
+pg = st.navigation({
+    "S&A 档案馆": [
+        st.Page("pages/0_🗂️_首页.py",     title="首页",   icon="🗂️"),
+        st.Page("pages/1_📅_大事记.py",    title="大事记", icon="📅"),
+        st.Page("pages/2_👤_人物档案.py",  title="人物档案", icon="👤"),
+        st.Page("pages/3_📰_新闻.py",      title="新闻",   icon="📰"),
+        st.Page("pages/4_📊_媒体光谱.py",  title="媒体光谱", icon="📊"),
+        st.Page("pages/5_🗳️_选举参考.py", title="选举参考", icon="🗳️"),
+        st.Page("pages/6_🔗_资源导航.py",  title="资源导航", icon="🔗"),
+        st.Page("pages/7_📁_文件上传.py",  title="文件上传", icon="📁"),
+        st.Page("pages/8_🏛️_团队成员.py", title="团队成员", icon="🏛️"),
+        st.Page("pages/9_🖼️_图库.py",     title="图库",   icon="🖼️"),
+    ]
+})
+pg.run()
