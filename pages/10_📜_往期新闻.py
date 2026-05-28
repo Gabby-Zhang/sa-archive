@@ -2,7 +2,7 @@ import streamlit as st
 from utils.auth import admin_sidebar
 from utils.database import get_supabase
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import hashlib
 import requests
 import time
@@ -18,6 +18,100 @@ PERSON_COLOR = {
     "S&A":                "#FF6B9D",
 }
 
+# ── GDELT 导入函数（定义在前，调用在后）────────────────────────────
+def _run_gdelt_import(person: str, start: date, end: date):
+    """按月查询 GDELT，插入 news 表（category=historical）"""
+    QUERIES = {
+        "Gabriel Attal":     ["Gabriel Attal", "Attal Renaissance", "Attal présidentielle"],
+        "Stéphane Séjourné": ["Stéphane Séjourné", "Séjourné Commission européenne", "Séjourné Renaissance"],
+        "S&A":               ["Séjourné Attal"],
+    }
+    queries = QUERIES.get(person, [person])
+    db = get_supabase()
+    total_added = 0
+
+    # 按月切片
+    months = []
+    cur = start.replace(day=1)
+    while cur <= end:
+        next_month = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
+        months.append((cur, min(next_month - timedelta(days=1), end)))
+        cur = next_month
+
+    progress = st.progress(0, text="准备中…")
+
+    for idx, (m_start, m_end) in enumerate(months):
+        progress.progress((idx + 1) / len(months), text=f"查询 {m_start.strftime('%Y-%m')}…")
+
+        for q in queries:
+            try:
+                api_url = (
+                    f"https://api.gdeltproject.org/api/v2/doc/doc"
+                    f"?query={requests.utils.quote(q)}"
+                    f"&mode=artlist&maxrecords=250"
+                    f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
+                    f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
+                    f"&sourcelang=French&sourcecountry=France"
+                    f"&format=json"
+                )
+                resp = requests.get(api_url, timeout=15)
+                if not resp.ok:
+                    continue
+                articles = resp.json().get("articles", [])
+
+                rows = []
+                for a in articles:
+                    art_url = a.get("url", "")
+                    if not art_url:
+                        continue
+                    art_id = hashlib.md5(art_url.encode()).hexdigest()
+                    title  = a.get("title", "").strip()
+                    source = a.get("domain", "").replace("www.", "")
+                    seen_date = a.get("seendate", "")
+                    try:
+                        pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
+                    except Exception:
+                        pub_date = m_start.strftime("%Y-%m-%d")
+
+                    # 判断人物
+                    title_l = title.lower()
+                    has_s = "séjourné" in title_l or "sejourne" in title_l
+                    has_a = "attal" in title_l
+                    if has_s and has_a:
+                        art_person = "S&A"
+                    elif has_s:
+                        art_person = "Stéphane Séjourné"
+                    elif has_a:
+                        art_person = "Gabriel Attal"
+                    else:
+                        art_person = person
+
+                    rows.append({
+                        "id":           art_id,
+                        "title":        title,
+                        "url":          art_url,
+                        "source":       source,
+                        "person":       art_person,
+                        "published_at": pub_date,
+                        "summary":      "",
+                        "category":     "historical",
+                    })
+
+                if rows:
+                    db.table("news").upsert(rows, on_conflict="id").execute()
+                    total_added += len(rows)
+
+                time.sleep(0.5)  # 避免请求过频
+
+            except Exception as e:
+                st.warning(f"查询失败 ({q} / {m_start.strftime('%Y-%m')}): {e}")
+
+    progress.empty()
+    st.cache_data.clear()
+    st.success(f"✅ 导入完成！共处理 {total_added} 条记录（已自动去重）")
+    st.rerun()
+
+
 # ── 筛选栏 ───────────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
@@ -31,7 +125,7 @@ with col4:
 
 # ── 加载数据 ─────────────────────────────────────────────────────
 @st.cache_data(ttl=120)
-def get_historical_news(person=None, year=None, keyword=None, limit=50):
+def get_historical_news(person=None, year=None, limit=50):
     try:
         db = get_supabase()
         query = (db.table("news")
@@ -51,7 +145,6 @@ def get_historical_news(person=None, year=None, keyword=None, limit=50):
 news = get_historical_news(
     person=person_filter if person_filter != "全部" else None,
     year=year_filter if year_filter != "全部" else None,
-    keyword=keyword if keyword else None,
     limit=limit,
 )
 
@@ -62,8 +155,8 @@ st.caption(f"共 {len(news)} 条历史新闻")
 
 # ── 新闻列表 ─────────────────────────────────────────────────────
 for item in news:
-    color = PERSON_COLOR.get(item.get("person", ""), "#888")
-    url = item.get("url", "")
+    color     = PERSON_COLOR.get(item.get("person", ""), "#888")
+    url       = item.get("url", "")
     archive_url = f"https://www.removepaywall.com/{url}" if url else ""
 
     pub_date = item.get("published_at", "")
@@ -73,10 +166,10 @@ for item in news:
         except Exception:
             pass
 
-    media_info = get_media_info(item.get("source", ""))
-    lean_label = media_info["label"]
-    lean_color = media_info["color"]
-    lean_emoji = LEAN_EMOJI.get(lean_label, "")
+    media_info  = get_media_info(item.get("source", ""))
+    lean_label  = media_info["label"]
+    lean_color  = media_info["color"]
+    lean_emoji  = LEAN_EMOJI.get(lean_label, "")
 
     st.markdown(f"""
     <div style="
@@ -92,7 +185,8 @@ for item in news:
                     {item.get("person","")}
                 </span>
                 <span style="margin-left:0.8rem">
-                    <span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>
+                    <span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;
+                          border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>
                     <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{item.get("source","")}</span>
                 </span>
                 <span style="color:#555;font-size:0.8rem;margin-left:0.8rem">{pub_date}</span>
@@ -110,14 +204,13 @@ for item in news:
 
     if st.session_state.get("is_admin"):
         item_id = item.get("id", "")
-        if st.button("🗑️ 删除", key=f"del_hist_{item_id}", use_container_width=False):
-            db = get_supabase()
-            db.table("news").delete().eq("id", item_id).execute()
+        if st.button("🗑️ 删除", key=f"del_hist_{item_id}"):
+            get_supabase().table("news").delete().eq("id", item_id).execute()
             st.cache_data.clear()
             st.rerun()
 
 if not news:
-    st.info("暂无历史新闻。管理员可在下方导入 GDELT 历史数据。")
+    st.info("暂无历史新闻。管理员登录后可在下方导入 GDELT 历史数据。")
 
 st.divider()
 
@@ -125,11 +218,9 @@ st.divider()
 if st.session_state.get("is_admin"):
     with st.expander("📥 导入 GDELT 历史新闻", expanded=False):
         st.caption("""
-        **GDELT** 是免费的全球新闻存档，从 2015 年起收录法国媒体报道。
-        每次最多导入 250 条，按月查询。导入的记录会自动标记 `category=historical`，
-        不影响现有新闻页面。
+        **GDELT** 是免费的全球新闻存档，收录法国各大媒体报道。
+        选择人物和日期范围，每次按月查询，自动去重，不影响现有新闻页面。
         """)
-
         c1, c2, c3 = st.columns(3)
         with c1:
             import_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"], key="gdelt_person")
@@ -140,98 +231,3 @@ if st.session_state.get("is_admin"):
 
         if st.button("🔍 开始导入", use_container_width=True, type="primary"):
             _run_gdelt_import(import_person, import_start, import_end)
-
-
-def _run_gdelt_import(person: str, start: date, end: date):
-    """按月查询 GDELT，插入 news 表"""
-    QUERIES = {
-        "Gabriel Attal":     ["Gabriel Attal", "Attal Renaissance", "Attal présidentielle"],
-        "Stéphane Séjourné": ["Stéphane Séjourné", "Séjourné Commission européenne", "Séjourné Renaissance"],
-        "S&A":               ["Séjourné Attal"],
-    }
-    queries = QUERIES.get(person, [person])
-
-    db = get_supabase()
-    total_added = 0
-    progress = st.progress(0, text="准备中…")
-
-    # 按月切片
-    months = []
-    cur = start.replace(day=1)
-    while cur <= end:
-        next_month = (cur.replace(day=28) + __import__('datetime').timedelta(days=4)).replace(day=1)
-        months.append((cur, min(next_month - __import__('datetime').timedelta(days=1), end)))
-        cur = next_month
-
-    for idx, (m_start, m_end) in enumerate(months):
-        progress.progress((idx + 1) / len(months), text=f"查询 {m_start.strftime('%Y-%m')}…")
-
-        for q in queries:
-            try:
-                url = (
-                    f"https://api.gdeltproject.org/api/v2/doc/doc"
-                    f"?query={requests.utils.quote(q)}"
-                    f"&mode=artlist&maxrecords=250"
-                    f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
-                    f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
-                    f"&sourcelang=French&sourcecountry=France"
-                    f"&format=json"
-                )
-                resp = requests.get(url, timeout=15)
-                if not resp.ok:
-                    continue
-                articles = resp.json().get("articles", [])
-
-                rows = []
-                for a in articles:
-                    art_url = a.get("url", "")
-                    if not art_url:
-                        continue
-                    art_id = hashlib.md5(art_url.encode()).hexdigest()
-                    title = a.get("title", "").strip()
-                    source = a.get("domain", "").replace("www.", "")
-                    seen_date = a.get("seendate", "")
-                    try:
-                        pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
-                    except Exception:
-                        pub_date = m_start.strftime("%Y-%m-%d")
-
-                    # 判断人物
-                    if person == "S&A":
-                        art_person = "S&A"
-                    else:
-                        has_s = "séjourné" in title.lower() or "sejourne" in title.lower()
-                        has_a = "attal" in title.lower()
-                        if has_s and has_a:
-                            art_person = "S&A"
-                        elif has_s:
-                            art_person = "Stéphane Séjourné"
-                        elif has_a:
-                            art_person = "Gabriel Attal"
-                        else:
-                            art_person = person
-
-                    rows.append({
-                        "id":          art_id,
-                        "title":       title,
-                        "url":         art_url,
-                        "source":      source,
-                        "person":      art_person,
-                        "published_at": pub_date,
-                        "summary":     "",
-                        "category":    "historical",
-                    })
-
-                if rows:
-                    db.table("news").upsert(rows, on_conflict="id").execute()
-                    total_added += len(rows)
-
-                time.sleep(0.5)   # 避免请求过频
-
-            except Exception as e:
-                st.warning(f"查询失败 ({q} / {m_start.strftime('%Y-%m')}): {e}")
-
-    progress.empty()
-    st.cache_data.clear()
-    st.success(f"✅ 导入完成！共处理 {total_added} 条记录（已自动去重）")
-    st.rerun()
