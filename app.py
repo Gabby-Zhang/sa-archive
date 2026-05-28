@@ -199,30 +199,34 @@ hr { border-color: #c4c8de !important; }
 /* 占位符文字 */
 [data-baseweb="input"] input::placeholder,
 [data-baseweb="textarea"] textarea::placeholder { color: #9a9ab0 !important; }
-/* 下拉弹出菜单容器 */
+/* 下拉弹出菜单：覆盖所有层级的容器 */
 [data-baseweb="popover"],
-[data-baseweb="popover"] > div,
+[data-baseweb="popover"] div,
 [data-baseweb="menu"],
+[data-baseweb="menu"] div,
 [data-baseweb="list"],
-[role="listbox"] {
+[data-baseweb="list"] div,
+[role="listbox"],
+[role="listbox"] div {
     background-color: #ffffff !important;
     border-color: #bfc4d8 !important;
 }
-/* 下拉选项文字 — 覆盖 baseweb option / role=option 两种结构 */
+/* 下拉选项文字与背景 */
 [data-baseweb="option"],
+[role="option"],
 [data-baseweb="menu"] li,
-li[data-baseweb="list-item"],
-[role="option"] {
+li[data-baseweb="list-item"] {
     color: #1a1a2e !important;
-    background-color: transparent !important;
+    background-color: #ffffff !important;
     opacity: 1 !important;
 }
-/* hover / 已选中状态 */
+/* hover 状态 */
 [data-baseweb="option"]:hover,
 [role="option"]:hover {
     background-color: #dde5ff !important;
     color: #1a1a2e !important;
 }
+/* 已选中状态 */
 [data-baseweb="option"][aria-selected="true"],
 [role="option"][aria-selected="true"] {
     background-color: #c8d8ff !important;
