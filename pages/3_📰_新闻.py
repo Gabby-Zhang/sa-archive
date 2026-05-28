@@ -1,4 +1,7 @@
 import streamlit as st
+from utils.auth import admin_sidebar
+
+admin_sidebar()
 from datetime import datetime
 from utils.database import get_news, add_news_manual
 from utils.news_fetcher import fetch_all_news

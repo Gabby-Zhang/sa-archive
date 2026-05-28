@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from utils.database import get_events, add_event, update_event, delete_event
+from utils.auth import admin_sidebar
+
+admin_sidebar()
 
 st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout="wide")
 

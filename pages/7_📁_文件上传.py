@@ -1,4 +1,7 @@
 import streamlit as st
+from utils.auth import admin_sidebar
+
+admin_sidebar()
 from utils.database import get_files, add_file
 
 st.set_page_config(page_title="文件上传 · 档案馆", page_icon="📁", layout="wide")
