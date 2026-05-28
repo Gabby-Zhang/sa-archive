@@ -267,13 +267,13 @@ if not df_page.empty:
             if row.get("source_url"):
                 source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#4A90D9">🔗 原文</a>'
                 archive_url = f"https://www.removepaywall.com/{row['source_url']}"
-                source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:#aaa">📦 存档版</a>'
+                source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:var(--t3)">📦 存档版</a>'
             elif row.get("source"):
-                source_html = f'<span style="color:#aaa">{row["source"]}</span>'
+                source_html = f'<span style="color:var(--t2)">{row["source"]}</span>'
 
             _note = row.get("note", "") or ""
             _note = "" if str(_note).strip().lower() == "nan" else _note
-            note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{_note}</div>' if _note else ""
+            note_html = f'<div style="color:var(--t2);font-size:0.85rem;margin-top:0.4rem">{_note}</div>' if _note else ""
 
             img_url = gdrive_to_img_url(row.get("image_url", "") or "")
 
@@ -294,7 +294,7 @@ if not df_page.empty:
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">
                     <div>
                         <span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>
-                        <span style="color:#777;font-size:0.8rem;margin-left:0.8rem">{row.get("date","")}</span>
+                        <span style="color:var(--t2);font-size:0.8rem;margin-left:0.8rem">{row.get("date","")}</span>
                         {tag_html}
                     </div>
                     <div style="font-size:0.85rem">{source_html}</div>
@@ -326,8 +326,8 @@ if not df_page.empty:
                             f'<div style="padding:0.3rem 0;border-bottom:1px solid var(--bd)">'
                             f'<span style="background:{lk_color};color:white;padding:0.05rem 0.35rem;'
                             f'border-radius:3px;font-size:0.7rem">{lk_type}</span> '
-                            f'<span style="color:#aaa;font-size:0.8rem">{lk_source}</span> '
-                            f'<span style="color:#ddd;font-size:0.88rem"> {lk_title}</span>{link_a}'
+                            f'<span style="color:var(--t2);font-size:0.8rem">{lk_source}</span> '
+                            f'<span style="color:var(--t1);font-size:0.88rem"> {lk_title}</span>{link_a}'
                             f'</div>',
                             unsafe_allow_html=True
                         )
@@ -422,22 +422,25 @@ if not df_page.empty:
                                     sug_src  = sug.get("source","")
                                     sug_ttl  = (sug.get("title","") or "")[:90]
                                     st.markdown(
-                                        f'<span style="color:#666;font-size:0.73rem">{sug_date}</span>'
-                                        f' <span style="color:#888;font-size:0.73rem">{sug_src}</span>'
-                                        f' <span style="color:#ccc;font-size:0.82rem">{sug_ttl}</span>',
+                                        f'<span style="color:var(--t3);font-size:0.73rem">{sug_date}</span>'
+                                        f' <span style="color:var(--t2);font-size:0.73rem">{sug_src}</span>'
+                                        f' <span style="color:var(--t1);font-size:0.82rem">{sug_ttl}</span>',
                                         unsafe_allow_html=True
                                     )
                                 with s2:
                                     sug_key = f"auto_lk_{event_id}_{str(sug.get('id',''))[:8]}"
                                     if st.button("📌", key=sug_key, help="关联到此事件"):
-                                        _get_db().table("event_links").insert({
-                                            "event_id": str(event_id),
-                                            "title":    sug.get("title",""),
-                                            "url":      sug.get("url",""),
-                                            "type":     "📰 新闻报道",
-                                            "source":   sug.get("source",""),
-                                        }).execute()
-                                        st.rerun()
+                                        try:
+                                            _get_db().table("event_links").insert({
+                                                "event_id": event_id,   # 直接传原始值
+                                                "title":    sug.get("title",""),
+                                                "url":      sug.get("url",""),
+                                                "type":     "📰 新闻报道",
+                                                "source":   sug.get("source",""),
+                                            }).execute()
+                                            st.rerun()
+                                        except Exception as _e:
+                                            st.error(f"关联失败：{_e}")
                 except Exception:
                     pass
 

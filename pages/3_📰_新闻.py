@@ -144,16 +144,19 @@ for item in news:
                 with lc1:
                     if st.button("✅ 确认关联", key=f"do_link_{item_id}", use_container_width=True):
                         if _sel_ev:
-                            get_supabase().table("event_links").insert({
-                                "event_id": str(_sel_ev["id"]),
-                                "title":    item.get("title", ""),
-                                "url":      url,
-                                "type":     "📰 新闻报道",
-                                "source":   item.get("source", ""),
-                            }).execute()
-                            st.session_state.pop(f"linking_{item_id}", None)
-                            st.success(f"✅ 已关联到「{(_sel_ev.get('title','') or '')[:30]}…」")
-                            st.rerun()
+                            try:
+                                get_supabase().table("event_links").insert({
+                                    "event_id": _sel_ev["id"],   # 直接传原始值，不转 str
+                                    "title":    item.get("title", ""),
+                                    "url":      url,
+                                    "type":     "📰 新闻报道",
+                                    "source":   item.get("source", ""),
+                                }).execute()
+                                st.session_state.pop(f"linking_{item_id}", None)
+                                st.success(f"✅ 已关联到「{(_sel_ev.get('title','') or '')[:30]}…」")
+                                st.rerun()
+                            except Exception as _e:
+                                st.error(f"关联失败：{_e}")
                 with lc2:
                     if st.button("✕ 取消", key=f"cancel_link_{item_id}", use_container_width=True):
                         st.session_state.pop(f"linking_{item_id}", None)

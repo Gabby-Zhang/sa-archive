@@ -31,6 +31,17 @@ st.markdown("""
                    U+FE30-FE4F;
     size-adjust: 85%;
 }
+/* ── 按钮专用 CJK 缩放（更激进，独立命名避免缓存冲突）── */
+@font-face {
+    font-family: "CJKBtn";
+    src: local("PingFang SC"), local("Hiragino Sans GB"),
+         local("Noto Sans SC"), local("Microsoft YaHei UI"),
+         local("Microsoft YaHei"), local("WenQuanYi Micro Hei");
+    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+F900-FAFF,
+                   U+2E80-2EFF, U+3000-303F, U+FF00-FFEF,
+                   U+FE30-FE4F;
+    size-adjust: 72%;
+}
 /* 只覆盖文字容器，不影响 Material Icons 等图标字体 */
 p, h1, h2, h3, h4, h5, h6,
 label, li, td, th, caption,
@@ -110,18 +121,15 @@ h3 { font-size: 1.05rem !important; }
 /* subheader / markdown 段落 */
 .stMarkdown p { font-size: 0.88rem !important; }
 
-/* ── 缩小卡片元数据标签字体（span，不影响 div 标题块）── */
-.stMarkdown span[style*="font-size:0.8rem"],
-.stMarkdown span[style*="font-size: 0.8rem"]  { font-size: 0.68rem !important; }
-.stMarkdown span[style*="font-size:0.85rem"],
-.stMarkdown span[style*="font-size: 0.85rem"] { font-size: 0.72rem !important; }
+/* ── 卡片元数据：西文保持原始字号，中文由 size-adjust:85% 自动缩小 ──
+   不再手动覆盖 0.8rem / 0.85rem span（让 CJKScaled size-adjust 做差异化）
+   仅对最小的徽章 span（0.7rem）略作压缩以保持紧凑 ── */
 .stMarkdown span[style*="font-size:0.7rem"],
-.stMarkdown span[style*="font-size: 0.7rem"]  { font-size: 0.60rem !important; }
-.stMarkdown div[style*="font-size:0.85rem"],
-.stMarkdown div[style*="font-size: 0.85rem"]  { font-size: 0.72rem !important; }
+.stMarkdown span[style*="font-size: 0.7rem"]  { font-size: 0.68rem !important; }
 
-/* ── Streamlit 原生按钮字号缩小 ── */
-[data-testid="stButton"] > button {
+/* ── 按钮字体：高优先级选择器覆盖 Streamlit 默认 ── */
+html body .stApp [data-testid="stButton"] > button {
+    font-family: "Source Sans Pro", "CJKBtn", ui-sans-serif, sans-serif !important;
     font-size: 0.78rem !important;
     min-height: 1.8rem !important;
     line-height: 1.2 !important;
@@ -165,12 +173,17 @@ p, .stMarkdown p, label,
 hr { border-color: #c4c8de !important; }
 [data-testid="stExpander"]          { border-color: #c4c8de !important; }
 [data-testid="stExpanderDetails"]   { background-color: #edf1ff !important; }
-[data-testid="stButton"] > button,
-[data-testid="stDownloadButton"] > button,
-[data-testid="stFormSubmitButton"] > button {
+.stApp [data-testid="stButton"] > button,
+.stApp [data-testid="stDownloadButton"] > button,
+.stApp [data-testid="stFormSubmitButton"] > button {
     border-color: #bfc4d8 !important;
     color: #1a1a2e !important;
-    background-color: #ffffff !important;
+    background-color: #f0f4ff !important;
+}
+.stApp [data-testid="stButton"] > button:hover,
+.stApp [data-testid="stDownloadButton"] > button:hover {
+    background-color: #dde5ff !important;
+    border-color: #8fa8d8 !important;
 }
 [data-testid="stInfo"]  { background-color: #e2eaff !important; }
 
@@ -198,16 +211,35 @@ hr { border-color: #c4c8de !important; }
 /* 占位符文字 */
 [data-baseweb="input"] input::placeholder,
 [data-baseweb="textarea"] textarea::placeholder { color: #9a9ab0 !important; }
-/* 下拉弹出菜单 */
+/* 下拉弹出菜单容器 */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
 [data-baseweb="menu"],
-[data-baseweb="popover"] ul,
-[data-baseweb="popover"] [data-baseweb="list"] {
-    background-color: #f4f6fb !important;
+[data-baseweb="list"],
+[role="listbox"] {
+    background-color: #ffffff !important;
+    border-color: #bfc4d8 !important;
 }
+/* 下拉选项文字 — 覆盖 baseweb option / role=option 两种结构 */
+[data-baseweb="option"],
 [data-baseweb="menu"] li,
-[data-baseweb="list-item"] { color: #1a1a2e !important; }
-[data-baseweb="menu"] li:hover,
-[data-baseweb="option"]:hover { background-color: #e0e8ff !important; }
+li[data-baseweb="list-item"],
+[role="option"] {
+    color: #1a1a2e !important;
+    background-color: transparent !important;
+    opacity: 1 !important;
+}
+/* hover / 已选中状态 */
+[data-baseweb="option"]:hover,
+[role="option"]:hover {
+    background-color: #dde5ff !important;
+    color: #1a1a2e !important;
+}
+[data-baseweb="option"][aria-selected="true"],
+[role="option"][aria-selected="true"] {
+    background-color: #c8d8ff !important;
+    color: #1a1a2e !important;
+}
 /* Checkbox / Radio */
 [data-baseweb="checkbox"] span,
 [data-baseweb="radio"] span { color: #1a1a2e !important; }
