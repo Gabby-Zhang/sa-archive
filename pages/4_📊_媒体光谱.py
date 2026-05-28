@@ -7,7 +7,7 @@ st.title("📊 媒体光谱")
 st.caption("法国主要媒体的政治立场参考")
 
 st.markdown("""
-<div style="background:#16213e;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem">
+<div style="background:var(--cb);padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem">
     📌 数据来源参考：
     <a href="https://mediabiasfactcheck.com/" target="_blank" style="color:#4A90D9">MediaBiasFactCheck</a> ·
     <a href="https://www.allsides.com/bias-checker" target="_blank" style="color:#4A90D9">AllSides</a>

@@ -47,12 +47,12 @@ for f in files:
     icon = TYPE_ICONS.get(f.get("file_type", "其他"), "📎")
     url = f.get("drive_url", "")
     st.markdown(f"""
-    <div style="background:#16213e;border-left:4px solid {color};
+    <div style="background:var(--cb);border-left:4px solid {color};
                 padding:0.8rem 1.2rem;margin:0.4rem 0;border-radius:0 8px 8px 0">
         <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
                 <span style="font-size:1rem">{icon}</span>
-                <span style="color:#e0e0e0;margin-left:0.5rem;font-weight:bold">
+                <span style="color:var(--t1);margin-left:0.5rem;font-weight:bold">
                     {f.get("title","")}
                 </span>
                 <span style="color:{color};font-size:0.8rem;margin-left:0.8rem">

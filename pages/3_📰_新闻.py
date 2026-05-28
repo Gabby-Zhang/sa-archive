@@ -79,7 +79,7 @@ for item in news:
         border-left: 4px solid {color};
         padding: 0.8rem 1.2rem;
         margin: 0.5rem 0;
-        background: #16213e;
+        background:var(--cb);
         border-radius: 0 8px 8px 0;
     ">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
@@ -100,7 +100,7 @@ for item in news:
                 {"<a href='" + archive_url + "' target='_blank' style='color:#888'>📦 存档版</a>" if url else ""}
             </div>
         </div>
-        <div style="color:#e0e0e0;margin-top:0.4rem;font-size:0.95rem">
+        <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
             {item.get("title","")}
         </div>
     </div>
@@ -113,7 +113,7 @@ for item in news:
         # ── 关联到已有大事记的搜索 UI ────────────────────────
         if st.session_state.get(f"linking_{item_id}"):
             st.markdown(
-                '<div style="background:#0f1a30;border:1px solid #2a3a5c;'
+                '<div style="background:var(--cb2);border:1px solid var(--bd);'
                 'border-radius:6px;padding:0.6rem 1rem;margin:0.3rem 0">'
                 '<span style="color:#8B6FD4;font-size:0.8rem;font-weight:bold">'
                 '📅 选择要关联的大事记条目</span></div>',

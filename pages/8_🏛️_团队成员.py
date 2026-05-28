@@ -106,7 +106,7 @@ for tab, person in [(tab_ss, "Stéphane Séjourné"), (tab_ga, "Gabriel Attal")]
             # ── 正常显示 ──────────────────────────────────
             else:
                 st.markdown(f"""
-                <div style="background:#16213e;border-left:3px solid {color};
+                <div style="background:var(--cb);border-left:3px solid {color};
                             padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">
                     <span style="color:{color};font-weight:bold">{m.get('name','')}</span>
                     <span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get('title','')}</span>

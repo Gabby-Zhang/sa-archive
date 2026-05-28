@@ -77,12 +77,12 @@ for e in elections:
         col1, col2 = st.columns([1, 2])
         with col1:
             st.markdown(f"""
-            <div style="background:#16213e;border-left:4px solid #4A90D9;
+            <div style="background:var(--cb);border-left:4px solid #4A90D9;
                         padding:1rem;border-radius:0 8px 8px 0;margin-bottom:0.8rem">
                 <div style="color:#4A90D9;font-size:1.1rem;font-weight:bold">{e['name']}</div>
                 <div style="color:#888;font-size:0.85rem;font-style:italic">{e['fr']}</div>
                 <div style="margin-top:0.5rem">
-                    <span style="background:#0d1b2a;padding:0.2rem 0.5rem;border-radius:4px;
+                    <span style="background:var(--cb2);padding:0.2rem 0.5rem;border-radius:4px;
                                  color:#7EC8A4;font-size:0.8rem">{e['type']}</span>
                     <span style="color:#aaa;font-size:0.85rem;margin-left:0.8rem">任期：{e['term']}</span>
                 </div>
@@ -90,9 +90,9 @@ for e in elections:
             """, unsafe_allow_html=True)
         with col2:
             st.markdown(f"""
-            <div style="background:#16213e;padding:1rem;border-radius:8px;
+            <div style="background:var(--cb);padding:1rem;border-radius:8px;
                         margin-bottom:0.8rem;height:100%">
-                <div style="color:#e0e0e0;margin-bottom:0.3rem">
+                <div style="color:var(--t1);margin-bottom:0.3rem">
                     <span style="color:#888;font-size:0.85rem">所选代表：</span> {e['rep']}
                 </div>
                 <div style="color:#bbb;font-size:0.9rem">{e['note']}</div>

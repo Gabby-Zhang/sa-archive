@@ -244,7 +244,7 @@ for group in clustered:
     lean_emoji = LEAN_EMOJI.get(lean_label, "")
 
     # 多来源标记
-    multi_badge = (f'<span style="background:#2a3a5c;color:#aaa;padding:0.05rem 0.4rem;'
+    multi_badge = (f'<span style="background:var(--bd);color:var(--t2);padding:0.05rem 0.4rem;'
                    f'border-radius:3px;font-size:0.7rem;margin-left:0.5rem">'
                    f'📎 {len(others)+1} 家媒体</span>') if others else ""
 
@@ -253,7 +253,7 @@ for group in clustered:
         border-left: 4px solid {color};
         padding: 0.8rem 1.2rem;
         margin: 0.5rem 0;
-        background: #16213e;
+        background:var(--cb);
         border-radius: 0 8px 8px 0;
     ">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
@@ -274,7 +274,7 @@ for group in clustered:
                 {"<a href='" + archive_url + "' target='_blank' style='color:#888'>📦 存档版</a>" if url else ""}
             </div>
         </div>
-        <div style="color:#e0e0e0;margin-top:0.4rem;font-size:0.95rem">
+        <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
             {item.get("title","")}
         </div>
     </div>

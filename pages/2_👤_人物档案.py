@@ -103,7 +103,7 @@ def render_section(person, section):
 
             if section == "family":
                 st.markdown(f"""
-                <div style="background:#16213e;border-left:3px solid {color};
+                <div style="background:var(--cb);border-left:3px solid {color};
                             padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
                     <span style="color:{color};font-weight:bold">{key}</span>
                     <span style="color:#aaa;margin-left:0.8rem;font-size:0.9rem">{value}</span>
@@ -111,18 +111,18 @@ def render_section(person, section):
 
             elif section == "crew":
                 st.markdown(f"""
-                <div style="background:#16213e;border-left:3px solid {color}44;
+                <div style="background:var(--cb);border-left:3px solid {color}44;
                             padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
-                    <span style="color:#e0e0e0;font-weight:bold">{key}</span>
+                    <span style="color:var(--t1);font-weight:bold">{key}</span>
                     <div style="color:#aaa;font-size:0.85rem;margin-top:0.2rem">{note}</div>
                 </div>""", unsafe_allow_html=True)
 
             elif section == "preferences":
                 st.markdown(f"""
-                <div style="background:#16213e;border:1px solid {color}33;
+                <div style="background:var(--cb);border:1px solid {color}33;
                             padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">
                     <div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key}</div>
-                    <div style="color:#e0e0e0;white-space:pre-line">{value}</div>
+                    <div style="color:var(--t1);white-space:pre-line">{value}</div>
                 </div>""", unsafe_allow_html=True)
 
             elif section == "links":

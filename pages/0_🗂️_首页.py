@@ -9,9 +9,9 @@ st.markdown("""
 <style>
 .hero { text-align: center; padding: 2rem 0 1rem 0; }
 .hero h1 { font-size: 2.5rem; color: #4A90D9; letter-spacing: 2px; }
-.hero p { color: #aaa; font-size: 1.1rem; }
+.hero p { color: var(--t2); font-size: 1.1rem; }
 .profile-card {
-    background: #16213e;
+    background: var(--cb);
     border: 1px solid #4A90D944;
     border-radius: 12px;
     padding: 1.5rem;
@@ -19,17 +19,17 @@ st.markdown("""
     text-align: center;
 }
 .profile-card h2 { color: #4A90D9; margin-bottom: 0.5rem; }
-.profile-card .role { color: #aaa; font-size: 0.9rem; margin-bottom: 1rem; }
-.profile-card .bio { color: #ccc; font-size: 0.95rem; line-height: 1.6; }
+.profile-card .role { color: var(--t2); font-size: 0.9rem; margin-bottom: 1rem; }
+.profile-card .bio { color: var(--t1); font-size: 0.95rem; line-height: 1.6; }
 .stat-box {
-    background: #16213e;
+    background: var(--cb);
     border-left: 4px solid #4A90D9;
     border-radius: 8px;
     padding: 1rem 1.5rem;
     margin: 0.5rem 0;
 }
 .stat-box .num { font-size: 2rem; font-weight: bold; color: #4A90D9; }
-.stat-box .label { color: #aaa; font-size: 0.9rem; }
+.stat-box .label { color: var(--t2); font-size: 0.9rem; }
 @media (max-width: 640px) {
     .profile-card { margin: 0.3rem 0; }
     .stat-box .num { font-size: 1.5rem; }

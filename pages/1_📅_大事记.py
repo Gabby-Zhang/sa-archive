@@ -219,7 +219,7 @@ if not df_page.empty:
         # ── 编辑模式 ──────────────────────────────────────
         if st.session_state.editing_id == event_id:
             with st.container():
-                st.markdown(f'<div style="border-left:4px solid {color};padding:0.5rem 1rem;background:#16213e;border-radius:0 8px 8px 0;margin:0.6rem 0">', unsafe_allow_html=True)
+                st.markdown(f'<div style="border-left:4px solid {color};padding:0.5rem 1rem;background:var(--cb);border-radius:0 8px 8px 0;margin:0.6rem 0">', unsafe_allow_html=True)
                 with st.form(key=f"edit_form_{event_id}"):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -288,7 +288,7 @@ if not df_page.empty:
                 border-left: 4px solid {color};
                 padding: 0.8rem 1.2rem;
                 margin: 0.6rem 0;
-                background: #16213e;
+                background:var(--cb);
                 border-radius: 0 8px 8px 0;
             ">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">
@@ -299,7 +299,7 @@ if not df_page.empty:
                     </div>
                     <div style="font-size:0.85rem">{source_html}</div>
                 </div>
-                <div style="font-size:1rem;margin-top:0.3rem;color:#e0e0e0">{row.get("title","")}</div>
+                <div style="font-size:1rem;margin-top:0.3rem;color:var(--t1)">{row.get("title","")}</div>
                 {note_html}
             </div>
             """, unsafe_allow_html=True)
@@ -323,7 +323,7 @@ if not df_page.empty:
                         link_a    = (f' <a href="{lk_url}" target="_blank" '
                                      f'style="color:#4A90D9;font-size:0.85rem">🔗</a>') if lk_url else ""
                         st.markdown(
-                            f'<div style="padding:0.3rem 0;border-bottom:1px solid #2a3a5c">'
+                            f'<div style="padding:0.3rem 0;border-bottom:1px solid var(--bd)">'
                             f'<span style="background:{lk_color};color:white;padding:0.05rem 0.35rem;'
                             f'border-radius:3px;font-size:0.7rem">{lk_type}</span> '
                             f'<span style="color:#aaa;font-size:0.8rem">{lk_source}</span> '
@@ -408,7 +408,7 @@ if not df_page.empty:
                         suggested = [s for s in suggested if s.get("url","") not in linked_urls]
                         if suggested:
                             st.markdown(
-                                f'<div style="background:#0f1a30;border:1px solid #2a3a5c;'
+                                f'<div style="background:var(--cb2);border:1px solid var(--bd);'
                                 f'border-radius:6px;padding:0.6rem 1rem;margin-top:0.5rem">'
                                 f'<span style="color:#7EC8A4;font-size:0.8rem;font-weight:bold">'
                                 f'💡 {ev_date_str} 前后找到 {len(suggested)} 篇相关新闻，点击 📌 一键关联</span>'
@@ -469,7 +469,7 @@ if not df_page.empty:
                         ]
                         if sug_events:
                             st.markdown(
-                                f'<div style="background:#0f1a30;border:1px solid #3d2a6e;'
+                                f'<div style="background:var(--cb2);border:1px solid #3d2a6e;'
                                 f'border-radius:6px;padding:0.6rem 1rem;margin-top:0.4rem">'
                                 f'<span style="color:#8B6FD4;font-size:0.8rem;font-weight:bold">'
                                 f'📅 同期找到 {len(sug_events)} 条相关大事记，点击 📌 一键关联</span>'

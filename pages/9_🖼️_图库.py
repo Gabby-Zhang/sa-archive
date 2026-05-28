@@ -118,10 +118,10 @@ if images:
                     unsafe_allow_html=True)
 
             st.markdown(f"""
-            <div style="background:#16213e;padding:0.5rem 0.8rem;
+            <div style="background:var(--cb);padding:0.5rem 0.8rem;
                         border-radius:0 0 8px 8px;margin-top:-8px;margin-bottom:1rem">
                 <div style="color:{color};font-size:0.75rem">{img.get("person","")}</div>
-                <div style="color:#e0e0e0;font-size:0.85rem;font-weight:bold">
+                <div style="color:var(--t1);font-size:0.85rem;font-weight:bold">
                     {img.get("title","")}
                 </div>
                 <div style="color:#666;font-size:0.75rem">{img.get("date","")} · {img.get("tag","")}</div>

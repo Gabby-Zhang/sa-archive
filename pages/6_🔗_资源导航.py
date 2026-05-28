@@ -77,7 +77,7 @@ def render_box_card(r, color):
     rid  = r.get("id")
 
     st.markdown(f"""
-    <div style="background:#16213e;padding:0.6rem 1rem;margin:0.3rem 0;border-radius:6px;
+    <div style="background:var(--cb);padding:0.6rem 1rem;margin:0.3rem 0;border-radius:6px;
                 display:flex;justify-content:space-between;align-items:center">
         <a href="{url}" target="_blank" style="color:{color};font-weight:bold">{name}</a>
         <span style="color:#aaa;font-size:0.85rem">{desc}</span>
@@ -97,7 +97,7 @@ def render_tool_card(r):
     rid  = r.get("id")
 
     st.markdown(f"""
-    <div style="background:#16213e;border:1px solid #333;padding:1rem 1.2rem;
+    <div style="background:var(--cb);border:1px solid #333;padding:1rem 1.2rem;
                 margin:0.5rem 0;border-radius:8px">
         <a href="{url}" target="_blank"
            style="color:#4A90D9;font-size:1rem;font-weight:bold;text-decoration:none">
