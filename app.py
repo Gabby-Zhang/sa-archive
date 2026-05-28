@@ -53,6 +53,11 @@ label, li, td, th, caption,
     display: none !important;
 }
 
+/* ── 隐藏 st.navigation 自动生成的分区标签（"app" / 单分组标题）── */
+[data-testid="stSidebarNavSectionHeader"] {
+    display: none !important;
+}
+
 /* ── 手机端响应式布局 ── */
 @media (max-width: 640px) {
     [data-testid="stMainBlockContainer"] {
@@ -235,32 +240,36 @@ a[style*="color:#888"]    { color: #888 !important; }
 </style>
 """
 
-pg = st.navigation({
-    "S&A 档案馆": [
-        st.Page("pages/0_🗂️_首页.py",     title="首页",     icon="🗂️"),
-        st.Page("pages/1_📅_大事记.py",    title="大事记",   icon="📅"),
-        st.Page("pages/3_📰_新闻.py",      title="新闻",     icon="📰"),
-        st.Page("pages/2_👤_人物档案.py",  title="人物档案", icon="👤"),
-        st.Page("pages/4_📊_媒体光谱.py",  title="媒体光谱", icon="📊"),
-        st.Page("pages/5_🗳️_选举参考.py", title="选举参考", icon="🗳️"),
-        st.Page("pages/6_🔗_资源导航.py",  title="资源导航", icon="🔗"),
-        st.Page("pages/7_📁_文件上传.py",   title="文件上传", icon="📁"),
-        st.Page("pages/8_🏛️_团队成员.py", title="团队成员", icon="🏛️"),
-        st.Page("pages/9_🖼️_图库.py",     title="图库",     icon="🖼️"),
-        st.Page("pages/10_📜_往期新闻.py", title="往期新闻", icon="📜"),
-    ]
-})
-
-# ── 侧边栏底部：主题切换（所有用户可见）────────────────────
+# ── 初始化主题状态 ─────────────────────────────────────────
 if "light_mode" not in st.session_state:
     st.session_state.light_mode = True   # 默认日间模式
 
+# ── 侧边栏顶部：品牌标题 + 主题切换 ────────────────────────
 with st.sidebar:
-    st.divider()
+    st.markdown(
+        '<p style="font-size:1.05rem;font-weight:700;margin:0 0 0.2rem;'
+        'padding:0.3rem 0 0;color:var(--t1)">🗂️ S&amp;A 档案馆</p>',
+        unsafe_allow_html=True
+    )
     light = st.toggle("☀️ 日间模式", value=st.session_state.light_mode, key="_theme_toggle")
     if light != st.session_state.light_mode:
         st.session_state.light_mode = light
         st.rerun()
+    st.divider()
+
+pg = st.navigation([
+    st.Page("pages/0_🗂️_首页.py",     title="首页",     icon="🗂️"),
+    st.Page("pages/1_📅_大事记.py",    title="大事记",   icon="📅"),
+    st.Page("pages/3_📰_新闻.py",      title="新闻",     icon="📰"),
+    st.Page("pages/2_👤_人物档案.py",  title="人物档案", icon="👤"),
+    st.Page("pages/4_📊_媒体光谱.py",  title="媒体光谱", icon="📊"),
+    st.Page("pages/5_🗳️_选举参考.py", title="选举参考", icon="🗳️"),
+    st.Page("pages/6_🔗_资源导航.py",  title="资源导航", icon="🔗"),
+    st.Page("pages/7_📁_文件上传.py",   title="文件上传", icon="📁"),
+    st.Page("pages/8_🏛️_团队成员.py", title="团队成员", icon="🏛️"),
+    st.Page("pages/9_🖼️_图库.py",     title="图库",     icon="🖼️"),
+    st.Page("pages/10_📜_往期新闻.py", title="往期新闻", icon="📜"),
+])
 
 if not st.session_state.light_mode:
     st.markdown(_DARK_CSS, unsafe_allow_html=True)

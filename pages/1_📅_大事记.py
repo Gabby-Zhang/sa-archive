@@ -139,7 +139,8 @@ def _fetch_all_links(event_ids):
     if not event_ids:
         return {}
     try:
-        rows = _get_db().table("event_links").select("*").in_("event_id", [str(i) for i in event_ids]).order("created_at").execute().data
+        # event_links 表启用了 RLS，必须用 service key 才能读取
+        rows = _get_admin_db().table("event_links").select("*").in_("event_id", [str(i) for i in event_ids]).order("created_at").execute().data
         result = {}
         for r in rows:
             result.setdefault(str(r["event_id"]), []).append(r)
