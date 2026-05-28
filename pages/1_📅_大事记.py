@@ -37,6 +37,7 @@ if st.session_state.get("is_admin"):
                 new_source = st.text_input("消息来源")
                 new_source_url = st.text_input("来源链接（可选）")
             new_title = st.text_input("事件/新闻标题 *")
+            new_tag = st.selectbox("类型标签", TAG_OPTIONS)
             new_note = st.text_area("内容摘要", height=68)
             new_image_url = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...")
             if new_image_url:
@@ -56,6 +57,7 @@ if st.session_state.get("is_admin"):
                         "source_url": new_source_url,
                         "note": new_note,
                         "image_url": new_image_url or None,
+                        "tag": new_tag,
                     })
                     st.success("已添加！")
                     st.rerun()
@@ -63,13 +65,15 @@ if st.session_state.get("is_admin"):
                     st.warning("请填写标题")
 
 # ── 筛选栏 ───────────────────────────────────────────────
-col1, col2, col3 = st.columns([2, 2, 3])
+col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
     person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
     year_options = ["全部"] + [str(y) for y in range(2026, 2009, -1)]
     year_filter = st.selectbox("年份", year_options)
 with col3:
+    tag_filter = st.selectbox("类型", ["全部"] + TAG_OPTIONS)
+with col4:
     keyword = st.text_input("🔍 搜索关键词", placeholder="输入关键词…")
 
 # ── 加载数据 ─────────────────────────────────────────────
@@ -87,6 +91,10 @@ except Exception as e:
 if not df.empty and year_filter != "全部":
     df["year"] = pd.to_datetime(df["date"], errors="coerce").dt.year.astype(str)
     df = df[df["year"] == year_filter]
+
+# 标签筛选
+if not df.empty and tag_filter != "全部":
+    df = df[df["tag"] == tag_filter]
 
 st.caption(f"共找到 {len(df)} 条记录")
 
@@ -111,6 +119,32 @@ PERSON_COLOR = {
     "S&A": "#FF6B9D",
 }
 
+TAG_OPTIONS = [
+    "📰 新闻报道",
+    "📸 IG 快拍",
+    "📷 IG 帖子",
+    "🎵 TikTok",
+    "🐦 X/Twitter",
+    "▶️ YouTube",
+    "📺 Bilibili",
+    "🎙️ 采访",
+    "📋 官方声明",
+    "⚪ 其他",
+]
+
+TAG_COLOR = {
+    "📰 新闻报道": "#4A90D9",
+    "📸 IG 快拍":  "#E1306C",
+    "📷 IG 帖子":  "#E1306C",
+    "🎵 TikTok":   "#69C9D0",
+    "🐦 X/Twitter":"#1DA1F2",
+    "▶️ YouTube":  "#FF0000",
+    "📺 Bilibili":  "#00A1D6",
+    "🎙️ 采访":     "#7EC8A4",
+    "📋 官方声明":  "#C9A84C",
+    "⚪ 其他":      "#666666",
+}
+
 # ── 分页 ──────────────────────────────────────────────────
 ITEMS_PER_PAGE = 50
 total = len(df)
@@ -119,7 +153,7 @@ total_pages = max(1, (total + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE)
 if "timeline_page" not in st.session_state:
     st.session_state.timeline_page = 1
 # 筛选条件变化时重置到第一页
-filter_key = f"{person_filter}_{year_filter}_{keyword}"
+filter_key = f"{person_filter}_{year_filter}_{tag_filter}_{keyword}"
 if st.session_state.get("_last_filter") != filter_key:
     st.session_state.timeline_page = 1
     st.session_state["_last_filter"] = filter_key
@@ -169,6 +203,9 @@ if not df_page.empty:
                         _src_url = "" if str(_src_url).strip().lower() == "nan" else _src_url
                         e_source_url = st.text_input("来源链接", value=_src_url)
                     e_title = st.text_input("事件/新闻标题", value=row.get("title", ""))
+                    cur_tag = row.get("tag", TAG_OPTIONS[0]) or TAG_OPTIONS[0]
+                    tag_idx = TAG_OPTIONS.index(cur_tag) if cur_tag in TAG_OPTIONS else 0
+                    e_tag = st.selectbox("类型标签", TAG_OPTIONS, index=tag_idx)
                     e_note = st.text_area("内容摘要", value=row.get("note", "") or "", height=80)
                     e_image_url = st.text_input("图片链接（Google Drive，可选）", value=row.get("image_url", "") or "")
                     sc1, sc2 = st.columns(2)
@@ -185,6 +222,7 @@ if not df_page.empty:
                             "source_url": e_source_url,
                             "note": e_note,
                             "image_url": e_image_url or None,
+                            "tag": e_tag,
                         })
                         st.session_state.editing_id = None
                         st.rerun()
@@ -209,6 +247,12 @@ if not df_page.empty:
 
             img_url = gdrive_to_img_url(row.get("image_url", "") or "")
 
+            tag_val   = row.get("tag", "") or ""
+            tag_color = TAG_COLOR.get(tag_val, "#555")
+            tag_html  = (f'<span style="background:{tag_color};color:white;padding:0.05rem 0.45rem;'
+                         f'border-radius:3px;font-size:0.7rem;font-weight:bold;margin-left:0.6rem">'
+                         f'{tag_val}</span>') if tag_val else ""
+
             st.markdown(f"""
             <div style="
                 border-left: 4px solid {color};
@@ -220,7 +264,8 @@ if not df_page.empty:
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">
                     <div>
                         <span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>
-                        <span style="color:#777;font-size:0.8rem;margin-left:1rem">{row.get("date","")}</span>
+                        <span style="color:#777;font-size:0.8rem;margin-left:0.8rem">{row.get("date","")}</span>
+                        {tag_html}
                     </div>
                     <div style="font-size:0.85rem">{source_html}</div>
                 </div>
@@ -262,6 +307,7 @@ with st.expander("➕ 手动添加新条目"):
             new_source = st.text_input("消息来源（媒体名）")
             new_source_url = st.text_input("来源链接（可选）")
         new_title = st.text_input("事件/新闻标题 *")
+        new_tag_b = st.selectbox("类型标签", TAG_OPTIONS, key="bottom_tag")
         new_note = st.text_area("内容摘要", height=80)
         new_image_url_b = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...", key="bottom_img_url")
         submitted = st.form_submit_button("添加")
@@ -275,6 +321,7 @@ with st.expander("➕ 手动添加新条目"):
                     "source_url": new_source_url,
                     "note": new_note,
                     "image_url": new_image_url_b or None,
+                    "tag": new_tag_b,
                 })
                 st.success("已添加！")
                 st.rerun()
