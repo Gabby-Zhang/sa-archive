@@ -7,6 +7,18 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# 隐藏 Streamlit Cloud 的 "Created by" 头像徽章
+st.markdown("""
+<style>
+.viewerBadge_container__r5tak,
+.viewerBadge_link__qRIco,
+[data-testid="stDecoration"],
+#stDecoration {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 pg = st.navigation({
     "S&A 档案馆": [
         st.Page("pages/0_🗂️_首页.py",     title="首页",   icon="🗂️"),
