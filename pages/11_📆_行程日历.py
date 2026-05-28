@@ -8,7 +8,7 @@ from utils.database import get_supabase_admin
 
 admin_sidebar()
 
-st.title("📆 行程日历")
+st.title("🗓️ 行程日历")
 st.caption("Séjourné 行程自动抓取自欧盟委员会官网 · Attal 行程由团队手动维护")
 
 SEJOURNE_COLOR = "#4A90D9"

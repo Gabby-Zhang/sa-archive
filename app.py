@@ -269,7 +269,7 @@ pg = st.navigation([
     st.Page("pages/8_🏛️_团队成员.py", title="团队成员", icon="🏛️"),
     st.Page("pages/9_🖼️_图库.py",     title="图库",     icon="🖼️"),
     st.Page("pages/10_📜_往期新闻.py", title="往期新闻", icon="📜"),
-    st.Page("pages/11_📆_行程日历.py", title="行程日历", icon="📆"),
+    st.Page("pages/11_📆_行程日历.py", title="行程日历", icon="🗓️"),
 ])
 
 if not st.session_state.light_mode:
