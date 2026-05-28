@@ -3,7 +3,7 @@ from utils.auth import admin_sidebar
 
 admin_sidebar()
 from datetime import datetime
-from utils.database import get_news, add_news_manual, add_event, delete_news
+from utils.database import get_news, add_news_manual, add_event, delete_news, get_supabase
 from utils.news_fetcher import fetch_all_news
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
@@ -109,22 +109,83 @@ for item in news:
     # 管理员专用：操作按钮
     if st.session_state.get("is_admin"):
         item_id = item.get("id", "")
-        bc1, bc2 = st.columns(2)
-        with bc1:
-            if st.button("📌 加入大事记", key=f"pin_{item_id}", use_container_width=True):
-                add_event({
-                    "date": pub_date,
-                    "person": item.get("person", ""),
-                    "title": item.get("title", ""),
-                    "source": item.get("source", ""),
-                    "source_url": url,
-                    "note": "",
-                })
-                st.success("✅ 已加入大事记！")
-        with bc2:
-            if st.button("🗑️ 删除", key=f"del_news_{item_id}", use_container_width=True):
-                delete_news(item_id)
-                st.rerun()
+
+        # ── 关联到已有大事记的搜索 UI ────────────────────────
+        if st.session_state.get(f"linking_{item_id}"):
+            st.markdown(
+                '<div style="background:#0f1a30;border:1px solid #2a3a5c;'
+                'border-radius:6px;padding:0.6rem 1rem;margin:0.3rem 0">'
+                '<span style="color:#8B6FD4;font-size:0.8rem;font-weight:bold">'
+                '📅 选择要关联的大事记条目</span></div>',
+                unsafe_allow_html=True
+            )
+            search_q = st.text_input(
+                "搜索大事记标题关键词",
+                key=f"ev_search_{item_id}",
+                placeholder="留空显示最近 20 条…",
+            )
+            try:
+                _db = get_supabase()
+                _q  = _db.table("events").select("id,title,date,person")
+                if search_q:
+                    _q = _q.ilike("title", f"%{search_q}%")
+                _ev_rows = _q.order("date", desc=True).limit(20).execute().data
+            except Exception:
+                _ev_rows = []
+
+            if _ev_rows:
+                _ev_map = {
+                    f"{str(e.get('date',''))[:10]}  ·  {e.get('person','')}  ·  {(e.get('title','') or '')[:45]}": e
+                    for e in _ev_rows
+                }
+                _sel_label = st.selectbox("选择条目", list(_ev_map.keys()), key=f"ev_sel_{item_id}")
+                _sel_ev    = _ev_map.get(_sel_label)
+                lc1, lc2 = st.columns(2)
+                with lc1:
+                    if st.button("✅ 确认关联", key=f"do_link_{item_id}", use_container_width=True):
+                        if _sel_ev:
+                            get_supabase().table("event_links").insert({
+                                "event_id": str(_sel_ev["id"]),
+                                "title":    item.get("title", ""),
+                                "url":      url,
+                                "type":     "📰 新闻报道",
+                                "source":   item.get("source", ""),
+                            }).execute()
+                            st.session_state.pop(f"linking_{item_id}", None)
+                            st.success(f"✅ 已关联到「{(_sel_ev.get('title','') or '')[:30]}…」")
+                            st.rerun()
+                with lc2:
+                    if st.button("✕ 取消", key=f"cancel_link_{item_id}", use_container_width=True):
+                        st.session_state.pop(f"linking_{item_id}", None)
+                        st.rerun()
+            else:
+                st.info("未找到匹配的大事记")
+                if st.button("✕ 取消", key=f"cancel_link2_{item_id}"):
+                    st.session_state.pop(f"linking_{item_id}", None)
+                    st.rerun()
+
+        else:
+            # ── 正常按钮行 ───────────────────────────────────
+            bc1, bc2, bc3 = st.columns(3)
+            with bc1:
+                if st.button("📌 新建大事记", key=f"pin_{item_id}", use_container_width=True):
+                    add_event({
+                        "date": pub_date,
+                        "person": item.get("person", ""),
+                        "title": item.get("title", ""),
+                        "source": item.get("source", ""),
+                        "source_url": url,
+                        "note": "",
+                    })
+                    st.success("✅ 已加入大事记！")
+            with bc2:
+                if st.button("🔗 关联已有", key=f"link_{item_id}", use_container_width=True):
+                    st.session_state[f"linking_{item_id}"] = True
+                    st.rerun()
+            with bc3:
+                if st.button("🗑️ 删除", key=f"del_news_{item_id}", use_container_width=True):
+                    delete_news(item_id)
+                    st.rerun()
 
 if not news:
     st.info("暂无新闻，点击上方「抓取最新新闻」按钮开始收集。")
