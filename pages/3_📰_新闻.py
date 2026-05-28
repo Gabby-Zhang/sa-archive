@@ -58,7 +58,7 @@ PERSON_COLOR = {
 for item in news:
     color = PERSON_COLOR.get(item.get("person", ""), "#888")
     url = item.get("url", "")
-    archive_url = f"https://archive.ph/{url}" if url else ""
+    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
 
     pub_date = item.get("published_at", "")
     if pub_date:

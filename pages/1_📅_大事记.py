@@ -150,7 +150,7 @@ if not df.empty:
             source_html = ""
             if row.get("source_url"):
                 source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#4A90D9">🔗 原文</a>'
-                archive_url = f"https://archive.ph/{row['source_url']}"
+                archive_url = f"https://www.removepaywall.com/{row['source_url']}"
                 source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:#aaa">📦 存档版</a>'
             elif row.get("source"):
                 source_html = f'<span style="color:#aaa">{row["source"]}</span>'
