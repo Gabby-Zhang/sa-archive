@@ -52,6 +52,11 @@ def _fetch_eu_page(page: int):
 def _parse_eu_events(soup) -> list:
     events = []
     for article in soup.select("article.ecl-content-item--inline"):
+        # ── 只保留 Séjourné 的条目（EU Commission 活动标题含委员名）──
+        article_text = article.get_text().lower()
+        if "séjourné" not in article_text and "sejourne" not in article_text:
+            continue
+
         time_el = article.select_one("time.ecl-content-item__date")
         if not time_el:
             continue
@@ -88,7 +93,7 @@ def get_sejourne_schedule(days_back: int = 45) -> list:
     """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。"""
     cutoff = (date.today() - timedelta(days=days_back)).isoformat()
     all_events = []
-    for page in range(20):
+    for page in range(50):
         if page > 0:
             time.sleep(0.3)
         try:
