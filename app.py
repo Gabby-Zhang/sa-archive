@@ -116,6 +116,56 @@ hr { border-color: #c4c8de !important; }
 }
 [data-testid="stInfo"]  { background-color: #e2eaff !important; }
 
+/* ── Streamlit 原生 baseweb 组件（下拉框、输入框等）── */
+/* Select / Input 容器背景 */
+[data-baseweb="select"] > div,
+[data-baseweb="input"] > div,
+[data-baseweb="textarea"] > div,
+[data-baseweb="base-input"] {
+    background-color: #ffffff !important;
+    border-color: #bfc4d8 !important;
+    color: #1a1a2e !important;
+}
+/* Select 当前值文字 & 箭头 */
+[data-baseweb="select"] span,
+[data-baseweb="select"] div { color: #1a1a2e !important; }
+[data-baseweb="select"] svg { fill: #5a5a7a !important; }
+/* 输入框内文字 */
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea {
+    background-color: #ffffff !important;
+    color: #1a1a2e !important;
+    caret-color: #1a1a2e !important;
+}
+/* 占位符文字 */
+[data-baseweb="input"] input::placeholder,
+[data-baseweb="textarea"] textarea::placeholder { color: #9a9ab0 !important; }
+/* 下拉弹出菜单 */
+[data-baseweb="menu"],
+[data-baseweb="popover"] ul,
+[data-baseweb="popover"] [data-baseweb="list"] {
+    background-color: #f4f6fb !important;
+}
+[data-baseweb="menu"] li,
+[data-baseweb="list-item"] { color: #1a1a2e !important; }
+[data-baseweb="menu"] li:hover,
+[data-baseweb="option"]:hover { background-color: #e0e8ff !important; }
+/* Checkbox / Radio */
+[data-baseweb="checkbox"] span,
+[data-baseweb="radio"] span { color: #1a1a2e !important; }
+/* Tab / 分页 */
+[data-baseweb="tab"] { color: #1a1a2e !important; }
+[data-baseweb="tab-list"] { background-color: #edf1ff !important; }
+/* Number input 按钮 */
+[data-testid="stNumberInput"] button { background-color: #edf1ff !important; color: #1a1a2e !important; }
+/* Toggle */
+[data-testid="stToggle"] span { color: #1a1a2e !important; }
+/* Expander title */
+[data-testid="stExpanderToggleIcon"] { color: #1a1a2e !important; }
+summary[data-testid="stExpanderSummary"] { color: #1a1a2e !important; }
+/* Progress bar */
+[data-testid="stProgress"] > div { background-color: #dce5ff !important; }
+
 /* ── 首页 CSS 类 ── */
 .profile-card {
     background: var(--cb) !important;
