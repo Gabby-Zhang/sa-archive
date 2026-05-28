@@ -19,12 +19,16 @@ _BASE = (
     "https://commission.europa.eu/about/organisation/college-commissioners"
     "/calendar-items-president-and-commissioners_en"
 )
-_FILTER = (
-    "f[0]=commissioner_dynamic_commissioner_dynamic:"
-    "http://publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
-    "&f[1]=ewcms_calendar_status:past"
-    "&f[2]=ewcms_calendar_status:upcoming"
-)
+# 过滤参数必须通过 requests params= 传入，才能正确 URL 编码
+# 否则 f[0] 里的冒号和斜杠不会被编码，EU Commission 网站会忽略该过滤条件
+_FILTER_PARAMS = {
+    "f[0]": (
+        "commissioner_dynamic_commissioner_dynamic:"
+        "http://publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
+    ),
+    "f[1]": "ewcms_calendar_status:past",
+    "f[2]": "ewcms_calendar_status:upcoming",
+}
 _HDRS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -39,8 +43,8 @@ _MONTH = {
 
 
 def _fetch_eu_page(page: int):
-    url = f"{_BASE}?{_FILTER}&page={page}"
-    r = requests.get(url, headers=_HDRS, timeout=20)
+    params = {**_FILTER_PARAMS, "page": page}
+    r = requests.get(_BASE, params=params, headers=_HDRS, timeout=20)
     r.raise_for_status()
     return BeautifulSoup(r.text, "html.parser")
 
