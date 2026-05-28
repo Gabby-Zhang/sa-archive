@@ -63,14 +63,15 @@ for m in filtered:
     else:
         colors.append("#1a5276")
 
+notes = [m["note"] for m in filtered]
+
 fig = go.Figure(go.Bar(
     x=[m["score"] for m in filtered],
     y=[m["name"] for m in filtered],
     orientation="h",
     marker_color=colors,
-    text=[m["note"] for m in filtered],
-    textposition="outside",
-    hovertemplate="<b>%{y}</b><br>立场分值：%{x}<br>%{text}<extra></extra>",
+    customdata=notes,
+    hovertemplate="<b>%{y}</b><br>立场分值：%{x}<br>%{customdata}<extra></extra>",
 ))
 
 fig.update_layout(
@@ -85,7 +86,7 @@ fig.update_layout(
         gridcolor="#333",
     ),
     yaxis=dict(automargin=True),
-    margin=dict(l=20, r=150, t=30, b=20),
+    margin=dict(l=20, r=20, t=30, b=20),
     showlegend=False,
 )
 
