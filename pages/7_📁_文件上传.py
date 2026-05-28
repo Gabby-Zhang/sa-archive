@@ -19,7 +19,7 @@ st.info("""
 # ── 筛选 ─────────────────────────────────────────────────
 col1, col2 = st.columns([2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
     type_filter = st.selectbox("文件类型", ["全部", "PDF", "截图", "视频", "文章", "其他"])
 
@@ -37,7 +37,7 @@ TYPE_ICONS = {"PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "�
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "SS & GA": "#7EC8A4",
+    "S&A": "#7EC8A4",
 }
 
 st.caption(f"共 {len(files)} 个文件")
@@ -79,7 +79,7 @@ with st.expander("➕ 登记新文件", expanded=True if not files else False):
         c1, c2 = st.columns(2)
         with c1:
             new_title = st.text_input("文件名称/标题 *")
-            new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+            new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
             new_type = st.selectbox("文件类型", ["PDF", "截图", "视频", "文章", "其他"])
         with c2:
             new_url = st.text_input("Google Drive 链接 *")

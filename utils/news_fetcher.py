@@ -14,7 +14,7 @@ RSS_FEEDS = [
     },
     {
         "url": "https://news.google.com/rss/search?q=Attal+Séjourné&hl=fr&gl=FR&ceid=FR:fr",
-        "person": "SS & GA"
+        "person": "S&A"
     },
 ]
 

@@ -20,7 +20,7 @@ if st.session_state.get("is_admin"):
             c1, c2 = st.columns(2)
             with c1:
                 new_date = st.date_input("日期")
-                new_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+                new_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
             with c2:
                 new_source = st.text_input("消息来源")
                 new_source_url = st.text_input("来源链接（可选）")
@@ -44,7 +44,7 @@ if st.session_state.get("is_admin"):
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
     year_options = ["全部"] + [str(y) for y in range(2026, 2009, -1)]
     year_filter = st.selectbox("年份", year_options)
@@ -73,7 +73,7 @@ st.caption(f"共找到 {len(df)} 条记录")
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "SS & GA": "#7EC8A4",
+    "S&A": "#7EC8A4",
 }
 
 # 初始化编辑状态
@@ -94,8 +94,8 @@ if not df.empty:
                     with c1:
                         e_date = st.text_input("日期", value=row.get("date", ""))
                         e_person = st.selectbox("人物",
-                            ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"],
-                            index=["Gabriel Attal", "Stéphane Séjourné", "SS & GA"].index(row.get("person", "Gabriel Attal")) if row.get("person") in ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"] else 0)
+                            ["Gabriel Attal", "Stéphane Séjourné", "S&A"],
+                            index=["Gabriel Attal", "Stéphane Séjourné", "S&A"].index(row.get("person", "Gabriel Attal")) if row.get("person") in ["Gabriel Attal", "Stéphane Séjourné", "S&A"] else 0)
                     with c2:
                         e_source = st.text_input("消息来源", value=row.get("source", ""))
                         e_source_url = st.text_input("来源链接", value=row.get("source_url", "") or "")
@@ -176,7 +176,7 @@ with st.expander("➕ 手动添加新条目"):
         c1, c2 = st.columns(2)
         with c1:
             new_date = st.date_input("日期")
-            new_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+            new_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
         with c2:
             new_source = st.text_input("消息来源（媒体名）")
             new_source_url = st.text_input("来源链接（可选）")

@@ -29,7 +29,7 @@ st.divider()
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
     limit = st.selectbox("显示条数", [50, 100, 200], index=0)
 with col3:
@@ -52,7 +52,7 @@ st.caption(f"共显示 {len(news)} 条新闻")
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "SS & GA": "#7EC8A4",
+    "S&A": "#7EC8A4",
 }
 
 for item in news:
@@ -124,7 +124,7 @@ with st.expander("➕ 手动添加新闻"):
         with c1:
             new_title = st.text_input("新闻标题 *")
             new_url = st.text_input("链接 *")
-            new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "SS & GA"])
+            new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
         with c2:
             new_source = st.text_input("来源媒体")
             new_date = st.date_input("发布日期")
