@@ -49,14 +49,14 @@ def _fetch_eu_page(page: int):
     return BeautifulSoup(r.text, "html.parser")
 
 
-def _parse_eu_events(soup) -> list:
-    events = []
+def _parse_eu_page(soup) -> tuple:
+    """
+    返回 (all_events, sejourne_events)。
+    all_events 用于控制翻页（判断是否还有更早的内容）。
+    sejourne_events 仅包含 Séjourné 的行程。
+    """
+    all_events, sejourne_events = [], []
     for article in soup.select("article.ecl-content-item--inline"):
-        # ── 只保留 Séjourné 的条目（EU Commission 活动标题含委员名）──
-        article_text = article.get_text().lower()
-        if "séjourné" not in article_text and "sejourne" not in article_text:
-            continue
-
         time_el = article.select_one("time.ecl-content-item__date")
         if not time_el:
             continue
@@ -79,35 +79,43 @@ def _parse_eu_events(soup) -> list:
                    "upcoming")
         title_el    = article.select_one(".ecl-content-block__title")
         location_el = article.select_one(".ecl-content-block__secondary-meta-label")
-        events.append({
+        ev = {
             "title":    title_el.get_text(strip=True) if title_el else "—",
             "date":     ev_date.isoformat(),
             "location": location_el.get_text(strip=True) if location_el else "",
             "status":   status,
-        })
-    return events
+        }
+        all_events.append(ev)
+        # 检查是否是 Séjourné 的活动
+        article_text = article.get_text().lower()
+        if "séjourné" in article_text or "sejourne" in article_text:
+            sejourne_events.append(ev)
+    return all_events, sejourne_events
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_sejourne_schedule(days_back: int = 45) -> list:
+def get_sejourne_schedule(days_back: int = 180) -> list:
     """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。"""
     cutoff = (date.today() - timedelta(days=days_back)).isoformat()
     all_events = []
-    for page in range(50):
+    for page in range(80):
         if page > 0:
             time.sleep(0.3)
         try:
             soup = _fetch_eu_page(page)
         except Exception:
             break
-        batch = _parse_eu_events(soup)
-        if not batch:
-            break
-        in_window = [e for e in batch
+        # all_batch 控制翻页，sejourne_batch 收集数据
+        all_batch, sejourne_batch = _parse_eu_page(soup)
+        if not all_batch:
+            break  # 页面没有任何内容，停止
+        # 只收集时间窗口内的 Séjourné 条目
+        in_window = [e for e in sejourne_batch
                      if e["date"] >= cutoff or e["status"] in ("upcoming", "ongoing")]
         all_events.extend(in_window)
-        # 本页最早日期已早于 cutoff → 后面页面不用再看
-        if min((e["date"] for e in batch), default="9999") < cutoff:
+        # 用所有委员的最早日期判断是否继续翻页
+        oldest = min((e["date"] for e in all_batch), default="9999")
+        if oldest < cutoff:
             break
     upcoming = sorted([e for e in all_events if e["status"] != "past"],
                       key=lambda x: x["date"])
