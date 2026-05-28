@@ -23,37 +23,6 @@ st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout
 st.title("📅 大事记时间轴")
 st.caption("记录 Attal 与 Séjourné 的重要事件与新闻")
 
-# ── 悬浮回到顶部按钮 ─────────────────────────────────────
-st.markdown("""
-<style>
-/* 悬浮回到顶部按钮 */
-#scroll-top-btn {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    background: #4A90D9;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 3rem;
-    height: 3rem;
-    font-size: 1.3rem;
-    cursor: pointer;
-    z-index: 9999;
-    box-shadow: 0 4px 14px rgba(74,144,217,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-#scroll-top-btn:hover { background: #357ABD; }
-</style>
-<button id="scroll-top-btn" title="回到顶部"
-  onclick="window.parent.document.querySelector('[data-testid=\\"stMain\\"]').scrollTo({top:0,behavior:'smooth'})">
-  ⬆️
-</button>
-""", unsafe_allow_html=True)
-
 st.divider()
 
 # ── 管理员：快速添加（顶部）────────────────────────────────
