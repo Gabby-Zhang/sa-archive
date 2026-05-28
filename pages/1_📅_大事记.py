@@ -20,6 +20,32 @@ admin_sidebar()
 
 st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout="wide")
 
+TAG_OPTIONS = [
+    "📰 新闻报道",
+    "📸 IG 快拍",
+    "📷 IG 帖子",
+    "🎵 TikTok",
+    "🐦 X/Twitter",
+    "▶️ YouTube",
+    "📺 Bilibili",
+    "🎙️ 采访",
+    "📋 官方声明",
+    "⚪ 其他",
+]
+
+TAG_COLOR = {
+    "📰 新闻报道": "#4A90D9",
+    "📸 IG 快拍":  "#E1306C",
+    "📷 IG 帖子":  "#E1306C",
+    "🎵 TikTok":   "#69C9D0",
+    "🐦 X/Twitter":"#1DA1F2",
+    "▶️ YouTube":  "#FF0000",
+    "📺 Bilibili":  "#00A1D6",
+    "🎙️ 采访":     "#7EC8A4",
+    "📋 官方声明":  "#C9A84C",
+    "⚪ 其他":      "#666666",
+}
+
 st.title("📅 大事记时间轴")
 st.caption("记录 Attal 与 Séjourné 的重要事件与新闻")
 
@@ -117,32 +143,6 @@ PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
     "S&A": "#FF6B9D",
-}
-
-TAG_OPTIONS = [
-    "📰 新闻报道",
-    "📸 IG 快拍",
-    "📷 IG 帖子",
-    "🎵 TikTok",
-    "🐦 X/Twitter",
-    "▶️ YouTube",
-    "📺 Bilibili",
-    "🎙️ 采访",
-    "📋 官方声明",
-    "⚪ 其他",
-]
-
-TAG_COLOR = {
-    "📰 新闻报道": "#4A90D9",
-    "📸 IG 快拍":  "#E1306C",
-    "📷 IG 帖子":  "#E1306C",
-    "🎵 TikTok":   "#69C9D0",
-    "🐦 X/Twitter":"#1DA1F2",
-    "▶️ YouTube":  "#FF0000",
-    "📺 Bilibili":  "#00A1D6",
-    "🎙️ 采访":     "#7EC8A4",
-    "📋 官方声明":  "#C9A84C",
-    "⚪ 其他":      "#666666",
 }
 
 # ── 分页 ──────────────────────────────────────────────────
