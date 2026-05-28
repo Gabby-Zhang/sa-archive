@@ -41,7 +41,12 @@ def get_news(person=None, keyword=None, limit=50):
 
 def upsert_news(items: list):
     db = get_supabase()
-    return db.table("news").upsert(items, on_conflict="id").execute()
+    # 去重：同一批次内按 id 去重
+    seen = {}
+    for item in items:
+        seen[item["id"]] = item
+    unique_items = list(seen.values())
+    return db.table("news").upsert(unique_items, on_conflict="id").execute()
 
 def add_news_manual(data: dict):
     db = get_supabase()
