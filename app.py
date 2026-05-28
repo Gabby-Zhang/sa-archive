@@ -138,6 +138,22 @@ div[style*="border: 1px solid #3d2a6e"]        { border-color: #b0a0d8 !importan
 a[style*="color:#4A90D9"],
 a[style*="color: #4A90D9"] { color: #1a5db5 !important; }
 a[style*="color:#888"]     { color: #5a6080 !important; }
+
+/* ── 首页 CSS 类（profile-card / stat-box / hero）── */
+.profile-card {
+    background: #e8eeff !important;
+    border-color: #4A90D955 !important;
+}
+.profile-card .role { color: #5a5a7a !important; }
+.profile-card .bio  { color: #2a2a3e !important; }
+.stat-box {
+    background: #e8eeff !important;
+}
+.stat-box .label { color: #5a5a7a !important; }
+.hero p           { color: #5a5a7a !important; }
+
+/* ── 人物档案页行卡片（inline background:#16213e，已覆盖）── */
+/* 若仍有漏网之鱼，补充 class 选择器 */
 </style>
 """
 
