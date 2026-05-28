@@ -124,6 +124,24 @@ if not df.empty and tag_filter != "全部":
 
 st.caption(f"共找到 {len(df)} 条记录")
 
+# ── 批量加载当前页所有事件的相关内容 ──────────────────────────
+from utils.database import get_supabase as _get_db
+
+def _fetch_all_links(event_ids):
+    if not event_ids:
+        return {}
+    try:
+        rows = _get_db().table("event_links").select("*").in_("event_id", [str(i) for i in event_ids]).order("created_at").execute().data
+        result = {}
+        for r in rows:
+            result.setdefault(str(r["event_id"]), []).append(r)
+        return result
+    except Exception:
+        return {}
+
+if "adding_link_for" not in st.session_state:
+    st.session_state.adding_link_for = None
+
 # ── 导出 Excel ────────────────────────────────────────────
 if not df.empty:
     import io
@@ -161,6 +179,10 @@ if st.session_state.get("_last_filter") != filter_key:
 page = st.session_state.timeline_page
 start = (page - 1) * ITEMS_PER_PAGE
 df_page = df.iloc[start : start + ITEMS_PER_PAGE] if not df.empty else df
+
+# 批量获取本页所有事件的相关内容（一次查询，不做 N+1）
+page_event_ids = df_page["id"].tolist() if not df_page.empty else []
+all_links = _fetch_all_links(page_event_ids)
 
 if total_pages > 1:
     pc1, pc2, pc3 = st.columns([1, 3, 1])
@@ -280,17 +302,75 @@ if not df_page.empty:
                 except Exception:
                     pass
 
-            # 编辑和删除按钮（仅管理员可见）
+            # ── 相关内容折叠展示 ──────────────────────────────
+            event_links = all_links.get(str(event_id), [])
+            if event_links:
+                with st.expander(f"📎 {len(event_links)} 个相关内容"):
+                    for lk in event_links:
+                        lk_type   = lk.get("type", "")
+                        lk_color  = TAG_COLOR.get(lk_type, "#555")
+                        lk_url    = lk.get("url", "")
+                        lk_title  = lk.get("title", "")
+                        lk_source = lk.get("source", "")
+                        link_a    = (f' <a href="{lk_url}" target="_blank" '
+                                     f'style="color:#4A90D9;font-size:0.85rem">🔗</a>') if lk_url else ""
+                        st.markdown(
+                            f'<div style="padding:0.3rem 0;border-bottom:1px solid #2a3a5c">'
+                            f'<span style="background:{lk_color};color:white;padding:0.05rem 0.35rem;'
+                            f'border-radius:3px;font-size:0.7rem">{lk_type}</span> '
+                            f'<span style="color:#aaa;font-size:0.8rem">{lk_source}</span> '
+                            f'<span style="color:#ddd;font-size:0.88rem"> {lk_title}</span>{link_a}'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
+                        if st.session_state.get("is_admin"):
+                            if st.button("🗑️", key=f"del_lk_{lk['id']}"):
+                                _get_db().table("event_links").delete().eq("id", lk["id"]).execute()
+                                st.rerun()
+
+            # ── 管理员：添加相关内容 ──────────────────────────
             if st.session_state.get("is_admin"):
-                bc1, bc2, bc3 = st.columns([6, 1, 1])
+                bc1, bc2, bc3, bc4 = st.columns([4, 2, 1, 1])
                 with bc2:
+                    if st.button("➕ 相关内容", key=f"add_lk_btn_{event_id}"):
+                        st.session_state.adding_link_for = event_id
+                        st.rerun()
+                with bc3:
                     if st.button("✏️", key=f"edit_{event_id}", help="编辑"):
                         st.session_state.editing_id = event_id
                         st.rerun()
-                with bc3:
+                with bc4:
                     if st.button("🗑️", key=f"del_{event_id}", help="删除"):
                         delete_event(event_id)
                         st.rerun()
+
+            # ── 添加相关内容表单 ──────────────────────────────
+            if st.session_state.get("is_admin") and st.session_state.adding_link_for == event_id:
+                with st.form(key=f"add_lk_form_{event_id}"):
+                    st.caption("添加与此事件相关的内容（新闻、IG 快拍、推文等）")
+                    lf1, lf2 = st.columns(2)
+                    with lf1:
+                        lk_type_new   = st.selectbox("类型", TAG_OPTIONS, key=f"lkt_{event_id}")
+                        lk_source_new = st.text_input("来源（可选）", key=f"lks_{event_id}")
+                    with lf2:
+                        lk_url_new   = st.text_input("链接（可选）", key=f"lku_{event_id}")
+                        lk_title_new = st.text_input("标题/说明（可选）", key=f"lkti_{event_id}")
+                    ls1, ls2 = st.columns(2)
+                    with ls1:
+                        if st.form_submit_button("💾 保存", use_container_width=True):
+                            _get_db().table("event_links").insert({
+                                "event_id": str(event_id),
+                                "title":    lk_title_new,
+                                "url":      lk_url_new,
+                                "type":     lk_type_new,
+                                "source":   lk_source_new,
+                            }).execute()
+                            st.session_state.adding_link_for = None
+                            st.rerun()
+                    with ls2:
+                        if st.form_submit_button("✕ 取消", use_container_width=True):
+                            st.session_state.adding_link_for = None
+                            st.rerun()
 else:
     st.info("暂无数据，请先在下方添加或导入数据。")
 
