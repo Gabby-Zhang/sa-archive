@@ -75,7 +75,7 @@ if st.session_state.get("is_admin"):
                     st.warning("无法预览，请确认链接已设为公开")
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if new_title:
-                    add_event({
+                    result = add_event({
                         "date": str(new_date),
                         "person": new_person,
                         "title": new_title,
@@ -85,7 +85,13 @@ if st.session_state.get("is_admin"):
                         "image_url": new_image_url or None,
                         "tag": new_tag,
                     })
-                    st.success("已添加！")
+                    # 保存后自动跳到该条目并打开关联内容表单
+                    if result and result.data:
+                        new_id = result.data[0].get("id")
+                        if new_id:
+                            st.session_state.adding_link_for = new_id
+                            st.session_state["year_filter_select"] = str(new_date.year)
+                            st.session_state.timeline_page = 1
                     st.rerun()
                 else:
                     st.warning("请填写标题")
@@ -96,7 +102,7 @@ with col1:
     person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
     year_options = ["全部"] + [str(y) for y in range(2026, 2009, -1)]
-    year_filter = st.selectbox("年份", year_options)
+    year_filter = st.selectbox("年份", year_options, key="year_filter_select")
 with col3:
     tag_filter = st.selectbox("类型", ["全部"] + TAG_OPTIONS)
 with col4:
@@ -328,26 +334,29 @@ if not df_page.empty:
                                 _get_db().table("event_links").delete().eq("id", lk["id"]).execute()
                                 st.rerun()
 
-            # ── 管理员：添加相关内容 ──────────────────────────
+            # ── 管理员：操作按钮（紧凑 emoji 风格）────────────
             if st.session_state.get("is_admin"):
-                bc1, bc2, bc3, bc4 = st.columns([4, 2, 1, 1])
-                with bc2:
-                    if st.button("➕ 相关内容", key=f"add_lk_btn_{event_id}"):
+                _, bca, bcb, bcc = st.columns([7, 1, 1, 1])
+                with bca:
+                    if st.button("📎", key=f"add_lk_btn_{event_id}",
+                                 help="添加相关内容", use_container_width=True):
                         st.session_state.adding_link_for = event_id
                         st.rerun()
-                with bc3:
-                    if st.button("✏️", key=f"edit_{event_id}", help="编辑"):
+                with bcb:
+                    if st.button("✏️", key=f"edit_{event_id}",
+                                 help="编辑", use_container_width=True):
                         st.session_state.editing_id = event_id
                         st.rerun()
-                with bc4:
-                    if st.button("🗑️", key=f"del_{event_id}", help="删除"):
+                with bcc:
+                    if st.button("🗑️", key=f"del_{event_id}",
+                                 help="删除", use_container_width=True):
                         delete_event(event_id)
                         st.rerun()
 
             # ── 添加相关内容表单 ──────────────────────────────
             if st.session_state.get("is_admin") and st.session_state.adding_link_for == event_id:
                 with st.form(key=f"add_lk_form_{event_id}"):
-                    st.caption("添加与此事件相关的内容（新闻、IG 快拍、推文等）")
+                    st.caption("手动添加相关内容（新闻、IG 快拍、推文等）")
                     lf1, lf2 = st.columns(2)
                     with lf1:
                         lk_type_new   = st.selectbox("类型", TAG_OPTIONS, key=f"lkt_{event_id}")
@@ -371,6 +380,64 @@ if not df_page.empty:
                         if st.form_submit_button("✕ 取消", use_container_width=True):
                             st.session_state.adding_link_for = None
                             st.rerun()
+
+                # ── 相关新闻自动推荐（表单外，一键关联）────────────
+                from datetime import datetime as _dt, timedelta as _td
+                try:
+                    ev_date_str = str(row.get("date", ""))
+                    ev_person   = row.get("person", "")
+                    if ev_date_str and ev_person:
+                        d       = _dt.fromisoformat(ev_date_str).date()
+                        d_start = (d - _td(days=7)).isoformat()
+                        d_end   = (d + _td(days=7)).isoformat()
+                        # 已关联的 url 集合（避免重复推荐）
+                        linked_urls = {lk.get("url","") for lk in all_links.get(str(event_id), [])}
+                        suggested = (
+                            _get_db().table("news")
+                            .select("id,title,source,published_at,url,person")
+                            .eq("person", ev_person)
+                            .gte("published_at", d_start)
+                            .lte("published_at", d_end)
+                            .order("published_at", desc=True)
+                            .limit(15)
+                            .execute().data
+                        )
+                        # 过滤掉已经关联过的
+                        suggested = [s for s in suggested if s.get("url","") not in linked_urls]
+                        if suggested:
+                            st.markdown(
+                                f'<div style="background:#0f1a30;border:1px solid #2a3a5c;'
+                                f'border-radius:6px;padding:0.6rem 1rem;margin-top:0.5rem">'
+                                f'<span style="color:#7EC8A4;font-size:0.8rem;font-weight:bold">'
+                                f'💡 {ev_date_str} 前后找到 {len(suggested)} 篇相关新闻，点击 📌 一键关联</span>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                            for sug in suggested:
+                                s1, s2 = st.columns([11, 1])
+                                with s1:
+                                    sug_date = str(sug.get("published_at",""))[:10]
+                                    sug_src  = sug.get("source","")
+                                    sug_ttl  = (sug.get("title","") or "")[:90]
+                                    st.markdown(
+                                        f'<span style="color:#666;font-size:0.73rem">{sug_date}</span>'
+                                        f' <span style="color:#888;font-size:0.73rem">{sug_src}</span>'
+                                        f' <span style="color:#ccc;font-size:0.82rem">{sug_ttl}</span>',
+                                        unsafe_allow_html=True
+                                    )
+                                with s2:
+                                    sug_key = f"auto_lk_{event_id}_{str(sug.get('id',''))[:8]}"
+                                    if st.button("📌", key=sug_key, help="关联到此事件"):
+                                        _get_db().table("event_links").insert({
+                                            "event_id": str(event_id),
+                                            "title":    sug.get("title",""),
+                                            "url":      sug.get("url",""),
+                                            "type":     "📰 新闻报道",
+                                            "source":   sug.get("source",""),
+                                        }).execute()
+                                        st.rerun()
+                except Exception:
+                    pass
 else:
     st.info("暂无数据，请先在下方添加或导入数据。")
 
@@ -393,7 +460,7 @@ with st.expander("➕ 手动添加新条目"):
         submitted = st.form_submit_button("添加")
         if submitted:
             if new_title:
-                add_event({
+                result = add_event({
                     "date": str(new_date),
                     "person": new_person,
                     "title": new_title,
@@ -403,7 +470,12 @@ with st.expander("➕ 手动添加新条目"):
                     "image_url": new_image_url_b or None,
                     "tag": new_tag_b,
                 })
-                st.success("已添加！")
+                if result and result.data:
+                    new_id = result.data[0].get("id")
+                    if new_id:
+                        st.session_state.adding_link_for = new_id
+                        st.session_state["year_filter_select"] = str(new_date.year)
+                        st.session_state.timeline_page = 1
                 st.rerun()
             else:
                 st.warning("请填写事件标题")
