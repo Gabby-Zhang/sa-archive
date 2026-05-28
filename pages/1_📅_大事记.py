@@ -262,6 +262,71 @@ if not df_page.empty:
                         st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
+            # ── 编辑模式下也显示相关内容 + 管理入口 ──────────
+            event_links_edit = all_links.get(str(event_id), [])
+            if event_links_edit:
+                with st.expander(f"📎 {len(event_links_edit)} 个相关内容（可在此删除）", expanded=True):
+                    for lk in event_links_edit:
+                        lk_type   = lk.get("type", "")
+                        lk_color  = TAG_COLOR.get(lk_type, "#555")
+                        lk_url    = lk.get("url", "")
+                        lk_title  = lk.get("title", "")
+                        lk_source = lk.get("source", "")
+                        link_a    = (f' <a href="{lk_url}" target="_blank" '
+                                     f'style="color:#4A90D9;font-size:0.85rem">🔗</a>') if lk_url else ""
+                        _lc1, _lc2 = st.columns([11, 1])
+                        with _lc1:
+                            st.markdown(
+                                f'<div style="padding:0.3rem 0;border-bottom:1px solid var(--bd)">'
+                                f'<span style="background:{lk_color};color:white;padding:0.05rem 0.35rem;'
+                                f'border-radius:3px;font-size:0.7rem">{lk_type}</span> '
+                                f'<span style="color:var(--t2);font-size:0.8rem">{lk_source}</span> '
+                                f'<span style="color:var(--t1);font-size:0.88rem"> {lk_title}</span>{link_a}'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                        with _lc2:
+                            if st.button("🗑️", key=f"del_lk_edit_{lk['id']}",
+                                         help="删除此关联", use_container_width=True):
+                                _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
+                                st.cache_data.clear()
+                                st.rerun()
+
+            # 在编辑模式下也可以添加相关内容
+            if st.button("📎 添加相关内容", key=f"add_lk_in_edit_{event_id}",
+                         use_container_width=False):
+                st.session_state.adding_link_for = event_id
+                st.rerun()
+
+            # 添加相关内容表单（编辑模式下）
+            if st.session_state.get("adding_link_for") == event_id:
+                with st.form(key=f"add_lk_form_edit_{event_id}"):
+                    st.caption("添加相关内容")
+                    lf1, lf2 = st.columns(2)
+                    with lf1:
+                        lk_type_new   = st.selectbox("类型", TAG_OPTIONS, key=f"lkt_edit_{event_id}")
+                        lk_source_new = st.text_input("来源（可选）", key=f"lks_edit_{event_id}")
+                    with lf2:
+                        lk_url_new   = st.text_input("链接（可选）", key=f"lku_edit_{event_id}")
+                        lk_title_new = st.text_input("标题/说明（可选）", key=f"lkti_edit_{event_id}")
+                    ls1, ls2 = st.columns(2)
+                    with ls1:
+                        if st.form_submit_button("💾 保存", use_container_width=True):
+                            _get_admin_db().table("event_links").insert({
+                                "event_id": str(event_id),
+                                "title":    lk_title_new,
+                                "url":      lk_url_new,
+                                "type":     lk_type_new,
+                                "source":   lk_source_new,
+                            }).execute()
+                            st.session_state.adding_link_for = None
+                            st.cache_data.clear()
+                            st.rerun()
+                    with ls2:
+                        if st.form_submit_button("✕ 取消", use_container_width=True):
+                            st.session_state.adding_link_for = None
+                            st.rerun()
+
         # ── 正常显示模式 ──────────────────────────────────
         else:
             source_html = ""
