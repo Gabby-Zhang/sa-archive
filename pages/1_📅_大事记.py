@@ -37,7 +37,7 @@ if st.session_state.get("is_admin"):
                 new_source = st.text_input("消息来源")
                 new_source_url = st.text_input("来源链接（可选）")
             new_title = st.text_input("事件/新闻标题 *")
-            new_note = st.text_area("备注", height=68)
+            new_note = st.text_area("内容摘要", height=68)
             new_image_url = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...")
             if new_image_url:
                 _prev = gdrive_to_img_url(new_image_url)
@@ -119,9 +119,11 @@ if not df.empty:
                             index=["Gabriel Attal", "Stéphane Séjourné", "S&A"].index(row.get("person", "Gabriel Attal")) if row.get("person") in ["Gabriel Attal", "Stéphane Séjourné", "S&A"] else 0)
                     with c2:
                         e_source = st.text_input("消息来源", value=row.get("source", ""))
-                        e_source_url = st.text_input("来源链接", value=row.get("source_url", "") or "")
+                        _src_url = row.get("source_url", "") or ""
+                        _src_url = "" if str(_src_url).strip().lower() == "nan" else _src_url
+                        e_source_url = st.text_input("来源链接", value=_src_url)
                     e_title = st.text_input("事件/新闻标题", value=row.get("title", ""))
-                    e_note = st.text_area("备注", value=row.get("note", "") or "", height=80)
+                    e_note = st.text_area("内容摘要", value=row.get("note", "") or "", height=80)
                     e_image_url = st.text_input("图片链接（Google Drive，可选）", value=row.get("image_url", "") or "")
                     sc1, sc2 = st.columns(2)
                     with sc1:
@@ -155,7 +157,9 @@ if not df.empty:
             elif row.get("source"):
                 source_html = f'<span style="color:#aaa">{row["source"]}</span>'
 
-            note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{row["note"]}</div>' if row.get("note") else ""
+            _note = row.get("note", "") or ""
+            _note = "" if str(_note).strip().lower() == "nan" else _note
+            note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{_note}</div>' if _note else ""
 
             img_url = gdrive_to_img_url(row.get("image_url", "") or "")
 
@@ -212,7 +216,7 @@ with st.expander("➕ 手动添加新条目"):
             new_source = st.text_input("消息来源（媒体名）")
             new_source_url = st.text_input("来源链接（可选）")
         new_title = st.text_input("事件/新闻标题 *")
-        new_note = st.text_area("备注（Note）", height=80)
+        new_note = st.text_area("内容摘要", height=80)
         new_image_url_b = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...", key="bottom_img_url")
         submitted = st.form_submit_button("添加")
         if submitted:
