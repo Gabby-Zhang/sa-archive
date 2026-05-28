@@ -248,7 +248,7 @@ if not df_page.empty:
                 background: #16213e;
                 border-radius: 0 8px 8px 0;
             ">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">
                     <div>
                         <span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>
                         <span style="color:#777;font-size:0.8rem;margin-left:1rem">{row.get("date","")}</span>

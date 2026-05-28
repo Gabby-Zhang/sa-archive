@@ -30,6 +30,10 @@ st.markdown("""
 }
 .stat-box .num { font-size: 2rem; font-weight: bold; color: #4A90D9; }
 .stat-box .label { color: #aaa; font-size: 0.9rem; }
+@media (max-width: 640px) {
+    .profile-card { margin: 0.3rem 0; }
+    .stat-box .num { font-size: 1.5rem; }
+}
 </style>
 """, unsafe_allow_html=True)
 

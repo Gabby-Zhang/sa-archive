@@ -7,9 +7,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# 隐藏 Streamlit Cloud 的 "Created by" 头像徽章
+# 全局样式：隐藏徽章 + 手机端优化
 st.markdown("""
 <style>
+/* ── 隐藏 Created by 徽章 ── */
 [data-testid="stDecoration"],
 [data-testid="stDeployButton"],
 .viewerBadge_container__r5tak,
@@ -17,6 +18,44 @@ st.markdown("""
 [class*="viewerBadge"],
 [class*="ViewerBadge"] {
     display: none !important;
+}
+
+/* ── 手机端响应式布局 ── */
+@media (max-width: 640px) {
+
+    /* 减少页面边距，让内容更宽 */
+    [data-testid="stMainBlockContainer"] {
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+    }
+
+    /* 所有多列布局在手机上改为竖排 */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        gap: 0.3rem !important;
+    }
+    [data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+    }
+
+    /* 按钮更大更易点击 */
+    [data-testid="stButton"] > button {
+        min-height: 2.8rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* 卡片内链接区域自动换行 */
+    .mobile-flex {
+        flex-wrap: wrap !important;
+        gap: 0.3rem !important;
+    }
+
+    /* 标题字号适配 */
+    h1 { font-size: 1.6rem !important; }
+    h2 { font-size: 1.3rem !important; }
+    h3 { font-size: 1.1rem !important; }
 }
 </style>
 """, unsafe_allow_html=True)

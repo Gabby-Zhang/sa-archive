@@ -105,9 +105,9 @@ PERSON_COLOR = {
 }
 
 if images:
-    cols = st.columns(3)
+    cols = st.columns(2)
     for i, img in enumerate(images):
-        with cols[i % 3]:
+        with cols[i % 2]:
             img_url = gdrive_to_img_url(img.get("drive_url", ""))
             color = PERSON_COLOR.get(img.get("person", ""), "#888")
 

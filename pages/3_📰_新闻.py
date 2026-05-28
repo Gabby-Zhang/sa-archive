@@ -75,7 +75,7 @@ for item in news:
         background: #16213e;
         border-radius: 0 8px 8px 0;
     ">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
             <div>
                 <span style="color:{color};font-size:0.8rem;font-weight:bold">
                     {item.get("person","")}
