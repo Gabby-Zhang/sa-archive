@@ -5,6 +5,7 @@ admin_sidebar()
 from datetime import datetime
 from utils.database import get_news, add_news_manual, add_event, delete_news
 from utils.news_fetcher import fetch_all_news
+from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
 st.set_page_config(page_title="新闻 · 档案馆", page_icon="📰", layout="wide")
 
@@ -67,6 +68,12 @@ for item in news:
         except Exception:
             pass
 
+    # 媒体政治立场
+    media_info = get_media_info(item.get("source", ""))
+    lean_label = media_info["label"]
+    lean_color = media_info["color"]
+    lean_emoji = LEAN_EMOJI.get(lean_label, "")
+
     st.markdown(f"""
     <div style="
         border-left: 4px solid {color};
@@ -80,8 +87,9 @@ for item in news:
                 <span style="color:{color};font-size:0.8rem;font-weight:bold">
                     {item.get("person","")}
                 </span>
-                <span style="color:#666;font-size:0.8rem;margin-left:0.8rem">
-                    {item.get("source","")}
+                <span style="margin-left:0.8rem">
+                    <span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>
+                    <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{item.get("source","")}</span>
                 </span>
                 <span style="color:#555;font-size:0.8rem;margin-left:0.8rem">
                     {pub_date}
