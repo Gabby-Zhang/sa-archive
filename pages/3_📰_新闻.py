@@ -52,7 +52,7 @@ st.caption(f"共显示 {len(news)} 条新闻")
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "S&A": "#7EC8A4",
+    "S&A": "#FF6B9D",
 }
 
 for item in news:

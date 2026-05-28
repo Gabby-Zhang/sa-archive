@@ -73,7 +73,7 @@ st.caption(f"共找到 {len(df)} 条记录")
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "S&A": "#7EC8A4",
+    "S&A": "#FF6B9D",
 }
 
 # 初始化编辑状态

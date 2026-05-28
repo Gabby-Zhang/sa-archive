@@ -37,7 +37,7 @@ TYPE_ICONS = {"PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "�
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
-    "S&A": "#7EC8A4",
+    "S&A": "#FF6B9D",
 }
 
 st.caption(f"共 {len(files)} 个文件")
