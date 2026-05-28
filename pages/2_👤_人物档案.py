@@ -6,7 +6,7 @@ st.title("👤 人物档案")
 st.caption("家人、亲友团与个人喜好")
 
 # ── 人物选择 ─────────────────────────────────────────────
-tab_ss, tab_ga = st.tabs(["🟡 Stéphane Séjourné", "🔵 Gabriel Attal"])
+tab_ss, tab_ga = st.tabs(["🔵 Stéphane Séjourné", "🟡 Gabriel Attal"])
 
 # ════════════════════════════════════════════════════════
 # STÉPHANE SÉJOURNÉ
@@ -23,9 +23,9 @@ with tab_ss:
         ]
         for name, rel in family_ss:
             st.markdown(f"""
-            <div style="background:#16213e;border-left:3px solid #C9A84C;
+            <div style="background:#16213e;border-left:3px solid #4A90D9;
                         padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
-                <span style="color:#C9A84C;font-weight:bold">{name}</span>
+                <span style="color:#4A90D9;font-weight:bold">{name}</span>
                 <span style="color:#aaa;margin-left:0.8rem;font-size:0.9rem">{rel}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -39,7 +39,7 @@ with tab_ss:
         ]
         for name, note in crew_ss:
             st.markdown(f"""
-            <div style="background:#16213e;border-left:3px solid #C9A84C44;
+            <div style="background:#16213e;border-left:3px solid #4A90D944;
                         padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
                 <span style="color:#e0e0e0;font-weight:bold">{name}</span>
                 <div style="color:#aaa;font-size:0.85rem;margin-top:0.2rem">{note}</div>
@@ -55,9 +55,9 @@ with tab_ss:
         }
         for k, v in prefs_ss.items():
             st.markdown(f"""
-            <div style="background:#16213e;border:1px solid #C9A84C33;
+            <div style="background:#16213e;border:1px solid #4A90D933;
                         padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">
-                <div style="color:#C9A84C;font-size:0.85rem;margin-bottom:0.3rem">{k}</div>
+                <div style="color:#4A90D9;font-size:0.85rem;margin-bottom:0.3rem">{k}</div>
                 <div style="color:#e0e0e0;white-space:pre-line">{v}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -69,7 +69,7 @@ with tab_ss:
             ("利益申报", "https://www.hatvp.fr/fiche-nominative/?declarant=sejourne-stephane"),
         ]
         for label, url in links_ss:
-            st.markdown(f'<a href="{url}" target="_blank" style="color:#C9A84C">🔗 {label}</a><br>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{url}" target="_blank" style="color:#4A90D9">🔗 {label}</a><br>', unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════
 # GABRIEL ATTAL
@@ -91,9 +91,9 @@ with tab_ga:
         ]
         for name, rel in family_ga:
             st.markdown(f"""
-            <div style="background:#16213e;border-left:3px solid #4A90D9;
+            <div style="background:#16213e;border-left:3px solid #C9A84C;
                         padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
-                <span style="color:#4A90D9;font-weight:bold">{name}</span>
+                <span style="color:#C9A84C;font-weight:bold">{name}</span>
                 <span style="color:#aaa;margin-left:0.8rem;font-size:0.9rem">{rel}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -120,9 +120,9 @@ with tab_ga:
         }
         for k, v in prefs_ga.items():
             st.markdown(f"""
-            <div style="background:#16213e;border:1px solid #4A90D933;
+            <div style="background:#16213e;border:1px solid #C9A84C33;
                         padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">
-                <div style="color:#4A90D9;font-size:0.85rem;margin-bottom:0.3rem">{k}</div>
+                <div style="color:#C9A84C;font-size:0.85rem;margin-bottom:0.3rem">{k}</div>
                 <div style="color:#e0e0e0;white-space:pre-line">{v}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -134,4 +134,4 @@ with tab_ga:
             ("利益申报", "https://www.hatvp.fr/fiche-nominative/?declarant=attal-gabriel"),
         ]
         for label, url in links_ga:
-            st.markdown(f'<a href="{url}" target="_blank" style="color:#4A90D9">🔗 {label}</a><br>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{url}" target="_blank" style="color:#C9A84C">🔗 {label}</a><br>', unsafe_allow_html=True)

@@ -29,9 +29,9 @@ with tab_ss:
                 current_team = m.get('team')
                 st.markdown(f"### {current_team}")
             st.markdown(f"""
-            <div style="background:#16213e;border-left:3px solid #C9A84C;
+            <div style="background:#16213e;border-left:3px solid #4A90D9;
                         padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">
-                <span style="color:#C9A84C;font-weight:bold">{m.get('name','')}</span>
+                <span style="color:#4A90D9;font-weight:bold">{m.get('name','')}</span>
                 <span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get('title','')}</span>
                 {"<div style='color:#bbb;font-size:0.82rem;margin-top:0.2rem'>" + m.get('note','') + "</div>" if m.get('note') else ""}
             </div>
@@ -49,9 +49,9 @@ with tab_ga:
                 current_team = m.get('team')
                 st.markdown(f"### {current_team}")
             st.markdown(f"""
-            <div style="background:#16213e;border-left:3px solid #4A90D9;
+            <div style="background:#16213e;border-left:3px solid #C9A84C;
                         padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">
-                <span style="color:#4A90D9;font-weight:bold">{m.get('name','')}</span>
+                <span style="color:#C9A84C;font-weight:bold">{m.get('name','')}</span>
                 <span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get('title','')}</span>
                 {"<div style='color:#bbb;font-size:0.82rem;margin-top:0.2rem'>" + m.get('note','') + "</div>" if m.get('note') else ""}
             </div>

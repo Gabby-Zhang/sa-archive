@@ -40,8 +40,8 @@ st.caption(f"共找到 {len(df)} 条记录")
 
 # ── 时间轴展示 ───────────────────────────────────────────
 PERSON_COLOR = {
-    "Gabriel Attal": "#4A90D9",
-    "Stéphane Séjourné": "#C9A84C",
+    "Gabriel Attal": "#C9A84C",
+    "Stéphane Séjourné": "#4A90D9",
     "两人": "#7EC8A4",
 }
 
@@ -50,7 +50,7 @@ if not df.empty:
         color = PERSON_COLOR.get(row.get("person", ""), "#888")
         source_html = ""
         if row.get("source_url"):
-            source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#C9A84C">🔗 原文</a>'
+            source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#4A90D9">🔗 原文</a>'
             archive_url = f"https://archive.ph/{row['source_url']}"
             source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:#aaa">📦 存档版</a>'
         elif row.get("source"):

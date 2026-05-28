@@ -18,7 +18,7 @@ with tab1:
             ("利益申报（HATVP）", "https://www.hatvp.fr/fiche-nominative/?declarant=sejourne-stephane"),
         ]
         for label, url in ss_links:
-            st.markdown(f'<a href="{url}" target="_blank" style="color:#C9A84C;font-size:0.95rem">🔗 {label}</a><br><br>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{url}" target="_blank" style="color:#4A90D9;font-size:0.95rem">🔗 {label}</a><br><br>', unsafe_allow_html=True)
 
         st.markdown("**📅 固定露面场合**")
         st.markdown("- 每周三：欧委会例会")
@@ -31,7 +31,7 @@ with tab1:
             ("利益申报（HATVP）", "https://www.hatvp.fr/fiche-nominative/?declarant=attal-gabriel"),
         ]
         for label, url in ga_links:
-            st.markdown(f'<a href="{url}" target="_blank" style="color:#4A90D9;font-size:0.95rem">🔗 {label}</a><br><br>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{url}" target="_blank" style="color:#C9A84C;font-size:0.95rem">🔗 {label}</a><br><br>', unsafe_allow_html=True)
 
         st.markdown("**📅 固定露面场合**")
         st.markdown("- 每周二：一般固定 EPR 小组会")
@@ -56,7 +56,7 @@ with tab2:
         st.markdown(f"""
         <div style="background:#16213e;padding:0.6rem 1rem;margin:0.3rem 0;border-radius:6px;
                     display:flex;justify-content:space-between;align-items:center">
-            <a href="{url}" target="_blank" style="color:#C9A84C;font-weight:bold">{name}</a>
+            <a href="{url}" target="_blank" style="color:#4A90D9;font-weight:bold">{name}</a>
             <span style="color:#aaa;font-size:0.85rem">{note}</span>
         </div>
         """, unsafe_allow_html=True)
@@ -116,7 +116,7 @@ with tab3:
         <div style="background:#16213e;border:1px solid #333;padding:1rem 1.2rem;
                     margin:0.5rem 0;border-radius:8px">
             <a href="{t['url']}" target="_blank"
-               style="color:#C9A84C;font-size:1rem;font-weight:bold;text-decoration:none">
+               style="color:#4A90D9;font-size:1rem;font-weight:bold;text-decoration:none">
                 {t['icon']} {t['name']}
             </a>
             <div style="color:#aaa;font-size:0.9rem;margin-top:0.3rem">{t['desc']}</div>

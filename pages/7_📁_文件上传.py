@@ -32,8 +32,8 @@ if type_filter != "全部":
 
 TYPE_ICONS = {"PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "📝", "其他": "📎"}
 PERSON_COLOR = {
-    "Gabriel Attal": "#4A90D9",
-    "Stéphane Séjourné": "#C9A84C",
+    "Gabriel Attal": "#C9A84C",
+    "Stéphane Séjourné": "#4A90D9",
     "两人": "#7EC8A4",
 }
 
@@ -59,7 +59,7 @@ for f in files:
                     {f.get("file_type","")}
                 </span>
             </div>
-            {"<a href='" + url + "' target='_blank' style='color:#C9A84C;font-size:0.9rem'>📂 打开</a>" if url else ""}
+            {"<a href='" + url + "' target='_blank' style='color:#4A90D9;font-size:0.9rem'>📂 打开</a>" if url else ""}
         </div>
         {"<div style='color:#aaa;font-size:0.85rem;margin-top:0.3rem'>" + f.get("note","") + "</div>" if f.get("note") else ""}
     </div>

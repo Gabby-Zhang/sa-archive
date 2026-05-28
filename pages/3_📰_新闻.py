@@ -47,8 +47,8 @@ st.caption(f"共显示 {len(news)} 条新闻")
 
 # ── 新闻列表 ─────────────────────────────────────────────
 PERSON_COLOR = {
-    "Gabriel Attal": "#4A90D9",
-    "Stéphane Séjourné": "#C9A84C",
+    "Gabriel Attal": "#C9A84C",
+    "Stéphane Séjourné": "#4A90D9",
     "两人": "#7EC8A4",
 }
 
@@ -85,7 +85,7 @@ for item in news:
                 </span>
             </div>
             <div style="display:flex;gap:1rem;font-size:0.85rem">
-                {"<a href='" + url + "' target='_blank' style='color:#C9A84C'>🔗 原文</a>" if url else ""}
+                {"<a href='" + url + "' target='_blank' style='color:#4A90D9'>🔗 原文</a>" if url else ""}
                 {"<a href='" + archive_url + "' target='_blank' style='color:#888'>📦 存档版</a>" if url else ""}
             </div>
         </div>

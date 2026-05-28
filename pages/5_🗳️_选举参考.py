@@ -77,9 +77,9 @@ for e in elections:
         col1, col2 = st.columns([1, 2])
         with col1:
             st.markdown(f"""
-            <div style="background:#16213e;border-left:4px solid #C9A84C;
+            <div style="background:#16213e;border-left:4px solid #4A90D9;
                         padding:1rem;border-radius:0 8px 8px 0;margin-bottom:0.8rem">
-                <div style="color:#C9A84C;font-size:1.1rem;font-weight:bold">{e['name']}</div>
+                <div style="color:#4A90D9;font-size:1.1rem;font-weight:bold">{e['name']}</div>
                 <div style="color:#888;font-size:0.85rem;font-style:italic">{e['fr']}</div>
                 <div style="margin-top:0.5rem">
                     <span style="background:#0d1b2a;padding:0.2rem 0.5rem;border-radius:4px;
