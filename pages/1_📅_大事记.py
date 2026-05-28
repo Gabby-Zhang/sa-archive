@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.database import get_events, add_event, delete_event
+from utils.database import get_events, add_event, update_event, delete_event
 
 st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout="wide")
 
@@ -45,42 +45,94 @@ PERSON_COLOR = {
     "两人": "#7EC8A4",
 }
 
+# 初始化编辑状态
+if "editing_id" not in st.session_state:
+    st.session_state.editing_id = None
+
 if not df.empty:
     for _, row in df.iterrows():
+        event_id = row.get("id")
         color = PERSON_COLOR.get(row.get("person", ""), "#888")
-        source_html = ""
-        if row.get("source_url"):
-            source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#4A90D9">🔗 原文</a>'
-            archive_url = f"https://archive.ph/{row['source_url']}"
-            source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:#aaa">📦 存档版</a>'
-        elif row.get("source"):
-            source_html = f'<span style="color:#aaa">{row["source"]}</span>'
 
-        note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{row["note"]}</div>' if row.get("note") else ""
+        # ── 编辑模式 ──────────────────────────────────────
+        if st.session_state.editing_id == event_id:
+            with st.container():
+                st.markdown(f'<div style="border-left:4px solid {color};padding:0.5rem 1rem;background:#16213e;border-radius:0 8px 8px 0;margin:0.6rem 0">', unsafe_allow_html=True)
+                with st.form(key=f"edit_form_{event_id}"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        e_date = st.text_input("日期", value=row.get("date", ""))
+                        e_person = st.selectbox("人物",
+                            ["Gabriel Attal", "Stéphane Séjourné", "两人"],
+                            index=["Gabriel Attal", "Stéphane Séjourné", "两人"].index(row.get("person", "Gabriel Attal")) if row.get("person") in ["Gabriel Attal", "Stéphane Séjourné", "两人"] else 0)
+                    with c2:
+                        e_source = st.text_input("消息来源", value=row.get("source", ""))
+                        e_source_url = st.text_input("来源链接", value=row.get("source_url", "") or "")
+                    e_title = st.text_input("事件/新闻标题", value=row.get("title", ""))
+                    e_note = st.text_area("备注", value=row.get("note", "") or "", height=80)
+                    sc1, sc2 = st.columns(2)
+                    with sc1:
+                        save = st.form_submit_button("💾 保存", use_container_width=True)
+                    with sc2:
+                        cancel = st.form_submit_button("✕ 取消", use_container_width=True)
+                    if save:
+                        update_event(event_id, {
+                            "date": e_date,
+                            "person": e_person,
+                            "title": e_title,
+                            "source": e_source,
+                            "source_url": e_source_url,
+                            "note": e_note,
+                        })
+                        st.session_state.editing_id = None
+                        st.rerun()
+                    if cancel:
+                        st.session_state.editing_id = None
+                        st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown(f"""
-        <div style="
-            border-left: 4px solid {color};
-            padding: 0.8rem 1.2rem;
-            margin: 0.6rem 0;
-            background: #16213e;
-            border-radius: 0 8px 8px 0;
-        ">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div>
-                    <span style="color:{color};font-weight:bold;font-size:0.85rem">
-                        {row.get("person","")}
-                    </span>
-                    <span style="color:#777;font-size:0.8rem;margin-left:1rem">
-                        {row.get("date","")}
-                    </span>
+        # ── 正常显示模式 ──────────────────────────────────
+        else:
+            source_html = ""
+            if row.get("source_url"):
+                source_html = f'<a href="{row["source_url"]}" target="_blank" style="color:#4A90D9">🔗 原文</a>'
+                archive_url = f"https://archive.ph/{row['source_url']}"
+                source_html += f' &nbsp; <a href="{archive_url}" target="_blank" style="color:#aaa">📦 存档版</a>'
+            elif row.get("source"):
+                source_html = f'<span style="color:#aaa">{row["source"]}</span>'
+
+            note_html = f'<div style="color:#bbb;font-size:0.85rem;margin-top:0.4rem">{row["note"]}</div>' if row.get("note") else ""
+
+            st.markdown(f"""
+            <div style="
+                border-left: 4px solid {color};
+                padding: 0.8rem 1.2rem;
+                margin: 0.6rem 0;
+                background: #16213e;
+                border-radius: 0 8px 8px 0;
+            ">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div>
+                        <span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>
+                        <span style="color:#777;font-size:0.8rem;margin-left:1rem">{row.get("date","")}</span>
+                    </div>
+                    <div style="font-size:0.85rem">{source_html}</div>
                 </div>
-                <div style="font-size:0.85rem">{source_html}</div>
+                <div style="font-size:1rem;margin-top:0.3rem;color:#e0e0e0">{row.get("title","")}</div>
+                {note_html}
             </div>
-            <div style="font-size:1rem;margin-top:0.3rem;color:#e0e0e0">{row.get("title","")}</div>
-            {note_html}
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+
+            # 编辑和删除按钮
+            bc1, bc2, bc3 = st.columns([6, 1, 1])
+            with bc2:
+                if st.button("✏️", key=f"edit_{event_id}", help="编辑"):
+                    st.session_state.editing_id = event_id
+                    st.rerun()
+            with bc3:
+                if st.button("🗑️", key=f"del_{event_id}", help="删除"):
+                    delete_event(event_id)
+                    st.rerun()
 else:
     st.info("暂无数据，请先在下方添加或导入数据。")
 

@@ -21,6 +21,10 @@ def add_event(data: dict):
     db = get_supabase()
     return db.table("events").insert(data).execute()
 
+def update_event(event_id: int, data: dict):
+    db = get_supabase()
+    return db.table("events").update(data).eq("id", event_id).execute()
+
 def delete_event(event_id: int):
     db = get_supabase()
     return db.table("events").delete().eq("id", event_id).execute()
