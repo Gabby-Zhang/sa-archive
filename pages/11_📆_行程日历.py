@@ -95,16 +95,14 @@ def _parse_eu_page(soup) -> tuple:
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_sejourne_schedule(days_back: int = 180) -> list:
-    """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。"""
+    """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。异常直接抛出，不吞错误。"""
     cutoff = (date.today() - timedelta(days=days_back)).isoformat()
     all_events = []
     for page in range(80):
         if page > 0:
             time.sleep(0.3)
-        try:
-            soup = _fetch_eu_page(page)
-        except Exception:
-            break
+        # 不捕获异常，让调用方看到具体错误
+        soup = _fetch_eu_page(page)
         # all_batch 控制翻页，sejourne_batch 收集数据
         all_batch, sejourne_batch = _parse_eu_page(soup)
         if not all_batch:
@@ -227,7 +225,7 @@ with col_s:
             s_events = []
 
     if not s_events:
-        st.info("暂时无法获取日程，请稍后重试")
+        st.info("暂无日程数据（可能是网站暂时不可用，或 Séjourné 在该时间段内没有已发布的行程）")
     else:
         s_upcoming = [e for e in s_events if e["status"] != "past"]
         s_past     = [e for e in s_events if e["status"] == "past"]
