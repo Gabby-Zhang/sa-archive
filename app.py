@@ -20,7 +20,7 @@ st.markdown("""
     --bd:  #2a3a5c;   /* border / divider color */
 }
 
-/* ── 中文字形缩放：使 CJK 视觉大小与西文匹配 ── */
+/* ── 中文字形缩放：仅针对文字内容元素，不破坏图标字体 ── */
 @font-face {
     font-family: "CJKScaled";
     src: local("PingFang SC"), local("Hiragino Sans GB"),
@@ -31,8 +31,15 @@ st.markdown("""
                    U+FE30-FE4F;
     size-adjust: 85%;
 }
-/* 全局字体栈：西文用 Source Sans Pro，中文用缩放版 */
-.stApp, .stApp *:not(code):not(pre) {
+/* 只覆盖文字容器，不影响 Material Icons 等图标字体 */
+p, h1, h2, h3, h4, h5, h6,
+label, li, td, th, caption,
+.stMarkdown, .stMarkdown p, .stMarkdown span, .stMarkdown div,
+[data-testid="stCaptionContainer"] p,
+[data-testid="stWidgetLabel"] p,
+[data-baseweb="select"] span,
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea {
     font-family: "Source Sans Pro", "CJKScaled", sans-serif !important;
 }
 
@@ -158,7 +165,9 @@ p, .stMarkdown p, label,
 hr { border-color: #c4c8de !important; }
 [data-testid="stExpander"]          { border-color: #c4c8de !important; }
 [data-testid="stExpanderDetails"]   { background-color: #edf1ff !important; }
-[data-testid="stButton"] > button {
+[data-testid="stButton"] > button,
+[data-testid="stDownloadButton"] > button,
+[data-testid="stFormSubmitButton"] > button {
     border-color: #bfc4d8 !important;
     color: #1a1a2e !important;
     background-color: #ffffff !important;
