@@ -168,10 +168,11 @@ for item in news:
                     st.rerun()
 
         else:
-            # ── 正常按钮行 ───────────────────────────────────
-            bc1, bc2, bc3 = st.columns(3)
-            with bc1:
-                if st.button("📌 新建大事记", key=f"pin_{item_id}", use_container_width=True):
+            # ── 正常按钮行（纯 emoji，避免中文字号不一致）──────
+            _, bca, bcb, bcc = st.columns([7, 1, 1, 1])
+            with bca:
+                if st.button("📌", key=f"pin_{item_id}",
+                             help="新建大事记", use_container_width=True):
                     add_event({
                         "date": pub_date,
                         "person": item.get("person", ""),
@@ -181,12 +182,14 @@ for item in news:
                         "note": "",
                     })
                     st.success("✅ 已加入大事记！")
-            with bc2:
-                if st.button("🔗 关联已有", key=f"link_{item_id}", use_container_width=True):
+            with bcb:
+                if st.button("🔗", key=f"link_{item_id}",
+                             help="关联已有大事记", use_container_width=True):
                     st.session_state[f"linking_{item_id}"] = True
                     st.rerun()
-            with bc3:
-                if st.button("🗑️ 删除", key=f"del_news_{item_id}", use_container_width=True):
+            with bcc:
+                if st.button("🗑️", key=f"del_news_{item_id}",
+                             help="删除此条新闻", use_container_width=True):
                     delete_news(item_id)
                     st.rerun()
 

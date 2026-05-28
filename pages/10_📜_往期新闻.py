@@ -299,10 +299,13 @@ for group in clustered:
 
     if st.session_state.get("is_admin"):
         item_id = item.get("id", "")
-        if st.button("🗑️ 删除", key=f"del_hist_{item_id}"):
-            get_supabase().table("news").delete().eq("id", item_id).execute()
-            st.cache_data.clear()
-            st.rerun()
+        _, _bd = st.columns([11, 1])
+        with _bd:
+            if st.button("🗑️", key=f"del_hist_{item_id}",
+                         help="删除此条新闻", use_container_width=True):
+                get_supabase().table("news").delete().eq("id", item_id).execute()
+                st.cache_data.clear()
+                st.rerun()
 
 if not news:
     st.info("暂无历史新闻。管理员登录后可在下方导入 GDELT 历史数据。")

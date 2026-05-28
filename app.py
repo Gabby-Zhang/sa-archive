@@ -31,17 +31,6 @@ st.markdown("""
                    U+FE30-FE4F;
     size-adjust: 85%;
 }
-/* ── 按钮专用 CJK 缩放（更激进，独立命名避免缓存冲突）── */
-@font-face {
-    font-family: "CJKBtn";
-    src: local("PingFang SC"), local("Hiragino Sans GB"),
-         local("Noto Sans SC"), local("Microsoft YaHei UI"),
-         local("Microsoft YaHei"), local("WenQuanYi Micro Hei");
-    unicode-range: U+4E00-9FFF, U+3400-4DBF, U+F900-FAFF,
-                   U+2E80-2EFF, U+3000-303F, U+FF00-FFEF,
-                   U+FE30-FE4F;
-    size-adjust: 72%;
-}
 /* 只覆盖文字容器，不影响 Material Icons 等图标字体 */
 p, h1, h2, h3, h4, h5, h6,
 label, li, td, th, caption,
@@ -127,9 +116,8 @@ h3 { font-size: 1.05rem !important; }
 .stMarkdown span[style*="font-size:0.7rem"],
 .stMarkdown span[style*="font-size: 0.7rem"]  { font-size: 0.68rem !important; }
 
-/* ── 按钮字体：高优先级选择器覆盖 Streamlit 默认 ── */
-html body .stApp [data-testid="stButton"] > button {
-    font-family: "Source Sans Pro", "CJKBtn", ui-sans-serif, sans-serif !important;
+/* ── Streamlit 原生按钮字号 ── */
+[data-testid="stButton"] > button {
     font-size: 0.78rem !important;
     min-height: 1.8rem !important;
     line-height: 1.2 !important;
