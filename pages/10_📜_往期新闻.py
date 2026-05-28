@@ -18,6 +18,30 @@ PERSON_COLOR = {
     "S&A":                "#FF6B9D",
 }
 
+# ── 媒体过滤规则 ──────────────────────────────────────────────────
+# 法语媒体：所有 .fr 域名自动通过
+# 英语媒体：只保留以下主流国际媒体
+MAJOR_ENGLISH_DOMAINS = {
+    'bbc.com', 'bbc.co.uk', 'theguardian.com', 'reuters.com',
+    'apnews.com', 'nytimes.com', 'politico.eu', 'politico.com',
+    'ft.com', 'economist.com', 'france24.com', 'euronews.com',
+    'bloomberg.com', 'washingtonpost.com', 'npr.org',
+    'theatlantic.com', 'foreignpolicy.com', 'independant.co.uk',
+}
+
+def _is_allowed_source(domain: str) -> bool:
+    """法语媒体全部通过；英语媒体只保留主流大媒体"""
+    d = domain.lower().replace("www.", "")
+    if d.endswith(".fr"):
+        return True
+    return d in MAJOR_ENGLISH_DOMAINS
+
+def _norm_title(title: str) -> str:
+    """标准化标题用于去重（取前8个词排序）"""
+    words = sorted(title.lower().split()[:8])
+    return " ".join(words)
+
+
 # ── GDELT 导入函数（定义在前，调用在后）────────────────────────────
 def _run_gdelt_import(person: str, start: date, end: date):
     """按月查询 GDELT，插入 news 表（category=historical）"""
@@ -45,57 +69,78 @@ def _run_gdelt_import(person: str, start: date, end: date):
 
         for q in queries:
             try:
-                api_url = (
-                    f"https://api.gdeltproject.org/api/v2/doc/doc"
-                    f"?query={requests.utils.quote(q)}"
-                    f"&mode=artlist&maxrecords=250"
-                    f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
-                    f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
-                    f"&sourcelang=French&sourcecountry=France"
-                    f"&format=json"
-                )
-                resp = requests.get(api_url, timeout=15)
-                if not resp.ok:
-                    continue
-                articles = resp.json().get("articles", [])
-
+                # 同时查询法语和英语来源
                 rows = []
-                for a in articles:
-                    art_url = a.get("url", "")
-                    if not art_url:
+                seen_titles = {}   # 用于本批次去重
+
+                for lang, country in [("French", "France"), ("English", "")]:
+                    country_param = f"&sourcecountry={country}" if country else ""
+                    api_url = (
+                        f"https://api.gdeltproject.org/api/v2/doc/doc"
+                        f"?query={requests.utils.quote(q)}"
+                        f"&mode=artlist&maxrecords=250"
+                        f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
+                        f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
+                        f"&sourcelang={lang}{country_param}"
+                        f"&format=json"
+                    )
+                    resp = requests.get(api_url, timeout=15)
+                    if not resp.ok:
                         continue
-                    art_id = hashlib.md5(art_url.encode()).hexdigest()
-                    title  = a.get("title", "").strip()
-                    source = a.get("domain", "").replace("www.", "")
-                    seen_date = a.get("seendate", "")
-                    try:
-                        pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
-                    except Exception:
-                        pub_date = m_start.strftime("%Y-%m-%d")
+                    articles = resp.json().get("articles", [])
 
-                    # 判断人物
-                    title_l = title.lower()
-                    has_s = "séjourné" in title_l or "sejourne" in title_l
-                    has_a = "attal" in title_l
-                    if has_s and has_a:
-                        art_person = "S&A"
-                    elif has_s:
-                        art_person = "Stéphane Séjourné"
-                    elif has_a:
-                        art_person = "Gabriel Attal"
-                    else:
-                        art_person = person
+                    for a in articles:
+                        art_url = a.get("url", "")
+                        if not art_url:
+                            continue
+                        source = a.get("domain", "").replace("www.", "")
 
-                    rows.append({
-                        "id":           art_id,
-                        "title":        title,
-                        "url":          art_url,
-                        "source":       source,
-                        "person":       art_person,
-                        "published_at": pub_date,
-                        "summary":      "",
-                        "category":     "historical",
-                    })
+                        # ── 媒体过滤：只保留法语媒体或英语主流大媒体 ──
+                        if not _is_allowed_source(source):
+                            continue
+
+                        art_id = hashlib.md5(art_url.encode()).hexdigest()
+                        title  = a.get("title", "").strip()
+                        if not title:
+                            continue
+
+                        # ── 批次内去重：同一条新闻只保留最先出现的那条 ──
+                        norm = _norm_title(title)
+                        if norm in seen_titles:
+                            continue
+                        seen_titles[norm] = True
+
+                        seen_date = a.get("seendate", "")
+                        try:
+                            pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
+                        except Exception:
+                            pub_date = m_start.strftime("%Y-%m-%d")
+
+                        # 判断人物
+                        title_l = title.lower()
+                        has_s = "séjourné" in title_l or "sejourne" in title_l
+                        has_a = "attal" in title_l
+                        if has_s and has_a:
+                            art_person = "S&A"
+                        elif has_s:
+                            art_person = "Stéphane Séjourné"
+                        elif has_a:
+                            art_person = "Gabriel Attal"
+                        else:
+                            art_person = person
+
+                        rows.append({
+                            "id":           art_id,
+                            "title":        title,
+                            "url":          art_url,
+                            "source":       source,
+                            "person":       art_person,
+                            "published_at": pub_date,
+                            "summary":      "",
+                            "category":     "historical",
+                        })
+
+                    time.sleep(0.3)
 
                 if rows:
                     db.table("news").upsert(rows, on_conflict="id").execute()
@@ -151,10 +196,37 @@ news = get_historical_news(
 if keyword:
     news = [n for n in news if keyword.lower() in n.get("title", "").lower()]
 
-st.caption(f"共 {len(news)} 条历史新闻")
+# ── 按标题聚合相似新闻 ───────────────────────────────────────────
+from collections import defaultdict
+
+def _source_priority(item):
+    """法语媒体优先，其次英语主流媒体"""
+    s = item.get("source", "")
+    if s.endswith(".fr"):         return 0
+    if s in MAJOR_ENGLISH_DOMAINS: return 1
+    return 2
+
+groups = defaultdict(list)
+for item in news:
+    key = _norm_title(item.get("title", ""))
+    groups[key].append(item)
+
+# 每组按来源质量排序，主条目取第一个
+clustered = []
+for key, items in groups.items():
+    items.sort(key=_source_priority)
+    clustered.append(items)
+
+# 按主条目日期倒序排列
+clustered.sort(key=lambda g: g[0].get("published_at", ""), reverse=True)
+
+st.caption(f"共 {len(clustered)} 条新闻（含 {len(news)} 篇报道）")
 
 # ── 新闻列表 ─────────────────────────────────────────────────────
-for item in news:
+for group in clustered:
+    item = group[0]   # 主条目（来源最优）
+    others = group[1:]
+
     color     = PERSON_COLOR.get(item.get("person", ""), "#888")
     url       = item.get("url", "")
     archive_url = f"https://www.removepaywall.com/{url}" if url else ""
@@ -166,10 +238,15 @@ for item in news:
         except Exception:
             pass
 
-    media_info  = get_media_info(item.get("source", ""))
-    lean_label  = media_info["label"]
-    lean_color  = media_info["color"]
-    lean_emoji  = LEAN_EMOJI.get(lean_label, "")
+    media_info = get_media_info(item.get("source", ""))
+    lean_label = media_info["label"]
+    lean_color = media_info["color"]
+    lean_emoji = LEAN_EMOJI.get(lean_label, "")
+
+    # 多来源标记
+    multi_badge = (f'<span style="background:#2a3a5c;color:#aaa;padding:0.05rem 0.4rem;'
+                   f'border-radius:3px;font-size:0.7rem;margin-left:0.5rem">'
+                   f'📎 {len(others)+1} 家媒体</span>') if others else ""
 
     st.markdown(f"""
     <div style="
@@ -190,6 +267,7 @@ for item in news:
                     <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{item.get("source","")}</span>
                 </span>
                 <span style="color:#555;font-size:0.8rem;margin-left:0.8rem">{pub_date}</span>
+                {multi_badge}
             </div>
             <div style="display:flex;gap:1rem;font-size:0.85rem">
                 {"<a href='" + url + "' target='_blank' style='color:#4A90D9'>🔗 原文</a>" if url else ""}
@@ -201,6 +279,23 @@ for item in news:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # 折叠显示其他来源
+    if others:
+        with st.expander(f"查看另外 {len(others)} 家媒体的报道"):
+            for o in others:
+                o_url = o.get("url", "")
+                o_mi  = get_media_info(o.get("source", ""))
+                o_emoji = LEAN_EMOJI.get(o_mi["label"], "")
+                o_label = o_mi["label"]
+                o_color = o_mi["color"]
+                st.markdown(
+                    f'<span style="background:{o_color};color:white;padding:0.05rem 0.35rem;'
+                    f'border-radius:3px;font-size:0.7rem">{o_emoji} {o_label}</span> '
+                    f'<span style="color:#aaa;font-size:0.85rem">{o.get("source","")}</span>'
+                    f'{"  <a href=\'" + o_url + "\' target=\'_blank\' style=\'color:#4A90D9;font-size:0.85rem\'>🔗 原文</a>" if o_url else ""}',
+                    unsafe_allow_html=True
+                )
 
     if st.session_state.get("is_admin"):
         item_id = item.get("id", "")
