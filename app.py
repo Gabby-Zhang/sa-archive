@@ -70,6 +70,39 @@ st.markdown("""
     h3 { font-size: 1.1rem !important; }
 }
 
+/* ── 侧边栏展开/折叠箭头：日夜模式下都清晰可见 ── */
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="stSidebarCollapseButton"] button {
+    background-color: #4A90D9 !important;
+    border-radius: 6px !important;
+    opacity: 1 !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapsedControl"] button svg path,
+[data-testid="stSidebarCollapseButton"] button svg path {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+/* ── 全局标题与标签字号缩小 ── */
+/* 页面标题 h1（st.title）*/
+h1 { font-size: 1.55rem !important; line-height: 1.3 !important; }
+h2 { font-size: 1.25rem !important; }
+h3 { font-size: 1.05rem !important; }
+/* 筛选栏标签（人物 / 显示条数 / 搜索关键词等）*/
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label { font-size: 0.75rem !important; }
+/* 下拉框 / 输入框内的文字 */
+[data-baseweb="select"] span,
+[data-baseweb="select"] div[class],
+[data-baseweb="input"] input   { font-size: 0.82rem !important; }
+/* caption 说明行（共显示 XX 条…）*/
+[data-testid="stCaptionContainer"] p { font-size: 0.70rem !important; }
+/* subheader / markdown 段落 */
+.stMarkdown p { font-size: 0.88rem !important; }
+
 /* ── 缩小卡片元数据标签字体（span，不影响 div 标题块）── */
 .stMarkdown span[style*="font-size:0.8rem"],
 .stMarkdown span[style*="font-size: 0.8rem"]  { font-size: 0.68rem !important; }
