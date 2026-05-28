@@ -3,7 +3,7 @@ from utils.auth import admin_sidebar
 
 admin_sidebar()
 from datetime import datetime
-from utils.database import get_news, add_news_manual
+from utils.database import get_news, add_news_manual, add_event
 from utils.news_fetcher import fetch_all_news
 
 st.set_page_config(page_title="新闻 · 档案馆", page_icon="📰", layout="wide")
@@ -97,6 +97,20 @@ for item in news:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # 管理员专用：加入大事记按钮
+    if st.session_state.get("is_admin"):
+        item_id = item.get("id", "")
+        if st.button("📌 加入大事记", key=f"pin_{item_id}"):
+            add_event({
+                "date": pub_date,
+                "person": item.get("person", ""),
+                "title": item.get("title", ""),
+                "source": item.get("source", ""),
+                "source_url": url,
+                "note": "",
+            })
+            st.success("✅ 已加入大事记！")
 
 if not news:
     st.info("暂无新闻，点击上方「抓取最新新闻」按钮开始收集。")
