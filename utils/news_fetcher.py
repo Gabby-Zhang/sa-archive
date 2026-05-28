@@ -14,7 +14,7 @@ RSS_FEEDS = [
     },
     {
         "url": "https://news.google.com/rss/search?q=Attal+Séjourné&hl=fr&gl=FR&ceid=FR:fr",
-        "person": "两人"
+        "person": "SS & GA"
     },
 ]
 
