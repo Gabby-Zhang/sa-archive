@@ -12,15 +12,11 @@ st.markdown("""
 <style>
 [data-testid="stDecoration"],
 [data-testid="stDeployButton"],
-[data-testid="stToolbarActions"],
 .viewerBadge_container__r5tak,
 .viewerBadge_link__qRIco,
 [class*="viewerBadge"],
-[class*="ViewerBadge"],
-header[data-testid="stHeader"] a,
-header[data-testid="stHeader"] img {
+[class*="ViewerBadge"] {
     display: none !important;
-    visibility: hidden !important;
 }
 </style>
 """, unsafe_allow_html=True)
