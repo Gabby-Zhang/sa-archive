@@ -49,7 +49,7 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown("""
     <div class="profile-card">
-        <h2>Stéphane Séjourné</h2>
+        <h2><a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="color:#4A90D9;text-decoration:none">Stéphane Séjourné</a> <a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="font-size:0.7rem;color:#4A90D977;vertical-align:super">Wikipedia ↗</a></h2>
         <div class="role">🇪🇺 欧盟委员会执行副主席 · 工业战略专员</div>
         <div class="bio">
             1985年生，法国政治人物，复兴党（RE）创始成员之一。<br>
@@ -63,7 +63,7 @@ with col1:
 with col2:
     st.markdown("""
     <div class="profile-card">
-        <h2>Gabriel Attal</h2>
+        <h2><a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="color:#4A90D9;text-decoration:none">Gabriel Attal</a> <a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="font-size:0.7rem;color:#4A90D977;vertical-align:super">Wikipedia ↗</a></h2>
         <div class="role">🏛️ 法国国民议会议员 · 复兴党（RE）主席</div>
         <div class="bio">
             1989年生，法国迄今最年轻的总理（2024年1月–9月）。<br>
