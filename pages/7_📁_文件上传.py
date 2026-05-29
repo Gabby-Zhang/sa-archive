@@ -4,16 +4,13 @@ from utils.auth import admin_sidebar
 admin_sidebar()
 from utils.database import get_files, add_file, get_supabase
 
-st.set_page_config(page_title="文件上传 · 档案馆", page_icon="📁", layout="wide")
+st.set_page_config(page_title="文件存档 · 档案馆", page_icon="📁", layout="wide")
 
 st.title("📁 文件存档")
-st.caption("上传到 Google Drive 后，在这里登记链接")
+st.caption("书籍、传记、调查报告及相关文件")
 
 st.info("""
-**使用说明：**
-1. 将文件上传到你的 Google Drive 文件夹
-2. 右键文件 → 「获取链接」→ 改为「知道链接的所有人可查看」
-3. 复制链接，填入下方表单
+**使用说明：** 将文件上传到 Google Drive → 右键「获取链接」→ 改为「知道链接的所有人可查看」→ 复制链接填入下方。
 """)
 
 # ── 筛选 ─────────────────────────────────────────────────
@@ -21,7 +18,7 @@ col1, col2 = st.columns([2, 3])
 with col1:
     person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    type_filter = st.selectbox("文件类型", ["全部", "PDF", "截图", "视频", "文章", "其他"])
+    type_filter = st.selectbox("文件类型", ["全部", "📚 书籍", "📖 传记", "🔍 调查报告", "📄 PDF", "📝 文章", "🎬 视频", "🖼️ 截图", "📎 其他"])
 
 # ── 文件列表 ─────────────────────────────────────────────
 try:
@@ -33,7 +30,13 @@ except Exception as e:
 if type_filter != "全部":
     files = [f for f in files if f.get("file_type") == type_filter]
 
-TYPE_ICONS = {"PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "📝", "其他": "📎"}
+TYPE_ICONS = {
+    "📚 书籍": "📚", "📖 传记": "📖", "🔍 调查报告": "🔍",
+    "📄 PDF": "📄", "📝 文章": "📝", "🎬 视频": "🎬",
+    "🖼️ 截图": "🖼️", "📎 其他": "📎",
+    # 兼容旧数据
+    "PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "📝", "其他": "📎",
+}
 PERSON_COLOR = {
     "Gabriel Attal": "#C9A84C",
     "Stéphane Séjourné": "#4A90D9",
@@ -88,7 +91,7 @@ else:
             with c1:
                 new_title = st.text_input("文件名称/标题 *")
                 new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
-                new_type = st.selectbox("文件类型", ["PDF", "截图", "视频", "文章", "其他"])
+                new_type = st.selectbox("文件类型", ["📚 书籍", "📖 传记", "🔍 调查报告", "📄 PDF", "📝 文章", "🎬 视频", "🖼️ 截图", "📎 其他"])
             with c2:
                 new_url = st.text_input("Google Drive 链接 *")
                 new_date = st.date_input("日期（文件对应的时间）")
