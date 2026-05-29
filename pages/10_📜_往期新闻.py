@@ -223,6 +223,8 @@ clustered.sort(key=lambda g: g[0].get("published_at", ""), reverse=True)
 st.caption(f"共 {len(clustered)} 条新闻（含 {len(news)} 篇报道）")
 
 # ── 新闻列表 ─────────────────────────────────────────────────────
+import html as _html
+
 for group in clustered:
     item = group[0]   # 主条目（来源最优）
     others = group[1:]
@@ -230,6 +232,10 @@ for group in clustered:
     color     = PERSON_COLOR.get(item.get("person", ""), "#888")
     url       = item.get("url", "")
     archive_url = f"https://www.removepaywall.com/{url}" if url else ""
+    # HTML 转义，防止标题/来源里含特殊字符破坏卡片结构
+    safe_title  = _html.escape(item.get("title",  "") or "")
+    safe_source = _html.escape(item.get("source", "") or "")
+    safe_person = _html.escape(item.get("person", "") or "")
 
     pub_date = item.get("published_at", "")
     if pub_date:
@@ -259,12 +265,12 @@ for group in clustered:
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
             <div>
                 <span style="color:{color};font-size:0.8rem;font-weight:bold">
-                    {item.get("person","")}
+                    {safe_person}
                 </span>
                 <span style="margin-left:0.8rem">
                     <span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;
                           border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>
-                    <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{item.get("source","")}</span>
+                    <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{safe_source}</span>
                 </span>
                 <span style="color:#555;font-size:0.8rem;margin-left:0.8rem">{pub_date}</span>
                 {multi_badge}
@@ -275,7 +281,7 @@ for group in clustered:
             </div>
         </div>
         <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
-            {item.get("title","")}
+            {safe_title}
         </div>
     </div>
     """, unsafe_allow_html=True)
