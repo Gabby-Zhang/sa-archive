@@ -84,37 +84,25 @@ for item in news:
     lean_color = media_info["color"]
     lean_emoji = LEAN_EMOJI.get(lean_label, "")
 
-    st.markdown(f"""
-    <div style="
-        border-left: 4px solid {color};
-        padding: 0.8rem 1.2rem;
-        margin: 0.5rem 0;
-        background:var(--cb);
-        border-radius: 0 8px 8px 0;
-    ">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
-            <div>
-                <span style="color:{color};font-size:0.8rem;font-weight:bold">
-                    {safe_person}
-                </span>
-                <span style="margin-left:0.8rem">
-                    <span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>
-                    <span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{safe_source}</span>
-                </span>
-                <span style="color:#555;font-size:0.8rem;margin-left:0.8rem">
-                    {pub_date}
-                </span>
-            </div>
-            <div style="display:flex;gap:1rem;font-size:0.85rem">
-                {f'<a href="{safe_url}" rel="noopener noreferrer" style="color:#4A90D9">🔗 原文</a>' if url else ""}
-                {f'<a href="{safe_archive}" rel="noopener noreferrer" style="color:#888">📦 存档版</a>' if url else ""}
-            </div>
-        </div>
-        <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
-            {safe_title}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    _link_orig    = f'<a href="{safe_url}" rel="noopener noreferrer" style="color:#4A90D9">🔗 原文</a>' if url else ""
+    _link_archive = f'<a href="{safe_archive}" rel="noopener noreferrer" style="color:#888">📦 存档版</a>' if url else ""
+    _card = (
+        f'<div style="border-left:4px solid {color};padding:0.8rem 1.2rem;margin:0.5rem 0;background:var(--cb);border-radius:0 8px 8px 0">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">'
+        f'<div>'
+        f'<span style="color:{color};font-size:0.8rem;font-weight:bold">{safe_person}</span>'
+        f'<span style="margin-left:0.8rem">'
+        f'<span style="background:{lean_color};color:white;padding:0.05rem 0.4rem;border-radius:3px;font-size:0.7rem;font-weight:bold">{lean_emoji} {lean_label}</span>'
+        f'<span style="color:#888;font-size:0.8rem;margin-left:0.3rem">{safe_source}</span>'
+        f'</span>'
+        f'<span style="color:#555;font-size:0.8rem;margin-left:0.8rem">{pub_date}</span>'
+        f'</div>'
+        f'<div style="display:flex;gap:1rem;font-size:0.85rem">{_link_orig}{_link_archive}</div>'
+        f'</div>'
+        f'<div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">{safe_title}</div>'
+        f'</div>'
+    )
+    st.markdown(_card, unsafe_allow_html=True)
 
     # 管理员专用：操作按钮
     if st.session_state.get("is_admin"):
