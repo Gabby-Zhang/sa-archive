@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.database import get_supabase
-from utils.i18n import t
+from utils.i18n import t, tlabel
 import html as _html
 
 admin_sidebar()
@@ -189,30 +189,13 @@ def _social_row(items):
     )
     return f'<div class="social-row">{btns}</div>'
 
-# 常用链接名称翻译对照（key 值在 DB 中以中文存储）
-_LINK_KEY_EN = {
-    "欧委会官方页面":       "EU Commission page",
-    "欧委会官方页面（EC）": "EU Commission page (EC)",
-    "欧委会新闻室":         "EU Commission Newsroom",
-    "欧委会新闻室（每周行程）": "EU Newsroom (weekly schedule)",
-    "利益申报":             "Asset declaration",
-    "利益申报（HATVP）":    "Asset declaration (HATVP)",
-    "国民议会页面":         "National Assembly page",
-    "国民议会页面（AN）":   "National Assembly page (AN)",
-    "复兴党官网":           "Renaissance party website",
-    "复兴党官网（RE）":     "Renaissance party (RE)",
-    "粉丝行程追踪账号：@GAttalActu（X平台）": "Fan schedule tracker: @GAttalActu (X)",
-}
-
 def _db_links(rows, color_cls):
     if not rows:
         return ""
-    _en = st.session_state.get("lang") == "en"
     items = ""
     for r in rows:
         raw_key = r.get("key","") or ""
-        display_key = _LINK_KEY_EN.get(raw_key, raw_key) if _en else raw_key
-        key = _html.escape(display_key)
+        key = _html.escape(tlabel(raw_key))
         val = _html.escape(r.get("value","") or "")
         items += (
             f'<div class="extra-link-row {color_cls}">'

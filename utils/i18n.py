@@ -162,3 +162,33 @@ def t(key: str) -> str:
     if entry is None:
         return key
     return entry.get(lang) or entry.get("zh", key)
+
+
+# ── DB 内容翻译对照表（profile_items key / resources name）─────────────────
+# 数据库里以中文存储，英文模式下展示英文
+DB_LABEL_EN: dict[str, str] = {
+    # profile_items — links section
+    "欧委会官方页面":             "EU Commission page",
+    "欧委会官方页面（EC）":       "EU Commission page (EC)",
+    "欧委会新闻室":               "EU Commission Newsroom",
+    "欧委会新闻室（每周行程）":   "EU Newsroom (weekly schedule)",
+    "利益申报":                   "Asset declaration",
+    "利益申报（HATVP）":          "Asset declaration (HATVP)",
+    "国民议会页面":               "National Assembly page",
+    "国民议会页面（AN）":         "National Assembly page (AN)",
+    "复兴党官网":                 "Renaissance party website",
+    "复兴党官网（RE）":           "Renaissance party (RE)",
+    # resources — regular appearances
+    "每周三：欧委会例会":         "Every Wednesday: EU Commission meeting",
+    "每周二：一般固定 EPR 小组会":"Every Tuesday: EPR group meeting",
+    "国民议会会期：每周出席":     "National Assembly sessions: weekly attendance",
+    "粉丝行程追踪账号：@GAttalActu（X平台）": "Fan schedule tracker: @GAttalActu (X)",
+}
+
+
+def tlabel(chinese_label: str) -> str:
+    """翻译 DB 里存的中文标签；英文模式下查字典，找不到则原样返回。"""
+    import streamlit as st
+    if st.session_state.get("lang") != "en":
+        return chinese_label
+    return DB_LABEL_EN.get(chinese_label, chinese_label)

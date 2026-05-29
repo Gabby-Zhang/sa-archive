@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.auth import admin_sidebar
-from utils.i18n import t
+from utils.i18n import t, tlabel
 from utils.database import get_supabase
 
 admin_sidebar()
@@ -57,13 +57,14 @@ def render_link_card(r, color):
     icon = r.get("icon", "🔗")
     rid  = r.get("id")
 
+    display_name = tlabel(name)
     if url:
         st.markdown(
             f'<a href="{url}" target="_blank" style="color:{color};font-size:0.95rem">'
-            f'{icon} {name}</a><br><br>', unsafe_allow_html=True)
+            f'{icon} {display_name}</a><br><br>', unsafe_allow_html=True)
     else:
         st.markdown(
-            f'<span style="color:#aaa;font-size:0.9rem">{icon} {name}</span><br><br>',
+            f'<span style="color:#aaa;font-size:0.9rem">{icon} {display_name}</span><br><br>',
             unsafe_allow_html=True)
 
     if st.session_state.get("is_admin"):
@@ -133,7 +134,7 @@ with tab1:
             render_link_card(r, "#4A90D9")
         st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
         for r in [i for i in items if i.get("category") == "SS_日程"]:
-            st.markdown(f"- {r.get('name','')}")
+            st.markdown(f"- {tlabel(r.get('name',''))}")
             if st.session_state.get("is_admin"):
                 if st.button("🗑️", key=f"del_res_{r.get('id')}", help="删除"):
                     delete_resource(r.get("id"))
@@ -147,7 +148,7 @@ with tab1:
         st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
         for r in [i for i in items if i.get("category") == "GA_日程"]:
             url = r.get("url","")
-            name = r.get("name","")
+            name = tlabel(r.get("name",""))
             if url:
                 st.markdown(f"- [{name}]({url})")
             else:

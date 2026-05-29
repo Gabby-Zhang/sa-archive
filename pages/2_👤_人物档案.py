@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.auth import admin_sidebar
-from utils.i18n import t
+from utils.i18n import t, tlabel
 from utils.database import get_supabase
 
 # 偏好标签翻译对照（DB 存中文，英文模式展示英文；含 emoji 变体）
@@ -151,8 +151,11 @@ def render_section(person, section):
                     unsafe_allow_html=True)
 
             elif section == "links":
+                import html as _html
+                _display_key = _html.escape(tlabel(key))
+                _safe_val    = _html.escape(value)
                 st.markdown(
-                    f'<a href="{value}" target="_blank" style="color:{color}">🔗 {key}</a><br>',
+                    f'<a href="{_safe_val}" target="_blank" style="color:{color}">🔗 {_display_key}</a><br>',
                     unsafe_allow_html=True)
 
             if st.session_state.get("is_admin"):
