@@ -45,6 +45,8 @@ _MONTH = {
 def _fetch_eu_page(page: int):
     params = {**_FILTER_PARAMS, "page": page}
     r = requests.get(_BASE, params=params, headers=_HDRS, timeout=20)
+    if r.status_code == 429:
+        return None   # 被限流，通知调用方停止翻页
     r.raise_for_status()
     return BeautifulSoup(r.text, "html.parser")
 
@@ -98,11 +100,12 @@ def get_sejourne_schedule(days_back: int = 180) -> list:
     """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。异常直接抛出，不吞错误。"""
     cutoff = (date.today() - timedelta(days=days_back)).isoformat()
     all_events = []
-    for page in range(80):
+    for page in range(25):           # 最多 25 页，避免触发限流
         if page > 0:
-            time.sleep(0.3)
-        # 不捕获异常，让调用方看到具体错误
+            time.sleep(1.5)          # 礼貌间隔，防止 429
         soup = _fetch_eu_page(page)
+        if soup is None:             # 429 限流，带已有数据退出
+            break
         # all_batch 控制翻页，sejourne_batch 收集数据
         all_batch, sejourne_batch = _parse_eu_page(soup)
         if not all_batch:
