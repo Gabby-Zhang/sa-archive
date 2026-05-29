@@ -1,24 +1,42 @@
+import base64
 import feedparser
 import hashlib
-import requests
 from datetime import datetime
 from utils.database import upsert_news
 
 
-def _resolve_url(url: str, timeout: int = 5) -> str:
-    """将 Google News 重定向链接解析为真实文章 URL。"""
+def _resolve_url(url: str) -> str:
+    """
+    将 Google News 的 Base64 编码 URL 解码为真实文章 URL。
+    Google News 的 CBMi... 部分是 Base64 编码，内含真实地址，无需 HTTP 请求。
+    """
     if "news.google.com" not in url:
         return url
     try:
-        r = requests.head(url, allow_redirects=True, timeout=timeout,
-                          headers={"User-Agent": "Mozilla/5.0"})
-        final = r.url
-        # 如果还是 google 域名（重定向失败），改用 GET
-        if "google.com" in final:
-            r = requests.get(url, allow_redirects=True, timeout=timeout,
-                             headers={"User-Agent": "Mozilla/5.0"})
-            final = r.url
-        return final if "google.com" not in final else url
+        # 提取编码部分
+        if "/rss/articles/" in url:
+            encoded = url.split("/rss/articles/")[1].split("?")[0]
+        elif "/articles/" in url:
+            encoded = url.split("/articles/")[1].split("?")[0]
+        else:
+            return url
+
+        # 补齐 base64 padding 并解码
+        encoded += "=" * ((4 - len(encoded) % 4) % 4)
+        decoded = base64.urlsafe_b64decode(encoded)
+
+        # 在解码后的字节中找 http(s):// 开头的真实 URL
+        for prefix in (b"https://", b"http://"):
+            idx = decoded.find(prefix)
+            if idx >= 0:
+                # 取到第一个不可打印字符（控制符）为止
+                end = idx
+                while end < len(decoded) and decoded[end] >= 32:
+                    end += 1
+                candidate = decoded[idx:end].decode("utf-8", errors="replace")
+                if "." in candidate and len(candidate) > 10:
+                    return candidate
+        return url
     except Exception:
         return url
 
