@@ -103,32 +103,31 @@ def render_section(person, section):
             note  = item.get("note","") or ""
 
             if section == "family":
-                st.markdown(f"""
-                <div style="background:var(--cb);border-left:3px solid {color};
-                            padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
-                    <span style="color:{color};font-weight:bold">{key}</span>
-                    <span style="color:#aaa;margin-left:0.8rem;font-size:0.9rem">{value}</span>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:var(--cb);border-left:3px solid {color};padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">'
+                    f'<span style="color:{color};font-weight:bold">{key}</span>'
+                    f'<span style="color:#aaa;margin-left:0.8rem;font-size:0.9rem">{value}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True)
 
             elif section == "crew":
-                st.markdown(f"""
-                <div style="background:var(--cb);border-left:3px solid {color}44;
-                            padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">
-                    <span style="color:var(--t1);font-weight:bold">{key}</span>
-                    <div style="color:#aaa;font-size:0.85rem;margin-top:0.2rem">{note}</div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:var(--cb);border-left:3px solid {color}44;padding:0.6rem 1rem;margin:0.4rem 0;border-radius:0 6px 6px 0">'
+                    f'<span style="color:var(--t1);font-weight:bold">{key}</span>'
+                    f'<div style="color:#aaa;font-size:0.85rem;margin-top:0.2rem">{note}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True)
 
             elif section == "preferences":
                 import html as _html
-                # 将字面量 \n 转为 <br>，再 HTML 转义防注入
                 value_html = _html.escape(value).replace("\\n", "<br>")
                 key_html   = _html.escape(key)
-                st.markdown(f"""
-                <div style="background:var(--cb);border:1px solid {color}33;
-                            padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">
-                    <div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key_html}</div>
-                    <div style="color:var(--t1)">{value_html}</div>
-                </div>""", unsafe_allow_html=True)
+                st.markdown(
+                    f'<div style="background:var(--cb);border:1px solid {color}33;padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">'
+                    f'<div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key_html}</div>'
+                    f'<div style="color:var(--t1)">{value_html}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True)
 
             elif section == "links":
                 st.markdown(

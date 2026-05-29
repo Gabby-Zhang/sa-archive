@@ -374,26 +374,21 @@ if not df_page.empty:
                          f'border-radius:3px;font-size:0.7rem;font-weight:bold;margin-left:0.6rem">'
                          f'{tag_val}</span>') if tag_val else ""
 
-            st.markdown(f"""
-            <div style="
-                border-left: 4px solid {color};
-                padding: 0.8rem 1.2rem;
-                margin: 0.6rem 0;
-                background:var(--cb);
-                border-radius: 0 8px 8px 0;
-            ">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">
-                    <div>
-                        <span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>
-                        <span style="color:var(--t2);font-size:0.8rem;margin-left:0.8rem">{row.get("date","")}</span>
-                        {tag_html}
-                    </div>
-                    <div style="font-size:0.85rem">{source_html}</div>
-                </div>
-                <div style="font-size:1rem;margin-top:0.3rem;color:var(--t1)">{row.get("title","")}</div>
-                {note_html}
-            </div>
-            """, unsafe_allow_html=True)
+            _card = (
+                f'<div style="border-left:4px solid {color};padding:0.8rem 1.2rem;margin:0.6rem 0;background:var(--cb);border-radius:0 8px 8px 0">'
+                f'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.3rem">'
+                f'<div>'
+                f'<span style="color:{color};font-weight:bold;font-size:0.85rem">{row.get("person","")}</span>'
+                f'<span style="color:var(--t2);font-size:0.8rem;margin-left:0.8rem">{row.get("date","")}</span>'
+                f'{tag_html}'
+                f'</div>'
+                f'<div style="font-size:0.85rem">{source_html}</div>'
+                f'</div>'
+                f'<div style="font-size:1rem;margin-top:0.3rem;color:var(--t1)">{row.get("title","")}</div>'
+                f'{note_html}'
+                f'</div>'
+            )
+            st.markdown(_card, unsafe_allow_html=True)
 
             if img_url:
                 try:

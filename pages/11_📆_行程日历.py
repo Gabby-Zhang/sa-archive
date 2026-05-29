@@ -119,18 +119,13 @@ def _event_card(title: str, ev_date: str, location: str,
     link_html = (f' <a href="{source_url}" target="_blank" '
                  f'style="color:#4A90D9;font-size:0.75rem">🔗</a>') if source_url else ""
 
-    st.markdown(f"""
-    <div style="{bg};border-radius:0 8px 8px 0;
-                padding:0.55rem 0.85rem;margin:0.3rem 0;opacity:{opacity}">
-        <div style="color:{date_color};font-size:0.73rem;font-weight:600">
-            {ev_date}{badge}
-        </div>
-        <div style="color:var(--t1);font-size:0.88rem;margin-top:0.1rem;line-height:1.35">
-            {title}{link_html}
-        </div>
-        {loc_html}
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div style="{bg};border-radius:0 8px 8px 0;padding:0.55rem 0.85rem;margin:0.3rem 0;opacity:{opacity}">'
+        f'<div style="color:{date_color};font-size:0.73rem;font-weight:600">{ev_date}{badge}</div>'
+        f'<div style="color:var(--t1);font-size:0.88rem;margin-top:0.1rem;line-height:1.35">{title}{link_html}</div>'
+        f'{loc_html}'
+        f'</div>',
+        unsafe_allow_html=True)
 
 
 def _section_header(label: str):

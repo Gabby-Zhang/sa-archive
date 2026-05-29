@@ -57,21 +57,23 @@ for f in files:
     safe_person = _html.escape(f.get("person","") or "")
     safe_ftype  = _html.escape(ftype)
 
-    st.markdown(f"""
-    <div style="background:var(--cb);border-left:4px solid {color};
-                padding:0.8rem 1.2rem;margin:0.4rem 0;border-radius:0 8px 8px 0">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
-            <div>
-                <span style="font-size:1rem">{icon}</span>
-                <span style="color:var(--t1);margin-left:0.5rem;font-weight:bold">{safe_title}</span>
-                <span style="color:{color};font-size:0.8rem;margin-left:0.8rem">{safe_person}</span>
-                <span style="color:#666;font-size:0.8rem;margin-left:0.8rem">{safe_ftype}</span>
-            </div>
-            {"<a href='" + url + "' target='_blank' style='color:#4A90D9;font-size:0.9rem'>📂 打开</a>" if url and not is_qr else ""}
-        </div>
-        {("<div style='color:#aaa;font-size:0.85rem;margin-top:0.3rem'>" + safe_note + "</div>") if safe_note else ""}
-    </div>
-    """, unsafe_allow_html=True)
+    _safe_url = _html.escape(url)
+    _open_link = f'<a href="{_safe_url}" target="_blank" style="color:#4A90D9;font-size:0.9rem">📂 打开</a>' if url and not is_qr else ""
+    _note_div  = f'<div style="color:#aaa;font-size:0.85rem;margin-top:0.3rem">{safe_note}</div>' if safe_note else ""
+    st.markdown(
+        f'<div style="background:var(--cb);border-left:4px solid {color};padding:0.8rem 1.2rem;margin:0.4rem 0;border-radius:0 8px 8px 0">'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">'
+        f'<div>'
+        f'<span style="font-size:1rem">{icon}</span>'
+        f'<span style="color:var(--t1);margin-left:0.5rem;font-weight:bold">{safe_title}</span>'
+        f'<span style="color:{color};font-size:0.8rem;margin-left:0.8rem">{safe_person}</span>'
+        f'<span style="color:#666;font-size:0.8rem;margin-left:0.8rem">{safe_ftype}</span>'
+        f'</div>'
+        f'{_open_link}'
+        f'</div>'
+        f'{_note_div}'
+        f'</div>',
+        unsafe_allow_html=True)
 
     # 二维码图片内嵌显示
     if is_qr and url:

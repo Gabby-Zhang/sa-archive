@@ -118,16 +118,13 @@ if images:
                     f'onerror="this.style.display=\'none\'">',
                     unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div style="background:var(--cb);padding:0.5rem 0.8rem;
-                        border-radius:0 0 8px 8px;margin-top:-8px;margin-bottom:1rem">
-                <div style="color:{color};font-size:0.75rem">{img.get("person","")}</div>
-                <div style="color:var(--t1);font-size:0.85rem;font-weight:bold">
-                    {img.get("title","")}
-                </div>
-                <div style="color:#666;font-size:0.75rem">{img.get("date","")} · {img.get("tag","")}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background:var(--cb);padding:0.5rem 0.8rem;border-radius:0 0 8px 8px;margin-top:-8px;margin-bottom:1rem">'
+                f'<div style="color:{color};font-size:0.75rem">{img.get("person","")}</div>'
+                f'<div style="color:var(--t1);font-size:0.85rem;font-weight:bold">{img.get("title","")}</div>'
+                f'<div style="color:#666;font-size:0.75rem">{img.get("date","")} · {img.get("tag","")}</div>'
+                f'</div>',
+                unsafe_allow_html=True)
 
             if st.session_state.get("is_admin"):
                 if st.button("🗑️ 删除", key=f"del_img_{img.get('id')}", use_container_width=True):

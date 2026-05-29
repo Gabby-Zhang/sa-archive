@@ -264,29 +264,13 @@ except Exception:
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{events_count}</div>
-        <div class="label">{t("stat_events")}</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-box"><div class="num">{events_count}</div><div class="label">{t("stat_events")}</div></div>', unsafe_allow_html=True)
 with c2:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{news_count}</div>
-        <div class="label">{t("stat_news")}</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-box"><div class="num">{news_count}</div><div class="label">{t("stat_news")}</div></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{files_count}</div>
-        <div class="label">{t("stat_files")}</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-box"><div class="num">{files_count}</div><div class="label">{t("stat_files")}</div></div>', unsafe_allow_html=True)
 with c4:
-    st.markdown(f"""
-    <div class="stat-box">
-        <div class="num">{images_count}</div>
-        <div class="label">{t("stat_images")}</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f'<div class="stat-box"><div class="num">{images_count}</div><div class="label">{t("stat_images")}</div></div>', unsafe_allow_html=True)
 
 st.divider()
 st.info(t("home_hint"))

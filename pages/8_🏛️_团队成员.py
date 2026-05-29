@@ -106,14 +106,14 @@ for tab, person in [(tab_ss, "Stéphane Séjourné"), (tab_ga, "Gabriel Attal")]
 
             # ── 正常显示 ──────────────────────────────────
             else:
-                st.markdown(f"""
-                <div style="background:var(--cb);border-left:3px solid {color};
-                            padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">
-                    <span style="color:{color};font-weight:bold">{m.get('name','')}</span>
-                    <span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get('title','')}</span>
-                    {"<div style='color:#bbb;font-size:0.82rem;margin-top:0.2rem'>" + m.get('note','') + "</div>" if m.get('note') else ""}
-                </div>
-                """, unsafe_allow_html=True)
+                _note_div = f'<div style="color:#bbb;font-size:0.82rem;margin-top:0.2rem">{m.get("note","")}</div>' if m.get("note") else ""
+                st.markdown(
+                    f'<div style="background:var(--cb);border-left:3px solid {color};padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">'
+                    f'<span style="color:{color};font-weight:bold">{m.get("name","")}</span>'
+                    f'<span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get("title","")}</span>'
+                    f'{_note_div}'
+                    f'</div>',
+                    unsafe_allow_html=True)
 
                 if st.session_state.get("is_admin"):
                     bc1, bc2, bc3 = st.columns([8, 1, 1])
