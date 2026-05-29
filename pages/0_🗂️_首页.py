@@ -68,6 +68,19 @@ st.markdown("""
 .extra-link-row.gold a { color:#C9A84C; }
 .extra-link-row.gold a:hover { border-bottom-color: #C9A84C; }
 
+/* ── 竞选账号子区块 ── */
+.campaign-sub {
+    margin-top: 0.75rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid #C9A84C22;
+}
+.campaign-label {
+    font-size: 0.72rem;
+    color: var(--t2);
+    margin-bottom: 0.45rem;
+    font-weight: 500;
+}
+
 .stat-box {
     background: var(--cb);
     border-left: 4px solid #4A90D9;
@@ -224,10 +237,20 @@ with col2:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    _ga_campaign = (
+        '<div class="campaign-sub">'
+        '<div class="campaign-label">🗳️ Attal Président · 2027年法国总统竞选账号</div>'
+        '<div class="social-row" style="margin-bottom:0">'
+        '<a href="https://www.instagram.com/attalpresident_/" target="_blank" rel="noopener noreferrer"'
+        ' class="social-icon-btn ig" title="Instagram">%s</a>'
+        '</div>'
+        '</div>'
+    ) % _SVG["ig"]
     st.markdown(
         f'<div class="links-card gold">'
         f'{_social_row(_GA_SOCIAL)}'
         f'{_db_links(ga_links, "gold")}'
+        f'{_ga_campaign}'
         f'</div>',
         unsafe_allow_html=True
     )
