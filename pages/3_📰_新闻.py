@@ -198,6 +198,34 @@ if not news:
 
 st.divider()
 
+# ── 管理员：批量修复 Google 重定向链接 ───────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("🔧 修复 Google 重定向链接"):
+        st.caption("将数据库中所有 news.google.com 链接解析为真实文章 URL，解决部分用户无法打开的问题。")
+        if st.button("开始修复", type="primary", use_container_width=True):
+            from utils.news_fetcher import _resolve_url
+            db = get_supabase_admin()
+            with st.spinner("正在查询并修复…"):
+                try:
+                    records = (db.table("news")
+                               .select("id,url")
+                               .like("url", "%news.google.com%")
+                               .execute().data)
+                    st.write(f"找到 **{len(records)}** 条 Google 链接，开始解析…")
+                    progress = st.progress(0)
+                    fixed = 0
+                    for i, rec in enumerate(records):
+                        resolved = _resolve_url(rec["url"])
+                        if resolved != rec["url"]:
+                            db.table("news").update({"url": resolved}).eq("id", rec["id"]).execute()
+                            fixed += 1
+                        progress.progress((i + 1) / len(records))
+                    progress.empty()
+                    st.cache_data.clear()
+                    st.success(f"✅ 完成！共修复 {fixed} / {len(records)} 条链接")
+                except Exception as e:
+                    st.error(f"修复失败：{e}")
+
 # ── 手动添加新闻 ─────────────────────────────────────────
 with st.expander("➕ 手动添加新闻"):
     with st.form("add_news_form"):
