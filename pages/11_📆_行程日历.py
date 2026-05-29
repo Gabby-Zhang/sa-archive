@@ -227,8 +227,30 @@ with col_s:
             st.error(f"抓取失败：{_e}")
             s_events = []
 
+    # ── 调试：显示第一页的原始情况 ──────────────────────────
+    with st.expander("🔍 调试信息（排错用）", expanded=not s_events):
+        try:
+            dbg_soup = _fetch_eu_page(0)
+            if dbg_soup is None:
+                st.warning("第 0 页返回 429，被限流")
+            else:
+                articles = dbg_soup.select("article.ecl-content-item--inline")
+                st.write(f"第 0 页找到 **{len(articles)}** 篇文章")
+                if articles:
+                    first_text = articles[0].get_text()[:300]
+                    st.code(first_text)
+                    matches = [a for a in articles
+                               if "séjourné" in a.get_text().lower()
+                               or "sejourne" in a.get_text().lower()]
+                    st.write(f"其中含「Séjourné」的：**{len(matches)}** 篇")
+                else:
+                    st.warning("没有找到 `article.ecl-content-item--inline`，HTML 结构可能已变更")
+                    st.code(str(dbg_soup)[:500])
+        except Exception as dbg_e:
+            st.error(f"调试抓取失败：{dbg_e}")
+
     if not s_events:
-        st.info("暂无日程数据（可能是网站暂时不可用，或 Séjourné 在该时间段内没有已发布的行程）")
+        st.info("暂无日程数据")
     else:
         s_upcoming = [e for e in s_events if e["status"] != "past"]
         s_past     = [e for e in s_events if e["status"] == "past"]
