@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.database import get_supabase
+import html as _html
 
 admin_sidebar()
 
@@ -21,6 +22,49 @@ st.markdown("""
 .profile-card h2 { color: #4A90D9; margin-bottom: 0.5rem; }
 .profile-card .role { color: var(--t2); font-size: 0.9rem; margin-bottom: 1rem; }
 .profile-card .bio { color: var(--t1); font-size: 0.95rem; line-height: 1.6; }
+
+/* ── 链接名片 ── */
+.links-card {
+    background: var(--cb);
+    border: 1px solid #4A90D922;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin: 0.3rem 0.5rem 0.5rem 0.5rem;
+}
+.links-card.gold { border-color: #C9A84C22; }
+.social-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+.social-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+.social-btn:hover { opacity: 0.8; }
+.social-btn.tw   { background:#000;    color:#fff !important; }
+.social-btn.ig   { background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); color:#fff !important; }
+.social-btn.tt   { background:#010101; color:#fff !important; border:1px solid #69C9D0; }
+.social-btn.fb   { background:#1877F2; color:#fff !important; }
+
+.extra-links { display:flex; flex-direction:column; gap:0.3rem; }
+.extra-link-row {
+    display:flex; align-items:center; gap:0.5rem;
+    font-size:0.82rem; color:var(--t1);
+}
+.extra-link-row a { color:#4A90D9; text-decoration:none; }
+.extra-link-row a:hover { text-decoration:underline; }
+.extra-link-label { color:var(--t2); font-size:0.75rem; min-width:4rem; }
+
 .stat-box {
     background: var(--cb);
     border-left: 4px solid #4A90D9;
@@ -32,10 +76,21 @@ st.markdown("""
 .stat-box .label { color: var(--t2); font-size: 0.9rem; }
 @media (max-width: 640px) {
     .profile-card { margin: 0.3rem 0; }
+    .links-card { margin: 0.3rem 0; }
     .stat-box .num { font-size: 1.5rem; }
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ── 从 profile_items 加载重要链接 ────────────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def _get_links(person: str):
+    try:
+        return get_supabase().table("profile_items").select("*") \
+            .eq("person", person).eq("section", "links") \
+            .order("sort_order").execute().data or []
+    except Exception:
+        return []
 
 # ── 首页标题 ─────────────────────────────────────────────
 st.markdown("""
@@ -50,6 +105,44 @@ st.divider()
 # ── 人物卡片 ─────────────────────────────────────────────
 col1, col2 = st.columns(2)
 
+# 社媒链接（固定）
+_SS_SOCIAL = [
+    ("tw", "𝕏",         "https://x.com/sejourne_s"),
+    ("ig", "Instagram",  "https://www.instagram.com/stephanesejourne/"),
+    ("fb", "Facebook",   "https://www.facebook.com/stephanesejourne/"),
+]
+_GA_SOCIAL = [
+    ("tw", "𝕏",         "https://x.com/GabrielAttal"),
+    ("ig", "Instagram",  "https://www.instagram.com/gabrielattal/"),
+    ("tt", "TikTok",     "https://www.tiktok.com/@gabrielattal"),
+    ("fb", "Facebook",   "https://www.facebook.com/gabriel.attal/"),
+]
+
+def _social_row(items):
+    btns = "".join(
+        f'<a href="{url}" target="_blank" rel="noopener noreferrer" class="social-btn {cls}">{label}</a>'
+        for cls, label, url in items
+    )
+    return f'<div class="social-row">{btns}</div>'
+
+def _db_links(rows, color):
+    if not rows:
+        return ""
+    items = ""
+    for r in rows:
+        key   = _html.escape(r.get("key","") or "")
+        val   = _html.escape(r.get("value","") or "")
+        items += (
+            f'<div class="extra-link-row">'
+            f'<span class="extra-link-label">{key}</span>'
+            f'<a href="{val}" target="_blank" rel="noopener noreferrer" style="color:{color}">{val[:55]}{"…" if len(val)>55 else ""}</a>'
+            f'</div>'
+        )
+    return f'<div class="extra-links">{items}</div>'
+
+ss_links = _get_links("Stéphane Séjourné")
+ga_links = _get_links("Gabriel Attal")
+
 with col1:
     st.markdown("""
     <div class="profile-card">
@@ -63,6 +156,13 @@ with col1:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="links-card">'
+        f'{_social_row(_SS_SOCIAL)}'
+        f'{_db_links(ss_links, "#4A90D9")}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 with col2:
     st.markdown("""
@@ -76,6 +176,13 @@ with col2:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="links-card gold">'
+        f'{_social_row(_GA_SOCIAL)}'
+        f'{_db_links(ga_links, "#C9A84C")}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 st.divider()
 
