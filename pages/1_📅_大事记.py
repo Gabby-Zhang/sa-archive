@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.database import get_events, add_event, update_event, delete_event
+from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, get_supabase_admin
 from utils.auth import admin_sidebar
 
 # ── Google Drive 链接转换 ─────────────────────────────────
@@ -75,6 +75,11 @@ if st.session_state.get("is_admin"):
                     st.image(_prev, width=200)
                 except Exception:
                     st.warning("无法预览，请确认链接已设为公开")
+            uploaded_pdf = st.file_uploader(
+                "📄 附件 PDF（可选，将自动存档并关联到本条目）",
+                type=["pdf"],
+                help="上传完整新闻原文或相关文件",
+            )
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if new_title:
                     result = add_event({
@@ -88,12 +93,31 @@ if st.session_state.get("is_admin"):
                         "tag": new_tag,
                     })
                     # 保存后自动跳到该条目并打开关联内容表单
+                    new_id = None
                     if result and result.data:
                         new_id = result.data[0].get("id")
                         if new_id:
                             st.session_state.adding_link_for = new_id
                             st.session_state["year_filter_select"] = str(new_date.year)
                             st.session_state.timeline_page = 1
+                    # 若上传了 PDF，存入 Storage 并创建 event_links 关联
+                    if uploaded_pdf and new_id:
+                        try:
+                            pdf_url = upload_to_storage(
+                                "documents",
+                                uploaded_pdf.name,
+                                uploaded_pdf.getvalue(),
+                                "application/pdf",
+                            )
+                            get_supabase_admin().table("event_links").insert({
+                                "event_id": new_id,
+                                "title":    uploaded_pdf.name,
+                                "url":      pdf_url,
+                                "type":     "📄 文件附件",
+                                "source":   new_source or "",
+                            }).execute()
+                        except Exception as _ue:
+                            st.warning(f"PDF 上传失败（请确认 Supabase 已创建 documents bucket）：{_ue}")
                     st.rerun()
                 else:
                     st.warning("请填写标题")

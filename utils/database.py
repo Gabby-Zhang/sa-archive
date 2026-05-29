@@ -75,3 +75,18 @@ def get_files(person=None):
 def add_file(data: dict):
     db = get_supabase()
     return db.table("files").insert(data).execute()
+
+# ── Supabase Storage 上传 ────────────────────────────────
+def upload_to_storage(bucket: str, filename: str, data: bytes, content_type: str) -> str:
+    """上传文件到 Supabase Storage，返回公开 URL。
+    使用前请在 Supabase 控制台创建对应 bucket（设为 public）。
+    """
+    import uuid as _uuid
+    sb = get_supabase_admin()
+    path = f"{_uuid.uuid4().hex[:8]}_{filename}"
+    sb.storage.from_(bucket).upload(
+        path=path,
+        file=data,
+        file_options={"content-type": content_type, "upsert": "true"},
+    )
+    return sb.storage.from_(bucket).get_public_url(path)
