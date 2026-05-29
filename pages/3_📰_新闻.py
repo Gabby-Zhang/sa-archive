@@ -63,11 +63,13 @@ import html as _html
 
 for item in news:
     color = PERSON_COLOR.get(item.get("person", ""), "#888")
-    url = item.get("url", "")
-    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
-    safe_title  = _html.escape(item.get("title",  "") or "")
-    safe_source = _html.escape(item.get("source", "") or "")
-    safe_person = _html.escape(item.get("person", "") or "")
+    url = item.get("url", "") or ""
+    archive_url  = f"https://www.removepaywall.com/{url}" if url else ""
+    safe_title   = _html.escape(item.get("title",  "") or "")
+    safe_source  = _html.escape(item.get("source", "") or "")
+    safe_person  = _html.escape(item.get("person", "") or "")
+    safe_url     = _html.escape(url)
+    safe_archive = _html.escape(archive_url)
 
     pub_date = item.get("published_at", "")
     if pub_date:
@@ -104,8 +106,8 @@ for item in news:
                 </span>
             </div>
             <div style="display:flex;gap:1rem;font-size:0.85rem">
-                {"<a href='" + url + "' rel='noopener noreferrer' style='color:#4A90D9'>🔗 原文</a>" if url else ""}
-                {"<a href='" + archive_url + "' rel='noopener noreferrer' style='color:#888'>📦 存档版</a>" if url else ""}
+                {f'<a href="{safe_url}" rel="noopener noreferrer" style="color:#4A90D9">🔗 原文</a>' if url else ""}
+                {f'<a href="{safe_archive}" rel="noopener noreferrer" style="color:#888">📦 存档版</a>' if url else ""}
             </div>
         </div>
         <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
