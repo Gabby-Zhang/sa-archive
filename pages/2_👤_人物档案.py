@@ -3,16 +3,24 @@ from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase
 
-# 偏好标签翻译对照（DB 存中文，英文模式展示英文）
+# 偏好标签翻译对照（DB 存中文，英文模式展示英文；含 emoji 变体）
 _PREF_KEY_EN = {
-    "喜欢的酒":    "Favourite drink",
-    "喜欢的电视剧": "Favourite TV shows",
-    "喜欢的电影":  "Favourite films",
-    "喜欢的书":   "Favourite books",
-    "喜欢的音乐":  "Favourite music",
-    "喜欢的运动":  "Favourite sport",
-    "喜欢的食物":  "Favourite food",
-    "喜欢的地方":  "Favourite places",
+    "喜欢的酒":        "Favourite drink",
+    "🥃 喜欢的酒":     "🥃 Favourite drink",
+    "喜欢的电视剧":    "Favourite TV shows",
+    "📺 喜欢的电视剧": "📺 Favourite TV shows",
+    "喜欢的电影":      "Favourite films",
+    "🎬 喜欢的电影":   "🎬 Favourite films",
+    "喜欢的书":        "Favourite books",
+    "📚 喜欢的书":     "📚 Favourite books",
+    "喜欢的音乐":      "Favourite music",
+    "🎵 喜欢的音乐":   "🎵 Favourite music",
+    "喜欢的运动":      "Favourite sport",
+    "⚽ 喜欢的运动":   "⚽ Favourite sport",
+    "喜欢的食物":      "Favourite food",
+    "🍽️ 喜欢的食物":  "🍽️ Favourite food",
+    "喜欢的地方":      "Favourite places",
+    "📍 喜欢的地方":   "📍 Favourite places",
 }
 
 admin_sidebar()

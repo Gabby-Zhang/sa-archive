@@ -114,7 +114,12 @@ def render_tool_card(r):
             st.rerun()
 
 # ── 三个 Tab ─────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["📌 官方链接", "🖼️ 图库来源", "🛠️ 小工具"])
+_en = st.session_state.get("lang") == "en"
+tab1, tab2, tab3 = st.tabs(
+    ["📌 Official links", "🖼️ Image sources", "🛠️ Tools"]
+    if _en else
+    ["📌 官方链接", "🖼️ 图库来源", "🛠️ 小工具"]
+)
 
 # ── 官方链接 ─────────────────────────────────────────────
 with tab1:
@@ -123,10 +128,10 @@ with tab1:
 
     with col1:
         st.subheader("🔵 Stéphane Séjourné")
-        st.markdown("**🔗 官方页面**")
+        st.markdown(f"**🔗 {'Official pages' if _en else '官方页面'}**")
         for r in [i for i in items if i.get("category") == "SS"]:
             render_link_card(r, "#4A90D9")
-        st.markdown("**📅 固定露面场合**")
+        st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
         for r in [i for i in items if i.get("category") == "SS_日程"]:
             st.markdown(f"- {r.get('name','')}")
             if st.session_state.get("is_admin"):
@@ -136,10 +141,10 @@ with tab1:
 
     with col2:
         st.subheader("🟡 Gabriel Attal")
-        st.markdown("**🔗 官方页面**")
+        st.markdown(f"**🔗 {'Official pages' if _en else '官方页面'}**")
         for r in [i for i in items if i.get("category") == "GA"]:
             render_link_card(r, "#C9A84C")
-        st.markdown("**📅 固定露面场合**")
+        st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
         for r in [i for i in items if i.get("category") == "GA_日程"]:
             url = r.get("url","")
             name = r.get("name","")
@@ -156,12 +161,12 @@ with tab1:
 with tab2:
     items = load_resources("图库来源")
 
-    st.subheader("💰 付费图库")
-    st.caption("需要订阅，非购买下载的图片会带水印，不同地区图片会有所差异")
+    st.subheader("💰 " + ("Paid archives" if _en else "付费图库"))
+    st.caption("Subscription required; downloaded images may have watermarks and vary by region." if _en else "需要订阅，非购买下载的图片会带水印，不同地区图片会有所差异")
     for r in [i for i in items if i.get("category") == "付费图库"]:
         render_box_card(r, "#4A90D9")
 
-    st.subheader("🆓 官方免费图库")
+    st.subheader("🆓 " + ("Official free archives" if _en else "官方免费图库"))
     for r in [i for i in items if i.get("category") == "官方免费图库"]:
         render_box_card(r, "#7EC8A4")
 
