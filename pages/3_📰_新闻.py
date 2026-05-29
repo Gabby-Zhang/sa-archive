@@ -59,7 +59,10 @@ PERSON_COLOR = {
 for item in news:
     color = PERSON_COLOR.get(item.get("person", ""), "#888")
     url = item.get("url", "")
-    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
+    # 旧的 Google News 链接在显示层动态转为 removepaywall 代理
+    if url and "news.google.com" in url:
+        url = f"https://www.removepaywall.com/{url}"
+    archive_url = f"https://www.removepaywall.com/{url}" if url and "removepaywall.com" not in url else url
 
     pub_date = item.get("published_at", "")
     if pub_date:

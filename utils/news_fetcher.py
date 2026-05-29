@@ -60,11 +60,10 @@ def fetch_all_news():
             continue
 
         for entry in feed.entries:
-            url = entry.get("link", "").strip()
-            if not url or url in seen_urls:
+            raw_url = entry.get("link", "").strip()
+            if not raw_url or raw_url in seen_urls:
                 continue
-            # 跳过直接媒体源中意外混入的 Google 链接
-            if "google.com" in url and not is_google:
+            if "google.com" in raw_url and not is_google:
                 continue
 
             title   = entry.get("title", "").strip()
@@ -73,17 +72,23 @@ def fetch_all_news():
             if not person:
                 continue
 
-            seen_urls.add(url)
-            url_hash = hashlib.md5(url.encode()).hexdigest()
+            seen_urls.add(raw_url)
+
+            # Google News URL → 用 removepaywall.com 代理，绕过 GDPR consent
+            # removepaywall.com 服务器在美国，可直接追踪 Google 跳转
+            if is_google and "news.google.com" in raw_url:
+                url = f"https://www.removepaywall.com/{raw_url}"
+            else:
+                url = raw_url
+
+            url_hash = hashlib.md5(raw_url.encode()).hexdigest()  # ID 仍用原始 URL 去重
             try:
                 pub_dt = datetime(*entry.published_parsed[:6]).isoformat()
             except Exception:
                 pub_dt = datetime.now().isoformat()
 
-            # 来源域名
             source = feed_info["source"]
             if not source:
-                # Google News 条目：从标题末尾提取 "标题 - 媒体名"
                 if " - " in title:
                     source = title.split(" - ")[-1].strip()
                 elif hasattr(entry, "source"):
