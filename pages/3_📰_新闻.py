@@ -12,6 +12,8 @@ st.set_page_config(page_title="新闻 · 档案馆", page_icon="📰", layout="w
 st.title("📰 新闻档案")
 st.caption("自动抓取 + 手动添加的新闻汇总")
 
+st.info("🌐 部分新闻链接来自 Google News，在中国大陆需要开启 **VPN 全局模式** 才能正常访问。", icon=None)
+
 # ── 刷新按钮 ─────────────────────────────────────────────
 col_btn, col_info = st.columns([1, 4])
 with col_btn:
