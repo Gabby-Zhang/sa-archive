@@ -118,11 +118,15 @@ def render_section(person, section):
                 </div>""", unsafe_allow_html=True)
 
             elif section == "preferences":
+                import html as _html
+                # 将字面量 \n 转为 <br>，再 HTML 转义防注入
+                value_html = _html.escape(value).replace("\\n", "<br>")
+                key_html   = _html.escape(key)
                 st.markdown(f"""
                 <div style="background:var(--cb);border:1px solid {color}33;
                             padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">
-                    <div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key}</div>
-                    <div style="color:var(--t1);white-space:pre-line">{value}</div>
+                    <div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key_html}</div>
+                    <div style="color:var(--t1)">{value_html}</div>
                 </div>""", unsafe_allow_html=True)
 
             elif section == "links":
