@@ -1,122 +1,64 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
-from datetime import date, timedelta
-import time
+from datetime import date
 from utils.auth import admin_sidebar
 from utils.database import get_supabase_admin
 
 admin_sidebar()
 
 st.title("📆 行程日历")
-st.caption("Séjourné 行程自动抓取自欧盟委员会官网 · Attal 行程由团队手动维护")
+st.caption("Séjourné 行程来自 GitHub ICS 文件 · Attal 行程由团队手动维护")
 
 SEJOURNE_COLOR = "#4A90D9"
 ATTAL_COLOR    = "#C9A84C"
 
-# ── EU Commission 抓取逻辑（同 sejourn_calendar_sync.py）────────────────────
-# 直接使用浏览器实际发出的 URL 格式：
-# 括号 → %5B %5D，冒号 → %3A，但 http:// 的斜杠不编码
-_BASE_URL = (
-    "https://commission.europa.eu/about/organisation/college-commissioners"
-    "/calendar-items-president-and-commissioners_en"
-    "?f%5B0%5D=commissioner_dynamic_commissioner_dynamic%3A"
-    "http%3A//publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
-    "&f%5B1%5D=ewcms_calendar_status%3Apast"
-    "&f%5B2%5D=ewcms_calendar_status%3Aupcoming"
-)
-_HDRS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-}
-_MONTH = {
-    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5,  "Jun": 6,
-    "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
-}
+# Séjourné ICS 文件托管在 GitHub 公开仓库
+_ICS_URL = "https://raw.githubusercontent.com/Gabby-Zhang/sejourn-calendar/main/sejourn.ics"
 
 
-def _fetch_eu_page(page: int):
-    url = f"{_BASE_URL}&page={page}"
-    r = requests.get(url, headers=_HDRS, timeout=20)
-    if r.status_code == 429:
-        return None   # 被限流，通知调用方停止翻页
-    r.raise_for_status()
-    return BeautifulSoup(r.text, "html.parser")
-
-
-def _parse_eu_page(soup) -> tuple:
-    """
-    返回 (all_events, sejourne_events)。
-    all_events 用于控制翻页（判断是否还有更早的内容）。
-    sejourne_events 仅包含 Séjourné 的行程。
-    """
-    all_events, sejourne_events = [], []
-    for article in soup.select("article.ecl-content-item--inline"):
-        time_el = article.select_one("time.ecl-content-item__date")
-        if not time_el:
-            continue
-        day   = time_el.select_one(".ecl-date-block__day")
-        month = time_el.select_one(".ecl-date-block__month")
-        year  = time_el.select_one(".ecl-date-block__year")
-        if not (day and month and year):
-            continue
-        try:
-            ev_date = date(
-                int(year.get_text(strip=True)),
-                _MONTH[month.get_text(strip=True)],
-                int(day.get_text(strip=True)),
-            )
-        except (KeyError, ValueError):
-            continue
-        classes = time_el.get("class", [])
-        status  = ("past"    if "ecl-date-block--past"    in classes else
-                   "ongoing" if "ecl-date-block--ongoing" in classes else
-                   "upcoming")
-        title_el    = article.select_one(".ecl-content-block__title")
-        location_el = article.select_one(".ecl-content-block__secondary-meta-label")
-        ev = {
-            "title":    title_el.get_text(strip=True) if title_el else "—",
-            "date":     ev_date.isoformat(),
-            "location": location_el.get_text(strip=True) if location_el else "",
-            "status":   status,
-        }
-        all_events.append(ev)
-        # 检查是否是 Séjourné 的活动
-        article_text = article.get_text().lower()
-        if "séjourné" in article_text or "sejourne" in article_text:
-            sejourne_events.append(ev)
-    return all_events, sejourne_events
+def _parse_ics(text: str) -> list:
+    """解析 ICS 文本，返回事件列表。"""
+    events, current = [], {}
+    today = date.today()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line == "BEGIN:VEVENT":
+            current = {}
+        elif line == "END:VEVENT":
+            if current.get("title") and current.get("date"):
+                events.append(current)
+            current = {}
+        elif line.startswith("SUMMARY:"):
+            current["title"] = line[8:].replace("\\,", ",").replace("\\n", " ").strip()
+        elif line.startswith("DTSTART"):
+            # DTSTART;VALUE=DATE:YYYYMMDD  或  DTSTART:YYYYMMDDTHHMMSSZ
+            val = line.split(":")[-1][:8]
+            try:
+                y, m, d_ = int(val[:4]), int(val[4:6]), int(val[6:8])
+                ev_date = date(y, m, d_)
+                current["date"] = ev_date.isoformat()
+                if ev_date < today:
+                    current["status"] = "past"
+                elif ev_date == today:
+                    current["status"] = "ongoing"
+                else:
+                    current["status"] = "upcoming"
+            except (ValueError, IndexError):
+                pass
+        elif line.startswith("LOCATION:"):
+            current["location"] = line[9:].replace("\\,", ",").strip()
+    return events
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def get_sejourne_schedule(days_back: int = 180) -> list:
-    """从欧委会官网抓取 Séjourné 日程，缓存 1 小时。异常直接抛出，不吞错误。"""
-    cutoff = (date.today() - timedelta(days=days_back)).isoformat()
-    all_events = []
-    for page in range(25):           # 最多 25 页，避免触发限流
-        if page > 0:
-            time.sleep(1.5)          # 礼貌间隔，防止 429
-        soup = _fetch_eu_page(page)
-        if soup is None:             # 429 限流，带已有数据退出
-            break
-        # all_batch 控制翻页，sejourne_batch 收集数据
-        all_batch, sejourne_batch = _parse_eu_page(soup)
-        if not all_batch:
-            break  # 页面没有任何内容，停止
-        # 只收集时间窗口内的 Séjourné 条目
-        in_window = [e for e in sejourne_batch
-                     if e["date"] >= cutoff or e["status"] in ("upcoming", "ongoing")]
-        all_events.extend(in_window)
-        # 用所有委员的最早日期判断是否继续翻页
-        oldest = min((e["date"] for e in all_batch), default="9999")
-        if oldest < cutoff:
-            break
-    upcoming = sorted([e for e in all_events if e["status"] != "past"],
+def get_sejourne_schedule() -> list:
+    """从 GitHub ICS 文件读取 Séjourné 日程，缓存 1 小时。"""
+    r = requests.get(_ICS_URL, timeout=15)
+    r.raise_for_status()
+    events = _parse_ics(r.text)
+    upcoming = sorted([e for e in events if e.get("status") != "past"],
                       key=lambda x: x["date"])
-    past     = sorted([e for e in all_events if e["status"] == "past"],
+    past     = sorted([e for e in events if e.get("status") == "past"],
                       key=lambda x: x["date"], reverse=True)
     return upcoming + past
 
@@ -216,52 +158,12 @@ with col_s:
         st.cache_data.clear()
         st.rerun()
 
-    with st.spinner("正在从欧委会官网获取日程…"):
+    with st.spinner("正在读取日程…"):
         try:
             s_events = get_sejourne_schedule()
         except Exception as _e:
-            st.error(f"抓取失败：{_e}")
+            st.error(f"读取失败：{_e}")
             s_events = []
-
-    # ── 调试：在整个页面 HTML 里找 Séjourné 的 filter ID ───
-    with st.expander("🔍 调试信息（排错用）", expanded=not s_events):
-        try:
-            # 用 Session 带 cookie 请求，模拟浏览器行为
-            base_only = (
-                "https://commission.europa.eu/about/organisation/college-commissioners"
-                "/calendar-items-president-and-commissioners_en"
-            )
-            sess = requests.Session()
-            sess.get(base_only, headers=_HDRS, timeout=20)   # 建立 session
-            r0 = sess.get(f"{base_only}?f[0]=ewcms_calendar_status:past"
-                          f"&f[1]=ewcms_calendar_status:upcoming&page=0",
-                          headers=_HDRS, timeout=20)
-            dbg_soup = BeautifulSoup(r0.text, "html.parser")
-
-            articles = dbg_soup.select("article.ecl-content-item--inline")
-            st.write(f"第 0 页找到 **{len(articles)}** 篇文章")
-
-            # 在整个 HTML 里搜 Séjourné（找他的 filter ID）
-            full_html = r0.text.lower()
-            idx = full_html.find("séjourné")
-            if idx == -1:
-                idx = full_html.find("sejourne")
-            if idx >= 0:
-                st.success("✅ 页面 HTML 里找到了「Séjourné」！")
-                st.code(r0.text[max(0, idx-100):idx+300])
-            else:
-                st.warning("❌ 整个 HTML 里都没有「Séjourné」——他的 ID 或名字可能不同")
-
-            # 显示所有 commissioner filter 链接（facet options）
-            facet_links = dbg_soup.select("a[href*='commissioner_dynamic']")
-            if facet_links:
-                st.write(f"**找到 {len(facet_links)} 个 commissioner filter 链接：**")
-                for lk in facet_links[:10]:
-                    st.code(lk.get("href","")[:200])
-            else:
-                st.warning("没有找到 commissioner facet 链接")
-        except Exception as dbg_e:
-            st.error(f"调试抓取失败：{dbg_e}")
 
     if not s_events:
         st.info("暂无日程数据")
