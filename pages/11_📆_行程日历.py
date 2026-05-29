@@ -15,15 +15,15 @@ SEJOURNE_COLOR = "#4A90D9"
 ATTAL_COLOR    = "#C9A84C"
 
 # ── EU Commission 抓取逻辑（同 sejourn_calendar_sync.py）────────────────────
-# 注意：f[0] 里的方括号不能被 URL 编码（Drupal facet 要求原始 [ ] ）
-# 所以用原始字符串拼接 URL，而不是 requests params= dict
+# 直接使用浏览器实际发出的 URL 格式：
+# 括号 → %5B %5D，冒号 → %3A，但 http:// 的斜杠不编码
 _BASE_URL = (
     "https://commission.europa.eu/about/organisation/college-commissioners"
     "/calendar-items-president-and-commissioners_en"
-    "?f[0]=commissioner_dynamic_commissioner_dynamic:"
-    "http://publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
-    "&f[1]=ewcms_calendar_status:past"
-    "&f[2]=ewcms_calendar_status:upcoming"
+    "?f%5B0%5D=commissioner_dynamic_commissioner_dynamic%3A"
+    "http%3A//publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
+    "&f%5B1%5D=ewcms_calendar_status%3Apast"
+    "&f%5B2%5D=ewcms_calendar_status%3Aupcoming"
 )
 _HDRS = {
     "User-Agent": (
@@ -278,7 +278,7 @@ with col_s:
             st.info("暂无即将到来的行程")
 
         if s_past:
-            with st.expander(f"历史行程（{len(s_past)} 条）"):
+            with st.expander(f"历史行程（{len(s_past)} 条）", expanded=not s_upcoming):
                 for ev in s_past:
                     _event_card(ev["title"], ev["date"], ev["location"],
                                 "past", SEJOURNE_COLOR)
