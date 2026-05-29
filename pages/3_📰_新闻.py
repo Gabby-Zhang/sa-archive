@@ -202,55 +202,23 @@ st.divider()
 if st.session_state.get("is_admin"):
     with st.expander("🔧 修复 Google 重定向链接"):
         st.caption("将数据库中所有 news.google.com 链接解析为真实文章 URL，解决部分用户无法打开的问题。")
-        if st.button("🔍 诊断第一条 URL", use_container_width=True):
-            from utils.news_fetcher import _resolve_url
-            import base64
+        st.warning("旧的 Google 链接无法直接修复（URL 格式已加密）。点下方按钮删除旧记录，然后点「🔄 抓取最新新闻」重新获取带真实 URL 的新记录。")
+        if st.button("🗑️ 删除所有 Google 链接旧记录", type="primary", use_container_width=True):
             db = get_supabase_admin()
-            rec = db.table("news").select("id,url").like("url", "%news.google.com%").limit(1).execute().data
-            if rec:
-                url = rec[0]["url"]
-                st.code(url)
-                # 显示解码过程
-                try:
-                    if "/rss/articles/" in url:
-                        encoded = url.split("/rss/articles/")[1].split("?")[0]
-                    elif "/articles/" in url:
-                        encoded = url.split("/articles/")[1].split("?")[0]
-                    else:
-                        encoded = "NOT FOUND"
-                    st.write(f"编码部分（前50字符）：`{encoded[:50]}`")
-                    encoded += "=" * ((4 - len(encoded) % 4) % 4)
-                    decoded = base64.urlsafe_b64decode(encoded)
-                    st.write(f"解码后字节（前40）：`{decoded[:40]}`")
-                    st.write(f"解码后文本（前100）：`{decoded[:100].decode('latin-1', errors='replace')}`")
-                    resolved = _resolve_url(rec[0]["url"])
-                    st.write(f"最终解析结果：`{resolved}`")
-                except Exception as e:
-                    st.error(f"解码出错：{e}")
-
-        if st.button("开始修复", type="primary", use_container_width=True):
-            from utils.news_fetcher import _resolve_url
-            db = get_supabase_admin()
-            with st.spinner("正在查询并修复…"):
-                try:
-                    records = (db.table("news")
-                               .select("id,url")
-                               .like("url", "%news.google.com%")
-                               .execute().data)
-                    st.write(f"找到 **{len(records)}** 条 Google 链接，开始解析…")
-                    progress = st.progress(0)
-                    fixed = 0
-                    for i, rec in enumerate(records):
-                        resolved = _resolve_url(rec["url"])
-                        if resolved != rec["url"]:
-                            db.table("news").update({"url": resolved}).eq("id", rec["id"]).execute()
-                            fixed += 1
-                        progress.progress((i + 1) / len(records))
-                    progress.empty()
+            try:
+                records = (db.table("news")
+                           .select("id")
+                           .like("url", "%news.google.com%")
+                           .execute().data)
+                ids = [r["id"] for r in records]
+                if ids:
+                    db.table("news").delete().in_("id", ids).execute()
                     st.cache_data.clear()
-                    st.success(f"✅ 完成！共修复 {fixed} / {len(records)} 条链接")
-                except Exception as e:
-                    st.error(f"修复失败：{e}")
+                    st.success(f"✅ 已删除 {len(ids)} 条旧记录，请点「🔄 抓取最新新闻」重新获取")
+                else:
+                    st.info("没有找到 Google 链接记录")
+            except Exception as e:
+                st.error(f"删除失败：{e}")
 
 # ── 手动添加新闻 ─────────────────────────────────────────
 with st.expander("➕ 手动添加新闻"):

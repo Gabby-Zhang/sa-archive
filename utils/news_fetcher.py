@@ -1,44 +1,31 @@
-import base64
 import feedparser
 import hashlib
 from datetime import datetime
+from bs4 import BeautifulSoup
 from utils.database import upsert_news
 
 
 def _resolve_url(url: str) -> str:
+    """占位：新抓取已改用 summary HTML 提取，此函数仅供向后兼容。"""
+    return url
+
+
+def _extract_url_from_summary(summary_html: str) -> str:
     """
-    将 Google News 的 Base64 编码 URL 解码为真实文章 URL。
-    Google News 的 CBMi... 部分是 Base64 编码，内含真实地址，无需 HTTP 请求。
+    从 Google News RSS 条目的 description/summary HTML 里提取真实文章 URL。
+    Google News RSS 的 <description> 包含 <a href="真实URL">来源</a> 的结构。
     """
-    if "news.google.com" not in url:
-        return url
+    if not summary_html:
+        return ""
     try:
-        # 提取编码部分
-        if "/rss/articles/" in url:
-            encoded = url.split("/rss/articles/")[1].split("?")[0]
-        elif "/articles/" in url:
-            encoded = url.split("/articles/")[1].split("?")[0]
-        else:
-            return url
-
-        # 补齐 base64 padding 并解码
-        encoded += "=" * ((4 - len(encoded) % 4) % 4)
-        decoded = base64.urlsafe_b64decode(encoded)
-
-        # 在解码后的字节中找 http(s):// 开头的真实 URL
-        for prefix in (b"https://", b"http://"):
-            idx = decoded.find(prefix)
-            if idx >= 0:
-                # 取到第一个不可打印字符（控制符）为止
-                end = idx
-                while end < len(decoded) and decoded[end] >= 32:
-                    end += 1
-                candidate = decoded[idx:end].decode("utf-8", errors="replace")
-                if "." in candidate and len(candidate) > 10:
-                    return candidate
-        return url
+        soup = BeautifulSoup(summary_html, "html.parser")
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if href.startswith("http") and "google.com" not in href:
+                return href
     except Exception:
-        return url
+        pass
+    return ""
 
 RSS_FEEDS = [
     {
@@ -60,8 +47,9 @@ def fetch_all_news():
     for feed_info in RSS_FEEDS:
         feed = feedparser.parse(feed_info["url"])
         for entry in feed.entries:
-            raw_url = entry.get("link", "")
-            url = _resolve_url(raw_url)          # 追踪到真实文章 URL
+            # 优先从 summary HTML 里提取真实文章 URL
+            real_url = _extract_url_from_summary(entry.get("summary", ""))
+            url = real_url if real_url else entry.get("link", "")
             url_hash = hashlib.md5(url.encode()).hexdigest()
             published = entry.get("published", "")
             try:
