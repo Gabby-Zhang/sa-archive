@@ -223,25 +223,43 @@ with col_s:
             st.error(f"抓取失败：{_e}")
             s_events = []
 
-    # ── 调试：显示第一页的原始情况 ──────────────────────────
+    # ── 调试：在整个页面 HTML 里找 Séjourné 的 filter ID ───
     with st.expander("🔍 调试信息（排错用）", expanded=not s_events):
         try:
-            dbg_soup = _fetch_eu_page(0)
-            if dbg_soup is None:
-                st.warning("第 0 页返回 429，被限流")
+            # 用 Session 带 cookie 请求，模拟浏览器行为
+            base_only = (
+                "https://commission.europa.eu/about/organisation/college-commissioners"
+                "/calendar-items-president-and-commissioners_en"
+            )
+            sess = requests.Session()
+            sess.get(base_only, headers=_HDRS, timeout=20)   # 建立 session
+            r0 = sess.get(f"{base_only}?f[0]=ewcms_calendar_status:past"
+                          f"&f[1]=ewcms_calendar_status:upcoming&page=0",
+                          headers=_HDRS, timeout=20)
+            dbg_soup = BeautifulSoup(r0.text, "html.parser")
+
+            articles = dbg_soup.select("article.ecl-content-item--inline")
+            st.write(f"第 0 页找到 **{len(articles)}** 篇文章")
+
+            # 在整个 HTML 里搜 Séjourné（找他的 filter ID）
+            full_html = r0.text.lower()
+            idx = full_html.find("séjourné")
+            if idx == -1:
+                idx = full_html.find("sejourne")
+            if idx >= 0:
+                st.success("✅ 页面 HTML 里找到了「Séjourné」！")
+                st.code(r0.text[max(0, idx-100):idx+300])
             else:
-                articles = dbg_soup.select("article.ecl-content-item--inline")
-                st.write(f"第 0 页找到 **{len(articles)}** 篇文章")
-                if articles:
-                    first_text = articles[0].get_text()[:300]
-                    st.code(first_text)
-                    matches = [a for a in articles
-                               if "séjourné" in a.get_text().lower()
-                               or "sejourne" in a.get_text().lower()]
-                    st.write(f"其中含「Séjourné」的：**{len(matches)}** 篇")
-                else:
-                    st.warning("没有找到 `article.ecl-content-item--inline`，HTML 结构可能已变更")
-                    st.code(str(dbg_soup)[:500])
+                st.warning("❌ 整个 HTML 里都没有「Séjourné」——他的 ID 或名字可能不同")
+
+            # 显示所有 commissioner filter 链接（facet options）
+            facet_links = dbg_soup.select("a[href*='commissioner_dynamic']")
+            if facet_links:
+                st.write(f"**找到 {len(facet_links)} 个 commissioner filter 链接：**")
+                for lk in facet_links[:10]:
+                    st.code(lk.get("href","")[:200])
+            else:
+                st.warning("没有找到 commissioner facet 链接")
         except Exception as dbg_e:
             st.error(f"调试抓取失败：{dbg_e}")
 
