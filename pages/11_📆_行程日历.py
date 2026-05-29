@@ -15,20 +15,16 @@ SEJOURNE_COLOR = "#4A90D9"
 ATTAL_COLOR    = "#C9A84C"
 
 # ── EU Commission 抓取逻辑（同 sejourn_calendar_sync.py）────────────────────
-_BASE = (
+# 注意：f[0] 里的方括号不能被 URL 编码（Drupal facet 要求原始 [ ] ）
+# 所以用原始字符串拼接 URL，而不是 requests params= dict
+_BASE_URL = (
     "https://commission.europa.eu/about/organisation/college-commissioners"
     "/calendar-items-president-and-commissioners_en"
+    "?f[0]=commissioner_dynamic_commissioner_dynamic:"
+    "http://publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
+    "&f[1]=ewcms_calendar_status:past"
+    "&f[2]=ewcms_calendar_status:upcoming"
 )
-# 过滤参数必须通过 requests params= 传入，才能正确 URL 编码
-# 否则 f[0] 里的冒号和斜杠不会被编码，EU Commission 网站会忽略该过滤条件
-_FILTER_PARAMS = {
-    "f[0]": (
-        "commissioner_dynamic_commissioner_dynamic:"
-        "http://publications.europa.eu/resource/authority/political-leader/COM_00006A047C6D"
-    ),
-    "f[1]": "ewcms_calendar_status:past",
-    "f[2]": "ewcms_calendar_status:upcoming",
-}
 _HDRS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -43,8 +39,8 @@ _MONTH = {
 
 
 def _fetch_eu_page(page: int):
-    params = {**_FILTER_PARAMS, "page": page}
-    r = requests.get(_BASE, params=params, headers=_HDRS, timeout=20)
+    url = f"{_BASE_URL}&page={page}"
+    r = requests.get(url, headers=_HDRS, timeout=20)
     if r.status_code == 429:
         return None   # 被限流，通知调用方停止翻页
     r.raise_for_status()
