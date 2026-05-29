@@ -229,9 +229,7 @@ for group in clustered:
 
     color     = PERSON_COLOR.get(item.get("person", ""), "#888")
     url       = item.get("url", "")
-    if url and "news.google.com" in url:
-        url = f"https://www.removepaywall.com/{url}"
-    archive_url = f"https://www.removepaywall.com/{url}" if url and "removepaywall.com" not in url else url
+    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
 
     pub_date = item.get("published_at", "")
     if pub_date:

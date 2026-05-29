@@ -59,10 +59,7 @@ PERSON_COLOR = {
 for item in news:
     color = PERSON_COLOR.get(item.get("person", ""), "#888")
     url = item.get("url", "")
-    # 旧的 Google News 链接在显示层动态转为 removepaywall 代理
-    if url and "news.google.com" in url:
-        url = f"https://www.removepaywall.com/{url}"
-    archive_url = f"https://www.removepaywall.com/{url}" if url and "removepaywall.com" not in url else url
+    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
 
     pub_date = item.get("published_at", "")
     if pub_date:
@@ -99,8 +96,8 @@ for item in news:
                 </span>
             </div>
             <div style="display:flex;gap:1rem;font-size:0.85rem">
-                {"<a href='" + url + "' target='_blank' style='color:#4A90D9'>🔗 原文</a>" if url else ""}
-                {"<a href='" + archive_url + "' target='_blank' style='color:#888'>📦 存档版</a>" if url else ""}
+                {"<a href='" + url + "' rel='noopener noreferrer' style='color:#4A90D9'>🔗 原文</a>" if url else ""}
+                {"<a href='" + archive_url + "' rel='noopener noreferrer' style='color:#888'>📦 存档版</a>" if url else ""}
             </div>
         </div>
         <div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">
