@@ -3,6 +3,18 @@ from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase
 
+# 偏好标签翻译对照（DB 存中文，英文模式展示英文）
+_PREF_KEY_EN = {
+    "喜欢的酒":    "Favourite drink",
+    "喜欢的电视剧": "Favourite TV shows",
+    "喜欢的电影":  "Favourite films",
+    "喜欢的书":   "Favourite books",
+    "喜欢的音乐":  "Favourite music",
+    "喜欢的运动":  "Favourite sport",
+    "喜欢的食物":  "Favourite food",
+    "喜欢的地方":  "Favourite places",
+}
+
 admin_sidebar()
 
 st.set_page_config(page_title="人物档案 · 档案馆", page_icon="👤", layout="wide")
@@ -121,7 +133,8 @@ def render_section(person, section):
             elif section == "preferences":
                 import html as _html
                 value_html = _html.escape(value).replace("\\n", "<br>")
-                key_html   = _html.escape(key)
+                _display_key = _PREF_KEY_EN.get(key, key) if st.session_state.get("lang") == "en" else key
+                key_html   = _html.escape(_display_key)
                 st.markdown(
                     f'<div style="background:var(--cb);border:1px solid {color}33;padding:0.8rem 1rem;margin:0.5rem 0;border-radius:8px">'
                     f'<div style="color:{color};font-size:0.85rem;margin-bottom:0.3rem">{key_html}</div>'

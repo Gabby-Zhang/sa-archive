@@ -4,6 +4,7 @@ from datetime import date
 from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase_admin
+from utils.i18n import t
 
 admin_sidebar()
 
@@ -148,35 +149,37 @@ with col_s:
         f'margin-bottom:0.2rem">🔵 Stéphane Séjourné</div>',
         unsafe_allow_html=True
     )
-    st.caption("📡 欧盟委员会官网 · 自动同步 · 每小时刷新")
+    st.caption("📡 " + ("EU Commission · auto-sync · hourly" if st.session_state.get("lang")=="en" else "欧盟委员会官网 · 自动同步 · 每小时刷新"))
 
-    if st.button("🔄", key="refresh_s", help="强制刷新 Séjourné 日程"):
+    if st.button("🔄", key="refresh_s", help="Refresh" if st.session_state.get("lang")=="en" else "强制刷新 Séjourné 日程"):
         st.cache_data.clear()
         st.rerun()
 
-    with st.spinner("正在读取日程…"):
+    with st.spinner("Loading…" if st.session_state.get("lang")=="en" else "正在读取日程…"):
         try:
             s_events = get_sejourne_schedule()
         except Exception as _e:
             st.error(f"读取失败：{_e}")
             s_events = []
 
+    _en = st.session_state.get("lang") == "en"
     if not s_events:
-        st.info("暂无日程数据")
+        st.info("No schedule data" if _en else "暂无日程数据")
     else:
         s_upcoming = [e for e in s_events if e["status"] != "past"]
         s_past     = [e for e in s_events if e["status"] == "past"]
 
         if s_upcoming:
-            _section_header(f"▶ 即将到来 · {len(s_upcoming)} 项")
+            _section_header(f"▶ {'Upcoming' if _en else '即将到来'} · {len(s_upcoming)}")
             for ev in s_upcoming:
                 _event_card(ev["title"], ev["date"], ev["location"],
                             ev["status"], SEJOURNE_COLOR)
         else:
-            st.info("暂无即将到来的行程")
+            st.info("No upcoming events" if _en else "暂无即将到来的行程")
 
         if s_past:
-            with st.expander(f"历史行程（{len(s_past)} 条）", expanded=not s_upcoming):
+            _lbl = f"Past events ({len(s_past)})" if _en else f"历史行程（{len(s_past)} 条）"
+            with st.expander(_lbl, expanded=not s_upcoming):
                 for ev in s_past:
                     _event_card(ev["title"], ev["date"], ev["location"],
                                 "past", SEJOURNE_COLOR)
@@ -190,7 +193,7 @@ with col_a:
         f'margin-bottom:0.2rem">🟡 Gabriel Attal</div>',
         unsafe_allow_html=True
     )
-    st.caption("✏️ 由团队手动维护")
+    st.caption("✏️ " + ("Maintained manually by the team" if st.session_state.get("lang")=="en" else "由团队手动维护"))
 
     a_events  = get_attal_schedule()
     today_str = date.today().isoformat()
@@ -228,7 +231,7 @@ with col_a:
                             ev.get("location",""), status,
                             ATTAL_COLOR, ev.get("source_url",""))
     elif not a_events:
-        st.info("暂无行程记录")
+        st.info("No schedule entries" if st.session_state.get("lang")=="en" else "暂无行程记录")
 
     if a_past:
         with st.expander(f"历史行程（{len(a_past)} 条）"):

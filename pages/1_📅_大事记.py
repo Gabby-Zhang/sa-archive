@@ -35,6 +35,23 @@ TAG_OPTIONS = [
     "⚪ 其他",
 ]
 
+TAG_OPTIONS_EN = [
+    "📰 News coverage",
+    "📅 Timeline entry",
+    "📸 IG Story",
+    "📷 IG Post",
+    "🎵 TikTok",
+    "🐦 X/Twitter",
+    "▶️ YouTube",
+    "📺 Bilibili",
+    "🎙️ Interview",
+    "📋 Official statement",
+    "⚪ Other",
+]
+
+# 英文标签 → 中文标签（用于过滤查询，DB 存的仍是中文）
+_TAG_EN_TO_ZH = dict(zip(TAG_OPTIONS_EN, TAG_OPTIONS))
+
 TAG_COLOR = {
     "📰 新闻报道": "#4A90D9",
     "📅 大事记":   "#8B6FD4",
@@ -131,7 +148,11 @@ with col2:
     year_options = [t("all")] + [str(y) for y in range(2026, 2009, -1)]
     year_filter = st.selectbox(t("year_label"), year_options, key="year_filter_select")
 with col3:
-    tag_filter = st.selectbox(t("type_label"), [t("all")] + TAG_OPTIONS)
+    _is_en = st.session_state.get("lang", "zh") == "en"
+    _tag_opts = TAG_OPTIONS_EN if _is_en else TAG_OPTIONS
+    tag_filter_display = st.selectbox(t("type_label"), [t("all")] + _tag_opts)
+    # 若英文模式，把选中值映射回中文（DB 存的是中文）
+    tag_filter = _TAG_EN_TO_ZH.get(tag_filter_display, tag_filter_display)
 with col4:
     keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
