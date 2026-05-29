@@ -111,7 +111,7 @@ def _get_links(person: str):
 # ── 首页标题 ─────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-    <h1>🗂️ 档案馆</h1>
+    <h1>🗂️ S&amp;A 档案馆</h1>
     <p>Le Parcours de Séjourné et Attal — 持续建设中</p>
 </div>
 """, unsafe_allow_html=True)

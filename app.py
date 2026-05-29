@@ -258,7 +258,7 @@ with st.sidebar:
     st.divider()
 
 pg = st.navigation([
-    st.Page("pages/0_🗂️_首页.py",     title="首页",     icon="🗂️"),
+    st.Page("pages/0_🗂️_首页.py",     title="S&A 档案馆", icon="🗂️"),
     st.Page("pages/1_📅_大事记.py",    title="大事记",   icon="📖"),
     st.Page("pages/3_📰_新闻.py",      title="新闻",     icon="📰"),
     st.Page("pages/11_📆_行程日历.py", title="行程日历", icon="📆"),
