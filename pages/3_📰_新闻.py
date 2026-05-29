@@ -84,8 +84,8 @@ for item in news:
     lean_color = media_info["color"]
     lean_emoji = LEAN_EMOJI.get(lean_label, "")
 
-    _link_orig    = f'<a href="{safe_url}" rel="noopener noreferrer" style="color:#4A90D9">🔗 原文</a>' if url else ""
-    _link_archive = f'<a href="{safe_archive}" rel="noopener noreferrer" style="color:#888">📦 存档版</a>' if url else ""
+    _link_orig    = f'<a href="{safe_url}" rel="noopener noreferrer" style="color:#4A90D9">{t("news_original")}</a>' if url else ""
+    _link_archive = f'<a href="{safe_archive}" rel="noopener noreferrer" style="color:#888">{t("news_archived")}</a>' if url else ""
     _card = (
         f'<div style="border-left:4px solid {color};padding:0.8rem 1.2rem;margin:0.5rem 0;background:var(--cb);border-radius:0 8px 8px 0">'
         f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">'

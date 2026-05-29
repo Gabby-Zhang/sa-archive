@@ -87,8 +87,8 @@ _S = {
     "news_items":       {"zh": "条新闻",                  "en": "news items"},
     "news_empty":       {"zh": "暂无新闻，点击上方「抓取最新新闻」按钮开始收集。",
                          "en": "No news yet. Click 'Fetch latest news' to start."},
-    "news_original":    {"zh": "🔗 原文",                 "en": "🔗 Article"},
-    "news_archived":    {"zh": "📦 存档版",               "en": "📦 Archive"},
+    "news_original":    {"zh": "🔗 原文",                 "en": "🔗 Source"},
+    "news_archived":    {"zh": "📦 存档版",               "en": "📦 Bypass Paywall"},
 
     # ── 行程日历 ─────────────────────────────────────────
     "schedule_title":   {"zh": "📆 行程日历",             "en": "📆 Schedule"},
