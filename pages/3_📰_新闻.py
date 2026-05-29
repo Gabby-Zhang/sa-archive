@@ -202,6 +202,32 @@ st.divider()
 if st.session_state.get("is_admin"):
     with st.expander("🔧 修复 Google 重定向链接"):
         st.caption("将数据库中所有 news.google.com 链接解析为真实文章 URL，解决部分用户无法打开的问题。")
+        if st.button("🔍 诊断第一条 URL", use_container_width=True):
+            from utils.news_fetcher import _resolve_url
+            import base64
+            db = get_supabase_admin()
+            rec = db.table("news").select("id,url").like("url", "%news.google.com%").limit(1).execute().data
+            if rec:
+                url = rec[0]["url"]
+                st.code(url)
+                # 显示解码过程
+                try:
+                    if "/rss/articles/" in url:
+                        encoded = url.split("/rss/articles/")[1].split("?")[0]
+                    elif "/articles/" in url:
+                        encoded = url.split("/articles/")[1].split("?")[0]
+                    else:
+                        encoded = "NOT FOUND"
+                    st.write(f"编码部分（前50字符）：`{encoded[:50]}`")
+                    encoded += "=" * ((4 - len(encoded) % 4) % 4)
+                    decoded = base64.urlsafe_b64decode(encoded)
+                    st.write(f"解码后字节（前40）：`{decoded[:40]}`")
+                    st.write(f"解码后文本（前100）：`{decoded[:100].decode('latin-1', errors='replace')}`")
+                    resolved = _resolve_url(rec[0]["url"])
+                    st.write(f"最终解析结果：`{resolved}`")
+                except Exception as e:
+                    st.error(f"解码出错：{e}")
+
         if st.button("开始修复", type="primary", use_container_width=True):
             from utils.news_fetcher import _resolve_url
             db = get_supabase_admin()
