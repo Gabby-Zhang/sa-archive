@@ -1,13 +1,14 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase
 
 admin_sidebar()
 
 st.set_page_config(page_title="人物档案 · 档案馆", page_icon="👤", layout="wide")
 
-st.title("👤 人物档案")
-st.caption("家人、亲友团与个人喜好")
+st.title(t("profiles_title"))
+st.caption(t("profiles_caption"))
 
 db = get_supabase()
 
@@ -147,28 +148,28 @@ def render_section(person, section):
 
 
 # ── 两个 Tab ─────────────────────────────────────────────
-tab_ss, tab_ga = st.tabs(["🔵 Stéphane Séjourné", "🟡 Gabriel Attal"])
+tab_ss, tab_ga = st.tabs([t("tab_ss"), t("tab_ga")])
 
 with tab_ss:
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("👨‍👩‍👧 家人")
+        st.subheader(t("section_family"))
         render_section("Stéphane Séjourné", "family")
-        st.subheader("🤝 普瓦捷帮")
+        st.subheader(t("section_crew_ss"))
         render_section("Stéphane Séjourné", "crew")
     with col2:
-        st.subheader("❤️ 个人喜好")
+        st.subheader(t("section_prefs"))
         render_section("Stéphane Séjourné", "preferences")
-        st.subheader("🔗 重要链接")
+        st.subheader(t("section_links"))
         render_section("Stéphane Séjourné", "links")
 
 with tab_ga:
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("👨‍👩‍👧 家人")
+        st.subheader(t("section_family"))
         render_section("Gabriel Attal", "family")
     with col2:
-        st.subheader("❤️ 个人喜好")
+        st.subheader(t("section_prefs"))
         render_section("Gabriel Attal", "preferences")
-        st.subheader("🔗 重要链接")
+        st.subheader(t("section_links"))
         render_section("Gabriel Attal", "links")

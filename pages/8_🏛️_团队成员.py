@@ -1,12 +1,13 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase
 
 admin_sidebar()
 
 st.set_page_config(page_title="团队成员 · 档案馆", page_icon="🏛️", layout="wide")
 
-st.title("🏛️ 团队成员")
+st.title(t("team_title"))
 st.caption("SS 内阁成员 与 GA 核心团队")
 
 db = get_supabase()

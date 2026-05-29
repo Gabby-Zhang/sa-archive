@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, get_supabase_admin
 from utils.auth import admin_sidebar
+from utils.i18n import t
 
 # ── Google Drive 链接转换 ─────────────────────────────────
 def gdrive_to_img_url(url: str) -> str:
@@ -48,8 +49,8 @@ TAG_COLOR = {
     "⚪ 其他":      "#666666",
 }
 
-st.title("📅 大事记时间轴")
-st.caption("记录 Attal 与 Séjourné 的重要事件与新闻")
+st.title(t("timeline_title"))
+st.caption(t("timeline_caption"))
 
 st.divider()
 
@@ -125,19 +126,19 @@ if st.session_state.get("is_admin"):
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
+    person_filter = st.selectbox(t("person_label"), [t("all"), "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    year_options = ["全部"] + [str(y) for y in range(2026, 2009, -1)]
-    year_filter = st.selectbox("年份", year_options, key="year_filter_select")
+    year_options = [t("all")] + [str(y) for y in range(2026, 2009, -1)]
+    year_filter = st.selectbox(t("year_label"), year_options, key="year_filter_select")
 with col3:
-    tag_filter = st.selectbox("类型", ["全部"] + TAG_OPTIONS)
+    tag_filter = st.selectbox(t("type_label"), [t("all")] + TAG_OPTIONS)
 with col4:
-    keyword = st.text_input("🔍 搜索关键词", placeholder="输入关键词…")
+    keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
 # ── 加载数据 ─────────────────────────────────────────────
 try:
     events = get_events(
-        person=person_filter if person_filter != "全部" else None,
+        person=person_filter if person_filter not in ("全部", "All") else None,
         keyword=keyword if keyword else None,
     )
     df = pd.DataFrame(events) if events else pd.DataFrame()
@@ -146,12 +147,12 @@ except Exception as e:
     df = pd.DataFrame()
 
 # 年份筛选
-if not df.empty and year_filter != "全部":
+_all = (t("all"),)
+if not df.empty and year_filter not in ("全部", "All"):
     df["year"] = pd.to_datetime(df["date"], errors="coerce").dt.year.astype(str)
     df = df[df["year"] == year_filter]
 
-# 标签筛选
-if not df.empty and tag_filter != "全部":
+if not df.empty and tag_filter not in ("全部", "All"):
     df = df[df["tag"] == tag_filter]
 
 st.caption(f"共找到 {len(df)} 条记录")

@@ -1,10 +1,11 @@
 import streamlit as st
+from utils.i18n import t
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="媒体光谱 · 档案馆", page_icon="📊", layout="wide")
 
-st.title("📊 媒体光谱")
-st.caption("法国主要媒体的政治立场参考")
+st.title(t("media_title"))
+st.caption(t("media_caption"))
 
 st.markdown("""
 <div style="background:var(--cb);padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem">

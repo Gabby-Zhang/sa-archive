@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.database import get_supabase
+from utils.i18n import t
 import html as _html
 
 admin_sidebar()
@@ -109,10 +110,11 @@ def _get_links(person: str):
         return []
 
 # ── 首页标题 ─────────────────────────────────────────────
-st.markdown("""
+_title = "S&amp;A 档案馆" if st.session_state.get("lang","zh") == "zh" else "S&amp;A Archive"
+st.markdown(f"""
 <div class="hero">
-    <h1>🗂️ S&amp;A 档案馆</h1>
-    <p>Le Parcours de Séjourné et Attal — 持续建设中</p>
+    <h1>🗂️ {_title}</h1>
+    <p>{t("home_subtitle")}</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -205,16 +207,11 @@ ss_links = _get_links("Stéphane Séjourné")
 ga_links = _get_links("Gabriel Attal")
 
 with col1:
-    st.markdown("""
+    st.markdown(f"""
     <div class="profile-card">
         <h2>Stéphane Séjourné <a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
-        <div class="role">🇪🇺 欧盟委员会执行副主席 · 工业战略专员</div>
-        <div class="bio">
-            1985年生，法国政治人物，复兴党（RE）创始成员之一。<br>
-            曾任欧洲议会议员（2019–2024）、欧洲议会复兴党团主席、
-            法国外交部长（2024）。<br>
-            现任欧盟委员会执行副主席。
-        </div>
+        <div class="role">{t("ss_role")}</div>
+        <div class="bio">{t("ss_bio")}</div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown(
@@ -226,20 +223,16 @@ with col1:
     )
 
 with col2:
-    st.markdown("""
+    st.markdown(f"""
     <div class="profile-card">
         <h2>Gabriel Attal <a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
-        <div class="role">🏛️ 法国国民议会议员 · 复兴党（RE）主席</div>
-        <div class="bio">
-            1989年生，法国迄今最年轻的总理（2024年1月–9月）。<br>
-            曾任教育部长、预算部长、政府发言人。<br>
-            现任复兴党主席及国民议会议员（上塞纳省）。
-        </div>
+        <div class="role">{t("ga_role")}</div>
+        <div class="bio">{t("ga_bio")}</div>
     </div>
     """, unsafe_allow_html=True)
     _ga_campaign = (
         '<div class="campaign-sub">'
-        '<div class="campaign-label">🗳️ Attal Président · 2027年法国总统竞选账号</div>'
+        f'<div class="campaign-label">{t("campaign_label")}</div>'
         '<div class="social-row" style="margin-bottom:0">'
         '<a href="https://www.instagram.com/attalpresident_/" target="_blank" rel="noopener noreferrer"'
         ' class="social-icon-btn ig" title="Instagram">%s</a>'
@@ -258,7 +251,7 @@ with col2:
 st.divider()
 
 # ── 统计数字 ─────────────────────────────────────────────
-st.subheader("📊 档案馆概览")
+st.subheader(t("home_stats"))
 
 try:
     db = get_supabase()
@@ -274,26 +267,26 @@ with c1:
     st.markdown(f"""
     <div class="stat-box">
         <div class="num">{events_count}</div>
-        <div class="label">📅 大事记条目</div>
+        <div class="label">{t("stat_events")}</div>
     </div>""", unsafe_allow_html=True)
 with c2:
     st.markdown(f"""
     <div class="stat-box">
         <div class="num">{news_count}</div>
-        <div class="label">📰 新闻条目</div>
+        <div class="label">{t("stat_news")}</div>
     </div>""", unsafe_allow_html=True)
 with c3:
     st.markdown(f"""
     <div class="stat-box">
         <div class="num">{files_count}</div>
-        <div class="label">📁 上传文件</div>
+        <div class="label">{t("stat_files")}</div>
     </div>""", unsafe_allow_html=True)
 with c4:
     st.markdown(f"""
     <div class="stat-box">
         <div class="num">{images_count}</div>
-        <div class="label">🖼️ 图库图片</div>
+        <div class="label">{t("stat_images")}</div>
     </div>""", unsafe_allow_html=True)
 
 st.divider()
-st.info("👈 使用左侧导航栏切换各个板块")
+st.info(t("home_hint"))

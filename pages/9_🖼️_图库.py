@@ -1,13 +1,14 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase
 
 admin_sidebar()
 
 st.set_page_config(page_title="图库 · 档案馆", page_icon="🖼️", layout="wide")
 
-st.title("🖼️ 图库")
-st.caption("照片、截图存档 — 图片存于 Google Drive")
+st.title(t("gallery_title"))
+st.caption(t("gallery_caption"))
 
 # ── 灯箱 CSS + JS ─────────────────────────────────────────
 st.markdown("""

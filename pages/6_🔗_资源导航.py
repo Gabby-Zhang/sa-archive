@@ -1,12 +1,13 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase
 
 admin_sidebar()
 
 st.set_page_config(page_title="资源导航 · 档案馆", page_icon="🔗", layout="wide")
 
-st.title("🔗 资源导航")
+st.title(t("resources_title"))
 st.caption("实用链接、图库来源、小工具汇总")
 
 db = get_supabase()

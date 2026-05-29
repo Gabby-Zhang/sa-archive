@@ -2,12 +2,13 @@ import streamlit as st
 import requests
 from datetime import date
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase_admin
 
 admin_sidebar()
 
-st.title("📆 行程日历")
-st.caption("Séjourné 行程来自 GitHub ICS 文件 · Attal 行程由团队手动维护")
+st.title(t("schedule_title"))
+st.caption(t("schedule_caption"))
 
 SEJOURNE_COLOR = "#4A90D9"
 ATTAL_COLOR    = "#C9A84C"

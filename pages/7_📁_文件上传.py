@@ -3,12 +3,13 @@ from utils.auth import admin_sidebar
 
 admin_sidebar()
 from utils.database import get_files, add_file, get_supabase, get_supabase_admin, upload_to_storage
+from utils.i18n import t
 import html as _html
 
 st.set_page_config(page_title="文件存档 · 档案馆", page_icon="📁", layout="wide")
 
-st.title("📁 文件存档")
-st.caption("书籍、传记、调查报告及相关文件")
+st.title(t("files_title"))
+st.caption(t("files_caption"))
 
 FILE_TYPES = [
     "📚 书籍", "📖 传记", "🔍 调查报告",
@@ -16,7 +17,7 @@ FILE_TYPES = [
     "📱 百度网盘（二维码）", "📎 其他",
 ]
 
-TYPE_ICONS = {t: t.split()[0] for t in FILE_TYPES}
+TYPE_ICONS = {ft: ft.split()[0] for ft in FILE_TYPES}
 # 兼容旧数据
 TYPE_ICONS.update({"PDF": "📄", "截图": "🖼️", "视频": "🎬", "文章": "📝", "其他": "📎"})
 
@@ -29,18 +30,18 @@ PERSON_COLOR = {
 # ── 筛选 ─────────────────────────────────────────────────
 col1, col2 = st.columns([2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
+    person_filter = st.selectbox(t("person_label"), [t("all"), "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    type_filter = st.selectbox("文件类型", ["全部"] + FILE_TYPES)
+    type_filter = st.selectbox(t("file_type_label"), [t("all")] + FILE_TYPES)
 
 # ── 文件列表 ─────────────────────────────────────────────
 try:
-    files = get_files(person=person_filter if person_filter != "全部" else None)
+    files = get_files(person=person_filter if person_filter not in ("全部", "All") else None)
 except Exception as e:
     st.error(f"数据库连接失败：{e}")
     files = []
 
-if type_filter != "全部":
+if type_filter not in ("全部", "All"):
     files = [f for f in files if f.get("file_type") == type_filter]
 
 st.caption(f"共 {len(files)} 个文件")
@@ -74,7 +75,7 @@ for f in files:
 
     # 二维码图片内嵌显示
     if is_qr and url:
-        with st.expander("📱 查看百度网盘二维码"):
+        with st.expander(t("file_qr_view")):
             st.image(url, width=220, caption="扫码获取文件（百度网盘）")
 
     # 管理员删除按钮
@@ -108,11 +109,10 @@ else:
         with c1:
             new_title  = st.text_input("文件名称/标题 *")
             new_person = st.selectbox("相关人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"])
+            _types_no_qr = [ft for ft in FILE_TYPES if ft != "📱 百度网盘（二维码）"]
             new_type   = st.selectbox(
                 "文件类型",
-                ["📱 百度网盘（二维码）"] + [t for t in FILE_TYPES if t != "📱 百度网盘（二维码）"]
-                if is_baidu else
-                [t for t in FILE_TYPES if t != "📱 百度网盘（二维码）"],
+                ["📱 百度网盘（二维码）"] + _types_no_qr if is_baidu else _types_no_qr,
             )
         with c2:
             if is_baidu:

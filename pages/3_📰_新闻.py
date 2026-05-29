@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 
 admin_sidebar()
 from datetime import datetime
@@ -9,15 +10,15 @@ from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
 st.set_page_config(page_title="新闻 · 档案馆", page_icon="📰", layout="wide")
 
-st.title("📰 新闻档案")
-st.caption("自动抓取 + 手动添加的新闻汇总")
+st.title(t("news_title"))
+st.caption(t("news_caption"))
 
-st.info("🌐 部分新闻链接来自 Google News，在中国大陆需要开启 **VPN 全局模式** 才能正常访问。", icon=None)
+st.info(t("news_vpn"), icon=None)
 
 # ── 刷新按钮 ─────────────────────────────────────────────
 col_btn, col_info = st.columns([1, 4])
 with col_btn:
-    if st.button("🔄 抓取最新新闻"):
+    if st.button(t("news_fetch_btn")):
         with st.spinner("正在抓取…"):
             try:
                 n = fetch_all_news()
@@ -25,23 +26,23 @@ with col_btn:
             except Exception as e:
                 st.error(f"抓取失败：{e}")
 with col_info:
-    st.caption("点击按钮从 Google News 抓取最新报道（每次约 30–60 条）")
+    st.caption(t("news_fetch_hint"))
 
 st.divider()
 
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
+    person_filter = st.selectbox(t("person_label"), [t("all"), "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    limit = st.selectbox("显示条数", [50, 100, 200], index=0)
+    limit = st.selectbox(t("show_count"), [50, 100, 200], index=0)
 with col3:
-    keyword = st.text_input("🔍 搜索关键词", placeholder="输入关键词…")
+    keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
 # ── 加载数据 ─────────────────────────────────────────────
 try:
     news = get_news(
-        person=person_filter if person_filter != "全部" else None,
+        person=person_filter if person_filter not in ("全部", "All") else None,
         keyword=keyword if keyword else None,
         limit=limit,
     )
@@ -49,7 +50,7 @@ except Exception as e:
     st.error(f"数据库连接失败：{e}")
     news = []
 
-st.caption(f"共显示 {len(news)} 条新闻")
+st.caption(f'{t("news_showing")} {len(news)} {t("news_items")}')
 
 # ── 新闻列表 ─────────────────────────────────────────────
 PERSON_COLOR = {

@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.auth import admin_sidebar
+from utils.i18n import t
 from utils.database import get_supabase
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 from datetime import datetime, date, timedelta
@@ -9,8 +10,8 @@ import time
 
 admin_sidebar()
 
-st.title("📜 往期新闻")
-st.caption("历史新闻存档 — 来自 GDELT 数据库及手动添加")
+st.title(t("archives_title"))
+st.caption(t("archives_caption"))
 
 PERSON_COLOR = {
     "Gabriel Attal":      "#C9A84C",
@@ -160,13 +161,13 @@ def _run_gdelt_import(person: str, start: date, end: date):
 # ── 筛选栏 ───────────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
+    person_filter = st.selectbox(t("person_label"), [t("all"), "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    year_filter = st.selectbox("年份", ["全部", "2025", "2024", "2023", "2022", "2021", "2020"])
+    year_filter = st.selectbox(t("year_label"), [t("all"), "2025", "2024", "2023", "2022", "2021", "2020"])
 with col3:
-    limit = st.selectbox("显示条数", [50, 100, 200], index=0)
+    limit = st.selectbox(t("show_count"), [50, 100, 200], index=0)
 with col4:
-    keyword = st.text_input("🔍 搜索关键词", placeholder="输入关键词…")
+    keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
 # ── 加载数据 ─────────────────────────────────────────────────────
 @st.cache_data(ttl=120)
@@ -180,7 +181,7 @@ def get_historical_news(person=None, year=None, limit=50):
                    .limit(limit))
         if person:
             query = query.eq("person", person)
-        if year and year != "全部":
+        if year and year not in ("全部", "All"):
             query = query.gte("published_at", f"{year}-01-01").lte("published_at", f"{year}-12-31")
         return query.execute().data
     except Exception as e:
@@ -188,8 +189,8 @@ def get_historical_news(person=None, year=None, limit=50):
         return []
 
 news = get_historical_news(
-    person=person_filter if person_filter != "全部" else None,
-    year=year_filter if year_filter != "全部" else None,
+    person=person_filter if person_filter not in ("全部", "All") else None,
+    year=year_filter if year_filter not in ("全部", "All") else None,
     limit=limit,
 )
 
