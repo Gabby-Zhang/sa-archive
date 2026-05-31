@@ -39,18 +39,55 @@ with col2:
 with col3:
     keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
-# ── 加载数据 ─────────────────────────────────────────────
+# ── 分页状态 ─────────────────────────────────────────────
+if "news_page" not in st.session_state:
+    st.session_state.news_page = 0
+# 筛选条件变化时重置到第一页
+_fkey = f"{person_filter}|{limit}|{keyword}"
+if st.session_state.get("_news_fkey") != _fkey:
+    st.session_state.news_page = 0
+    st.session_state["_news_fkey"] = _fkey
+_page   = st.session_state.news_page
+_offset = _page * limit
+
+# ── 加载数据（多取 1 条判断是否有下一页）────────────────
 try:
     news = get_news(
         person=person_filter if person_filter not in ("全部", "All") else None,
         keyword=keyword if keyword else None,
         limit=limit,
+        offset=_offset,
     )
 except Exception as e:
     st.error(f"数据库连接失败：{e}")
     news = []
 
-st.caption(f'{t("news_showing")} {len(news)} {t("news_items")}')
+_has_next = len(news) > limit
+if _has_next:
+    news = news[:limit]   # 截掉多取的那 1 条
+
+# ── 分页控件（上方）────────────────────────────────────
+_en_pg = st.session_state.get("lang") == "en"
+if _page > 0 or _has_next:
+    pc1, pc2, pc3 = st.columns([1, 4, 1])
+    with pc1:
+        if st.button("◀ Prev" if _en_pg else "◀ 上一页",
+                     disabled=(_page == 0), use_container_width=True):
+            st.session_state.news_page -= 1
+            st.rerun()
+    with pc2:
+        _pg_info = (f"Page {_page + 1}  ·  {len(news)} items"
+                    if _en_pg else
+                    f"第 {_page + 1} 页 · 本页 {len(news)} 条")
+        st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>{_pg_info}</div>",
+                    unsafe_allow_html=True)
+    with pc3:
+        if st.button("Next ▶" if _en_pg else "下一页 ▶",
+                     disabled=(not _has_next), use_container_width=True):
+            st.session_state.news_page += 1
+            st.rerun()
+else:
+    st.caption(f'{t("news_showing")} {len(news)} {t("news_items")}')
 
 # ── 新闻列表 ─────────────────────────────────────────────
 PERSON_COLOR = {
@@ -196,6 +233,23 @@ for item in news:
 
 if not news:
     st.info("暂无新闻，点击上方「抓取最新新闻」按钮开始收集。")
+
+# ── 分页控件（下方）────────────────────────────────────
+if _page > 0 or _has_next:
+    bc1, bc2, bc3 = st.columns([1, 4, 1])
+    with bc1:
+        if st.button("◀ Prev" if _en_pg else "◀ 上一页",
+                     key="news_prev_bot", disabled=(_page == 0), use_container_width=True):
+            st.session_state.news_page -= 1
+            st.rerun()
+    with bc2:
+        st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>{_pg_info}</div>",
+                    unsafe_allow_html=True)
+    with bc3:
+        if st.button("Next ▶" if _en_pg else "下一页 ▶",
+                     key="news_next_bot", disabled=(not _has_next), use_container_width=True):
+            st.session_state.news_page += 1
+            st.rerun()
 
 st.divider()
 

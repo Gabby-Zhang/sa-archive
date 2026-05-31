@@ -74,12 +74,8 @@ def fetch_all_news():
 
             seen_urls.add(raw_url)
 
-            # Google News URL → 用 removepaywall.com 代理，绕过 GDPR consent
-            # removepaywall.com 服务器在美国，可直接追踪 Google 跳转
-            if is_google and "news.google.com" in raw_url:
-                url = f"https://www.removepaywall.com/{raw_url}"
-            else:
-                url = raw_url
+            # 始终存原始 URL；展示层会自动生成 bypass paywall 链接
+            url = raw_url
 
             url_hash = hashlib.md5(raw_url.encode()).hexdigest()  # ID 仍用原始 URL 去重
             try:

@@ -38,10 +38,11 @@ def delete_event(event_id: int):
     return db.table("events").delete().eq("id", event_id).execute()
 
 # ── 新闻 ────────────────────────────────────────────────
-def get_news(person=None, keyword=None, limit=50):
+def get_news(person=None, keyword=None, limit=50, offset=0):
     db = get_supabase()
-    query = db.table("news").select("*").order("published_at", desc=True).limit(limit)
-    if person and person != "全部":
+    # range(start, end) 两端均包含，end = offset + limit（多取1条用于判断是否有下一页）
+    query = db.table("news").select("*").order("published_at", desc=True).range(offset, offset + limit)
+    if person and person not in ("全部", "All"):
         query = query.eq("person", person)
     if keyword:
         query = query.ilike("title", f"%{keyword}%")
