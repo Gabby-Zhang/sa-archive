@@ -235,12 +235,14 @@ for group in clustered:
     # 若 DB 里存的已经是 removepaywall 链接，提取真实 URL
     if "removepaywall.com/" in url:
         url = url.split("removepaywall.com/", 1)[-1]
-    archive_url = f"https://www.removepaywall.com/{url}" if url else ""
+    archive_ph_url  = f"https://archive.ph/newest/{url}" if url else ""
+    archive_rpw_url = f"https://www.removepaywall.com/{url}" if url else ""
     safe_title   = _html.escape(item.get("title",  "") or "")
     safe_source  = _html.escape(item.get("source", "") or "")
     safe_person  = _html.escape(item.get("person", "") or "")
     safe_url     = _html.escape(url)
-    safe_archive = _html.escape(archive_url)
+    safe_arch_ph  = _html.escape(archive_ph_url)
+    safe_archive  = _html.escape(archive_rpw_url)
 
     pub_date = item.get("published_at", "")
     if pub_date:
@@ -260,6 +262,7 @@ for group in clustered:
                    f'📎 {len(others)+1} 家媒体</span>') if others else ""
 
     _link_orig    = f'<a href="{safe_url}" target="_blank" style="color:#4A90D9">{t("news_original")}</a>' if url else ""
+    _link_arch_ph = f'<a href="{safe_arch_ph}" target="_blank" style="color:#7EC8A4">{t("news_archive_ph")}</a>' if url else ""
     _link_archive = f'<a href="{safe_archive}" target="_blank" style="color:#888">{t("news_archived")}</a>' if url else ""
     _card = (
         f'<div style="border-left:4px solid {color};padding:0.8rem 1.2rem;margin:0.5rem 0;background:var(--cb);border-radius:0 8px 8px 0">'
@@ -273,7 +276,7 @@ for group in clustered:
         f'<span style="color:#555;font-size:0.8rem;margin-left:0.8rem">{pub_date}</span>'
         f'{multi_badge}'
         f'</div>'
-        f'<div style="display:flex;gap:1rem;font-size:0.85rem">{_link_orig}{_link_archive}</div>'
+        f'<div style="display:flex;gap:1rem;font-size:0.85rem">{_link_orig}{_link_arch_ph}{_link_archive}</div>'
         f'</div>'
         f'<div style="color:var(--t1);margin-top:0.4rem;font-size:0.95rem">{safe_title}</div>'
         f'</div>'
