@@ -232,6 +232,9 @@ for group in clustered:
 
     color     = PERSON_COLOR.get(item.get("person", ""), "#888")
     url       = item.get("url", "") or ""
+    # 若 DB 里存的已经是 removepaywall 链接，提取真实 URL
+    if "removepaywall.com/" in url:
+        url = url.split("removepaywall.com/", 1)[-1]
     archive_url = f"https://www.removepaywall.com/{url}" if url else ""
     safe_title   = _html.escape(item.get("title",  "") or "")
     safe_source  = _html.escape(item.get("source", "") or "")
@@ -281,7 +284,9 @@ for group in clustered:
     if others:
         with st.expander(f"查看另外 {len(others)} 家媒体的报道"):
             for o in others:
-                o_url = o.get("url", "")
+                o_url = o.get("url", "") or ""
+                if "removepaywall.com/" in o_url:
+                    o_url = o_url.split("removepaywall.com/", 1)[-1]
                 o_mi  = get_media_info(o.get("source", ""))
                 o_emoji = LEAN_EMOJI.get(o_mi["label"], "")
                 o_label = o_mi["label"]

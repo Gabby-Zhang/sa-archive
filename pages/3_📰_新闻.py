@@ -64,6 +64,9 @@ import html as _html
 for item in news:
     color = PERSON_COLOR.get(item.get("person", ""), "#888")
     url = item.get("url", "") or ""
+    # 若 DB 里存的已经是 removepaywall 链接，提取真实 URL
+    if "removepaywall.com/" in url:
+        url = url.split("removepaywall.com/", 1)[-1]
     archive_url  = f"https://www.removepaywall.com/{url}" if url else ""
     safe_title   = _html.escape(item.get("title",  "") or "")
     safe_source  = _html.escape(item.get("source", "") or "")
