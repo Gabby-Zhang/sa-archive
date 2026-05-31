@@ -101,7 +101,7 @@ for item in news:
     # 若 DB 里存的已经是 removepaywall 链接，提取真实 URL
     if "removepaywall.com/" in url:
         url = url.split("removepaywall.com/", 1)[-1]
-    archive_ph_url  = f"https://archive.ph/newest/{url}" if url else ""
+    archive_ph_url  = f"https://archive.ph/{url}" if url else ""
     archive_rpw_url = f"https://www.removepaywall.com/{url}" if url else ""
     safe_title   = _html.escape(item.get("title",  "") or "")
     safe_source  = _html.escape(item.get("source", "") or "")
