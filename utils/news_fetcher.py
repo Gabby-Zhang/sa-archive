@@ -1,7 +1,46 @@
 import feedparser
 import hashlib
+import base64
 from datetime import datetime
 from utils.database import upsert_news
+
+
+def _decode_gnews_url(gnews_url: str) -> str:
+    """
+    Google News RSS 链接（CBMi... Base64 编码）解码为真实文章 URL。
+    解码失败时原样返回。
+    """
+    try:
+        # 提取编码段
+        for marker in ["/rss/articles/", "/articles/"]:
+            if marker in gnews_url:
+                article_id = gnews_url.split(marker)[1].split("?")[0].split("#")[0]
+                break
+        else:
+            return gnews_url
+
+        if not article_id:
+            return gnews_url
+
+        # Base64url 解码（补齐 padding）
+        padded = article_id + "=" * (-len(article_id) % 4)
+        data = base64.urlsafe_b64decode(padded)
+
+        # 在解码字节中找 https:// 或 http://
+        for prefix in [b"https://", b"http://"]:
+            idx = data.find(prefix)
+            if idx != -1:
+                end = idx
+                while end < len(data) and 0x20 <= data[end] <= 0x7E:
+                    end += 1
+                candidate = data[idx:end].decode("ascii", errors="ignore")
+                # 基本校验：必须含域名且长度合理
+                if "." in candidate and len(candidate) > 15:
+                    return candidate
+
+        return gnews_url
+    except Exception:
+        return gnews_url
 
 # ── 直接媒体 RSS 源（真实文章 URL，无 Google 跳转）────────────────────────
 MEDIA_FEEDS = [
@@ -74,8 +113,8 @@ def fetch_all_news():
 
             seen_urls.add(raw_url)
 
-            # 始终存原始 URL；展示层会自动生成 bypass paywall 链接
-            url = raw_url
+            # Google News 链接解码为真实文章 URL；解码失败则保留原链接
+            url = _decode_gnews_url(raw_url) if is_google else raw_url
 
             url_hash = hashlib.md5(raw_url.encode()).hexdigest()  # ID 仍用原始 URL 去重
             try:
