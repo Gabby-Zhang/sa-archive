@@ -5,42 +5,51 @@ from datetime import datetime
 from utils.database import upsert_news
 
 
-def _decode_gnews_url(gnews_url: str) -> str:
+def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
     """
-    Google News RSS 链接（CBMi... Base64 编码）解码为真实文章 URL。
-    解码失败时原样返回。
+    将 Google News RSS 文章链接解析为真实文章 URL。
+    先尝试 Base64 解码（快，不需网络），失败则跟随 HTTP 跳转。
+    两者均失败时原样返回。
     """
+    import requests as _req
+
+    # ── 1. Base64 尝试（新格式多为 protobuf，可能失败）──────
     try:
-        # 提取编码段
         for marker in ["/rss/articles/", "/articles/"]:
             if marker in gnews_url:
                 article_id = gnews_url.split(marker)[1].split("?")[0].split("#")[0]
+                padded = article_id + "=" * (-len(article_id) % 4)
+                data = base64.urlsafe_b64decode(padded)
+                for prefix in [b"https://", b"http://"]:
+                    idx = data.find(prefix)
+                    if idx != -1:
+                        end = idx
+                        while end < len(data) and 0x20 <= data[end] <= 0x7E:
+                            end += 1
+                        candidate = data[idx:end].decode("ascii", errors="ignore")
+                        if "." in candidate and len(candidate) > 15 and "google.com" not in candidate:
+                            return candidate
                 break
-        else:
-            return gnews_url
-
-        if not article_id:
-            return gnews_url
-
-        # Base64url 解码（补齐 padding）
-        padded = article_id + "=" * (-len(article_id) % 4)
-        data = base64.urlsafe_b64decode(padded)
-
-        # 在解码字节中找 https:// 或 http://
-        for prefix in [b"https://", b"http://"]:
-            idx = data.find(prefix)
-            if idx != -1:
-                end = idx
-                while end < len(data) and 0x20 <= data[end] <= 0x7E:
-                    end += 1
-                candidate = data[idx:end].decode("ascii", errors="ignore")
-                # 基本校验：必须含域名且长度合理
-                if "." in candidate and len(candidate) > 15:
-                    return candidate
-
-        return gnews_url
     except Exception:
-        return gnews_url
+        pass
+
+    # ── 2. HTTP 跳转（Streamlit Cloud 在美国可访问 Google）──
+    try:
+        resp = _req.get(
+            gnews_url,
+            allow_redirects=True,
+            timeout=timeout,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                                   "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                   "Chrome/124.0.0.0 Safari/537.36"},
+        )
+        final = resp.url
+        if "google.com" not in final and "." in final and len(final) > 15:
+            return final
+    except Exception:
+        pass
+
+    return gnews_url
 
 # ── 直接媒体 RSS 源（真实文章 URL，无 Google 跳转）────────────────────────
 MEDIA_FEEDS = [

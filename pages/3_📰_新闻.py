@@ -269,13 +269,17 @@ if st.session_state.get("is_admin"):
                 else:
                     fixed = 0
                     failed = 0
-                    for r in records:
+                    prog = st.progress(0, text=f"准备解码 {len(records)} 条…")
+                    for i, r in enumerate(records):
+                        prog.progress((i + 1) / len(records),
+                                      text=f"解码中 {i+1}/{len(records)}…")
                         decoded = _decode_gnews_url(r["url"])
                         if decoded != r["url"] and "google.com" not in decoded:
                             db.table("news").update({"url": decoded}).eq("id", r["id"]).execute()
                             fixed += 1
                         else:
                             failed += 1
+                    prog.empty()
                     st.cache_data.clear()
                     st.success(f"✅ 成功解码 {fixed} 条，{failed} 条无法解码（保留原链接）")
                     st.rerun()
