@@ -21,7 +21,6 @@ _ICS_URL = "https://raw.githubusercontent.com/Gabby-Zhang/sejourn-calendar/main/
 def _parse_ics(text: str) -> list:
     """解析 ICS 文本，返回事件列表。"""
     events, current = [], {}
-    today = date.today()
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if line == "BEGIN:VEVENT":
@@ -37,14 +36,7 @@ def _parse_ics(text: str) -> list:
             val = line.split(":")[-1][:8]
             try:
                 y, m, d_ = int(val[:4]), int(val[4:6]), int(val[6:8])
-                ev_date = date(y, m, d_)
-                current["date"] = ev_date.isoformat()
-                if ev_date < today:
-                    current["status"] = "past"
-                elif ev_date == today:
-                    current["status"] = "ongoing"
-                else:
-                    current["status"] = "upcoming"
+                current["date"] = date(y, m, d_).isoformat()
             except (ValueError, IndexError):
                 pass
         elif line.startswith("LOCATION:"):
@@ -52,17 +44,16 @@ def _parse_ics(text: str) -> list:
     return events
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def get_sejourne_schedule() -> list:
-    """从 GitHub ICS 文件读取 Séjourné 日程，缓存 1 小时。"""
-    r = requests.get(_ICS_URL, timeout=15)
+    """从 GitHub ICS 文件读取 Séjourné 日程，缓存 5 分钟。"""
+    import time as _time
+    # 加时间戳（5 分钟精度）绕过 GitHub CDN 缓存
+    bust = int(_time.time() // 300)
+    r = requests.get(f"{_ICS_URL}?_={bust}", timeout=15)
     r.raise_for_status()
-    events = _parse_ics(r.text)
-    upcoming = sorted([e for e in events if e.get("status") != "past"],
-                      key=lambda x: x["date"])
-    past     = sorted([e for e in events if e.get("status") == "past"],
-                      key=lambda x: x["date"], reverse=True)
-    return upcoming + past
+    # 只返回原始事件列表，状态在展示时实时计算（避免缓存过期导致 past/upcoming 错误）
+    return _parse_ics(r.text)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -162,12 +153,26 @@ with col_s:
             st.error(f"读取失败：{_e}")
             s_events = []
 
+    # 实时计算 status（不依赖缓存时的日期判断）
+    _today = date.today()
+    for ev in s_events:
+        try:
+            ev_date = date.fromisoformat(ev["date"])
+            if ev_date < _today:
+                ev["status"] = "past"
+            elif ev_date == _today:
+                ev["status"] = "ongoing"
+            else:
+                ev["status"] = "upcoming"
+        except Exception:
+            ev["status"] = "past"
+
     _en = st.session_state.get("lang") == "en"
     if not s_events:
         st.info("No schedule data" if _en else "暂无日程数据")
     else:
-        s_upcoming = [e for e in s_events if e["status"] != "past"]
-        s_past     = [e for e in s_events if e["status"] == "past"]
+        s_upcoming = sorted([e for e in s_events if e["status"] != "past"], key=lambda x: x["date"])
+        s_past     = sorted([e for e in s_events if e["status"] == "past"],  key=lambda x: x["date"], reverse=True)
 
         if s_upcoming:
             _section_header(f"▶ {'Upcoming' if _en else '即将到来'} · {len(s_upcoming)}")
