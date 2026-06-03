@@ -27,16 +27,31 @@ if alerts:
     from collections import defaultdict
     from datetime import datetime as _dt
 
-    _header  = "📸 Latest photo finds" if _en else "📸 最新图片动态"
-    _caption = "Auto-detected by photo monitor · click title to open source" if _en else "由 photo-monitor 自动发现 · 点击标题查看原图"
+    _header = "📸 Latest photo finds" if _en else "📸 最新图片动态"
     st.markdown(
-        f'<div style="font-size:1rem;font-weight:700;margin:0.3rem 0 0.1rem">{_header}</div>'
-        f'<div style="color:#888;font-size:0.75rem;margin-bottom:0.6rem">{_caption}</div>',
+        f'<div style="font-size:1rem;font-weight:700;margin:0.3rem 0 0.5rem">{_header}</div>',
         unsafe_allow_html=True
     )
 
+    # ── 图库来源 → 搜索页 URL（点徽章直接跳转）──────────────
+    _SEARCH_URLS = {
+        "Gabriel Attal": {
+            "Getty Images":       "https://www.gettyimages.com/photos/gabriel-attal",
+            "Imago Images":       "https://www.imago-images.de/search?term=gabriel+attal",
+            "Alamy":              "https://www.alamy.com/search.html?qt=gabriel+attal",
+            "Flickr RenewEurope":"https://www.flickr.com/groups/reneweuropegroup/",
+            "EU Audiovisual":     "https://audiovisual.ec.europa.eu/en/search?term=attal",
+        },
+        "Stéphane Séjourné": {
+            "Getty Images":       "https://www.gettyimages.com/photos/stephane-sejourne",
+            "Imago Images":       "https://www.imago-images.de/search?term=sejourne",
+            "Alamy":              "https://www.alamy.com/search.html?qt=sejourne",
+            "Flickr RenewEurope":"https://www.flickr.com/groups/reneweuropegroup/",
+            "EU Audiovisual":     "https://audiovisual.ec.europa.eu/en/search?term=sejourne",
+        },
+    }
+
     # ── 按「人物 → 发现日期 → 图库来源」三级分组 ──────────────
-    # 结构: {person: {date: {source: [items]}}}
     _by_person = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for _a in alerts:
         _p = _a.get("person") or "Unknown"
@@ -49,56 +64,49 @@ if alerts:
         if not _dates:
             st.caption("暂无数据" if not _en else "No data yet")
             return
-        _total = sum(
-            len(items)
-            for src_map in _dates.values()
-            for items in src_map.values()
-        )
-        st.caption(f"共 {_total} 张" if not _en else f"{_total} photos")
-        for _idx_d, _date in enumerate(sorted(_dates.keys(), reverse=True)):
-            _src_map   = _dates[_date]
-            _day_total = sum(len(v) for v in _src_map.values())
+        _search_map = _SEARCH_URLS.get(person, {})
+
+        for _date in sorted(_dates.keys(), reverse=True):
+            _src_map = _dates[_date]
             try:
                 _dl = _dt.fromisoformat(_date)
                 _date_label = f"{_dl.month}.{_dl.day}"
             except Exception:
                 _date_label = _date
-            with st.expander(f"📅 {_date_label}  ·  {_day_total} 张", expanded=(_idx_d == 0)):
-                for _src, _items in sorted(_src_map.items()):
-                    st.markdown(
-                        f'<div style="color:#aaa;font-size:0.72rem;font-weight:600;'
-                        f'letter-spacing:0.04em;margin:0.5rem 0 0.2rem">'
-                        f'▸ {_src}  <span style="color:#555;font-weight:400">({len(_items)})</span></div>',
-                        unsafe_allow_html=True
-                    )
-                    for _a in _items:
-                        _title = _a.get("title", "") or "—"
-                        _url   = _a.get("url", "")
-                        _link  = (
-                            f'<a href="{_url}" target="_blank" '
-                            f'style="color:inherit;text-decoration:none">{_title}</a>'
-                            if _url else _title
-                        )
-                        st.markdown(
-                            f'<div style="border-left:3px solid {color};padding:0.28rem 0.7rem;'
-                            f'margin:0.08rem 0;background:var(--cb);border-radius:0 4px 4px 0">'
-                            f'<span style="font-size:0.82rem;color:var(--t1)">{_link}</span>'
-                            f'</div>',
-                            unsafe_allow_html=True
-                        )
 
-    # 两栏并排：左 Séjourné，右 Attal（与行程日历一致）
+            # 每行：日期 + 各图库徽章（点击直接跳转搜索页）
+            _badges = ""
+            for _src, _items in sorted(_src_map.items()):
+                _href  = _search_map.get(_src, _items[0].get("url", "#"))
+                _count = len(_items)
+                _badges += (
+                    f'<a href="{_href}" target="_blank" style="text-decoration:none">'
+                    f'<span style="background:{color}22;color:{color};border:1px solid {color}55;'
+                    f'font-size:0.72rem;padding:0.1rem 0.45rem;border-radius:4px;'
+                    f'margin-left:0.4rem;white-space:nowrap">'
+                    f'{_src} {_count}</span></a>'
+                )
+
+            st.markdown(
+                f'<div style="padding:0.3rem 0;border-bottom:1px solid var(--bd)">'
+                f'<span style="color:var(--t3);font-size:0.78rem;font-weight:600">{_date_label}</span>'
+                f'{_badges}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+    # 两栏并排：左 Séjourné，右 Attal
     _col_s, _col_a = st.columns(2)
     with _col_s:
         st.markdown(
-            f'<div style="color:#4A90D9;font-size:0.95rem;font-weight:700;margin-bottom:0.2rem">'
+            f'<div style="color:#4A90D9;font-size:0.9rem;font-weight:700;margin-bottom:0.3rem">'
             f'🔵 Stéphane Séjourné</div>',
             unsafe_allow_html=True
         )
         _render_person_col("Stéphane Séjourné", "#4A90D9")
     with _col_a:
         st.markdown(
-            f'<div style="color:#C9A84C;font-size:0.95rem;font-weight:700;margin-bottom:0.2rem">'
+            f'<div style="color:#C9A84C;font-size:0.9rem;font-weight:700;margin-bottom:0.3rem">'
             f'🟡 Gabriel Attal</div>',
             unsafe_allow_html=True
         )
