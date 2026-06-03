@@ -12,7 +12,7 @@ st.caption(t("gallery_caption"))
 
 # ── 最新图片动态（photo-monitor 自动抓取）────────────────────
 @st.cache_data(ttl=300, show_spinner=False)
-def get_photo_alerts(limit=30):
+def get_photo_alerts(limit=300):
     try:
         return get_supabase().table("photo_alerts") \
             .select("*").order("found_at", desc=True).limit(limit).execute().data or []
@@ -20,40 +20,69 @@ def get_photo_alerts(limit=30):
         return []
 
 _PERSON_COLOR = {"Gabriel Attal": "#C9A84C", "Stéphane Séjourné": "#4A90D9"}
-_SOURCE_ICON  = {
-    "Getty Images": "Getty", "Imago Images": "Imago",
-    "Alamy": "Alamy", "Flickr RenewEurope": "Flickr",
-    "EU Audiovisual": "EU AV",
-}
 _en = st.session_state.get("lang") == "en"
 
 alerts = get_photo_alerts()
 if alerts:
-    _header = "📸 Latest photo finds" if _en else "📸 最新图片动态"
-    _caption = "Auto-detected by photo monitor · click to open source" if _en else "由 photo-monitor 自动发现 · 点击链接查看原图"
-    with st.expander(f"{_header}  ({len(alerts)})", expanded=True):
-        st.caption(_caption)
-        _cols = st.columns(2)
-        for _i, _a in enumerate(alerts):
-            _color = _PERSON_COLOR.get(_a.get("person",""), "#888")
-            _src   = _SOURCE_ICON.get(_a.get("source",""), _a.get("source",""))
-            _title = _a.get("title","") or "—"
-            _url   = _a.get("url","")
-            _date  = (_a.get("found_at","") or "")[:10]
-            _person_short = "Attal" if "Attal" in _a.get("person","") else "Séjourné"
-            with _cols[_i % 2]:
+    from collections import defaultdict
+    from datetime import datetime as _dt
+
+    _header  = "📸 Latest photo finds" if _en else "📸 最新图片动态"
+    _caption = "Auto-detected by photo monitor · click title to open source" if _en else "由 photo-monitor 自动发现 · 点击标题查看原图"
+    st.markdown(
+        f'<div style="font-size:1rem;font-weight:700;margin:0.3rem 0 0.1rem">{_header}</div>'
+        f'<div style="color:#888;font-size:0.75rem;margin-bottom:0.6rem">{_caption}</div>',
+        unsafe_allow_html=True
+    )
+
+    # ── 按「发现日期 → 图库来源」两级分组 ──────────────────
+    _by_date = defaultdict(lambda: defaultdict(list))
+    for _a in alerts:
+        _d = ((_a.get("found_at") or ""))[:10]   # YYYY-MM-DD
+        _s = _a.get("source") or "Unknown"
+        _by_date[_d][_s].append(_a)
+
+    # 日期倒序（最新在前），首个日期默认展开
+    _sorted_dates = sorted(_by_date.keys(), reverse=True)
+    for _idx_d, _date in enumerate(_sorted_dates):
+        _src_map   = _by_date[_date]
+        _day_total = sum(len(v) for v in _src_map.values())
+
+        # 日期标签：M.D 格式
+        try:
+            _dl = _dt.fromisoformat(_date)
+            _date_label = f"{_dl.month}.{_dl.day}"
+        except Exception:
+            _date_label = _date
+
+        with st.expander(f"📅 {_date_label}  ·  {_day_total} 张", expanded=(_idx_d == 0)):
+            # 每个图库来源一个子区块
+            for _src, _items in sorted(_src_map.items()):
                 st.markdown(
-                    f'<div style="border-left:3px solid {_color};padding:0.45rem 0.8rem;'
-                    f'margin:0.25rem 0;background:var(--cb);border-radius:0 6px 6px 0">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center">'
-                    f'<span style="color:{_color};font-size:0.72rem;font-weight:bold">{_person_short}</span>'
-                    f'<span style="color:#aaa;font-size:0.7rem">{_src} · {_date}</span>'
-                    f'</div>'
-                    f'<div style="font-size:0.82rem;margin-top:0.15rem;color:var(--t1)">'
-                    f'{"<a href=" + chr(34) + _url + chr(34) + " target=_blank style=color:inherit>" + _title + "</a>" if _url else _title}'
-                    f'</div>'
-                    f'</div>',
-                    unsafe_allow_html=True)
+                    f'<div style="color:#aaa;font-size:0.72rem;font-weight:600;'
+                    f'letter-spacing:0.04em;margin:0.55rem 0 0.2rem">'
+                    f'▸ {_src}  <span style="color:#555;font-weight:400">({len(_items)})</span></div>',
+                    unsafe_allow_html=True
+                )
+                for _a in _items:
+                    _color = _PERSON_COLOR.get(_a.get("person", ""), "#888")
+                    _title = _a.get("title", "") or "—"
+                    _url   = _a.get("url", "")
+                    _ps    = "Attal" if "Attal" in _a.get("person", "") else "Séjourné"
+                    _link  = (
+                        f'<a href="{_url}" target="_blank" '
+                        f'style="color:inherit;text-decoration:none">{_title}</a>'
+                        if _url else _title
+                    )
+                    st.markdown(
+                        f'<div style="border-left:3px solid {_color};padding:0.28rem 0.7rem;'
+                        f'margin:0.08rem 0;background:var(--cb);border-radius:0 4px 4px 0">'
+                        f'<span style="color:{_color};font-size:0.68rem;font-weight:bold;'
+                        f'margin-right:0.5rem">{_ps}</span>'
+                        f'<span style="font-size:0.82rem;color:var(--t1)">{_link}</span>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
 
 st.divider()
 
