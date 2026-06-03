@@ -66,7 +66,7 @@ if alerts:
             return
         _search_map = _SEARCH_URLS.get(person, {})
 
-        for _date in sorted(_dates.keys(), reverse=True):
+        for _idx_d, _date in enumerate(sorted(_dates.keys(), reverse=True)):
             _src_map = _dates[_date]
             try:
                 _dl = _dt.fromisoformat(_date)
@@ -74,10 +74,10 @@ if alerts:
             except Exception:
                 _date_label = _date
 
-            # 每行：日期 + 各图库徽章（点击直接跳转搜索页）
+            # 每行：日期 + 各图库徽章（徽章→搜索页）
             _badges = ""
             for _src, _items in sorted(_src_map.items()):
-                _href  = _search_map.get(_src, _items[0].get("url", "#"))
+                _href  = _search_map.get(_src, "#")
                 _count = len(_items)
                 _badges += (
                     f'<a href="{_href}" target="_blank" style="text-decoration:none">'
@@ -94,6 +94,36 @@ if alerts:
                 f'</div>',
                 unsafe_allow_html=True
             )
+
+            # 折叠展示该日所有具体图片直链
+            _day_items = [
+                (_src, _a)
+                for _src, _items in sorted(_src_map.items())
+                for _a in _items
+                if _a.get("url")
+            ]
+            if _day_items:
+                _exp_label = (f"↳ 查看 {len(_day_items)} 张直链"
+                              if not _en else f"↳ {len(_day_items)} direct links")
+                with st.expander(_exp_label, expanded=False):
+                    _prev_src = None
+                    for _src, _a in _day_items:
+                        if _src != _prev_src:
+                            st.markdown(
+                                f'<div style="color:#aaa;font-size:0.7rem;font-weight:600;'
+                                f'letter-spacing:0.04em;margin:0.4rem 0 0.15rem">{_src}</div>',
+                                unsafe_allow_html=True
+                            )
+                            _prev_src = _src
+                        _title = (_a.get("title") or "—")[:80]
+                        _url   = _a.get("url", "")
+                        st.markdown(
+                            f'<div style="font-size:0.8rem;padding:0.1rem 0">'
+                            f'<a href="{_url}" target="_blank" '
+                            f'style="color:{color};text-decoration:none">↗ {_title}</a>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
 
     # 两栏并排：左 Séjourné，右 Attal
     _col_s, _col_a = st.columns(2)
