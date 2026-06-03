@@ -12,7 +12,7 @@ st.caption(t("gallery_caption"))
 
 # ── 最新图片动态（photo-monitor 自动抓取）────────────────────
 @st.cache_data(ttl=300, show_spinner=False)
-def get_photo_alerts(limit=300):
+def get_photo_alerts(limit=1000):
     try:
         return get_supabase().table("photo_alerts") \
             .select("*").order("found_at", desc=True).limit(limit).execute().data or []
@@ -59,8 +59,22 @@ if alerts:
         _s = _a.get("source") or "Unknown"
         _by_person[_p][_d][_s].append(_a)
 
+    # ── 日期分页（两栏共用同一页码）──────────────────────────
+    _DATES_PER_PAGE = 5
+    _all_dates = sorted(
+        {d for _pd in _by_person.values() for d in _pd.keys()},
+        reverse=True
+    )
+    _total_pages = max(1, (len(_all_dates) + _DATES_PER_PAGE - 1) // _DATES_PER_PAGE)
+    if "photo_page" not in st.session_state:
+        st.session_state.photo_page = 0
+    _pp = max(0, min(st.session_state.photo_page, _total_pages - 1))
+    st.session_state.photo_page = _pp
+    _page_dates = set(_all_dates[_pp * _DATES_PER_PAGE : (_pp + 1) * _DATES_PER_PAGE])
+
     def _render_person_col(person: str, color: str):
-        _dates = _by_person.get(person, {})
+        _dates = {d: v for d, v in _by_person.get(person, {}).items()
+                  if d in _page_dates}
         if not _dates:
             st.caption("暂无数据" if not _en else "No data yet")
             return
@@ -143,6 +157,30 @@ if alerts:
             unsafe_allow_html=True
         )
         _render_person_col("Gabriel Attal", "#C9A84C")
+
+    # ── 分页控件 ────────────────────────────────────────────
+    _pg_en = st.session_state.get("lang") == "en"
+    _pc1, _pc2, _pc3 = st.columns([1, 4, 1])
+    with _pc1:
+        if st.button("◀ Prev" if _pg_en else "◀ 上一页",
+                     key="photo_prev", disabled=(_pp == 0),
+                     use_container_width=True):
+            st.session_state.photo_page -= 1
+            st.rerun()
+    with _pc2:
+        _pg_info = (f"Page {_pp + 1} / {_total_pages}"
+                    if _pg_en else f"第 {_pp + 1} / {_total_pages} 页")
+        st.markdown(
+            f"<div style='text-align:center;color:#aaa;font-size:0.8rem;"
+            f"padding-top:0.4rem'>{_pg_info}</div>",
+            unsafe_allow_html=True
+        )
+    with _pc3:
+        if st.button("Next ▶" if _pg_en else "下一页 ▶",
+                     key="photo_next", disabled=(_pp >= _total_pages - 1),
+                     use_container_width=True):
+            st.session_state.photo_page += 1
+            st.rerun()
 
 st.divider()
 
