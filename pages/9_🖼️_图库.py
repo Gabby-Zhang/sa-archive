@@ -51,10 +51,18 @@ if alerts:
         },
     }
 
+    # 人名规范化（兼容旧数据里无重音符的写法）
+    _PERSON_NORM = {
+        "Stephane Sejourne": "Stéphane Séjourné",
+        "Stephane Séjourné": "Stéphane Séjourné",
+        "Stéphane Sejourne": "Stéphane Séjourné",
+    }
+
     # ── 按「人物 → 发现日期 → 图库来源」三级分组 ──────────────
     _by_person = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     for _a in alerts:
-        _p = _a.get("person") or "Unknown"
+        _p_raw = _a.get("person") or "Unknown"
+        _p = _PERSON_NORM.get(_p_raw, _p_raw)   # 规范化
         _d = (_a.get("found_at") or "")[:10]
         _s = _a.get("source") or "Unknown"
         _by_person[_p][_d][_s].append(_a)
