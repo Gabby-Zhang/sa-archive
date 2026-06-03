@@ -10,6 +10,53 @@ st.set_page_config(page_title="图库 · 档案馆", page_icon="🖼️", layout
 st.title(t("gallery_title"))
 st.caption(t("gallery_caption"))
 
+# ── 最新图片动态（photo-monitor 自动抓取）────────────────────
+@st.cache_data(ttl=300, show_spinner=False)
+def get_photo_alerts(limit=30):
+    try:
+        return get_supabase().table("photo_alerts") \
+            .select("*").order("found_at", desc=True).limit(limit).execute().data or []
+    except Exception:
+        return []
+
+_PERSON_COLOR = {"Gabriel Attal": "#C9A84C", "Stéphane Séjourné": "#4A90D9"}
+_SOURCE_ICON  = {
+    "Getty Images": "Getty", "Imago Images": "Imago",
+    "Alamy": "Alamy", "Flickr RenewEurope": "Flickr",
+    "EU Audiovisual": "EU AV",
+}
+_en = st.session_state.get("lang") == "en"
+
+alerts = get_photo_alerts()
+if alerts:
+    _header = "📸 Latest photo finds" if _en else "📸 最新图片动态"
+    _caption = "Auto-detected by photo monitor · click to open source" if _en else "由 photo-monitor 自动发现 · 点击链接查看原图"
+    with st.expander(f"{_header}  ({len(alerts)})", expanded=True):
+        st.caption(_caption)
+        _cols = st.columns(2)
+        for _i, _a in enumerate(alerts):
+            _color = _PERSON_COLOR.get(_a.get("person",""), "#888")
+            _src   = _SOURCE_ICON.get(_a.get("source",""), _a.get("source",""))
+            _title = _a.get("title","") or "—"
+            _url   = _a.get("url","")
+            _date  = (_a.get("found_at","") or "")[:10]
+            _person_short = "Attal" if "Attal" in _a.get("person","") else "Séjourné"
+            with _cols[_i % 2]:
+                st.markdown(
+                    f'<div style="border-left:3px solid {_color};padding:0.45rem 0.8rem;'
+                    f'margin:0.25rem 0;background:var(--cb);border-radius:0 6px 6px 0">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center">'
+                    f'<span style="color:{_color};font-size:0.72rem;font-weight:bold">{_person_short}</span>'
+                    f'<span style="color:#aaa;font-size:0.7rem">{_src} · {_date}</span>'
+                    f'</div>'
+                    f'<div style="font-size:0.82rem;margin-top:0.15rem;color:var(--t1)">'
+                    f'{"<a href=" + chr(34) + _url + chr(34) + " target=_blank style=color:inherit>" + _title + "</a>" if _url else _title}'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True)
+
+st.divider()
+
 # ── 灯箱 CSS + JS ─────────────────────────────────────────
 st.markdown("""
 <style>
