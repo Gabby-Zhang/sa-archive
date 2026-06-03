@@ -69,9 +69,12 @@ if alerts:
 
     # ── 日期分页（两栏共用同一页码）──────────────────────────
     _DATES_PER_PAGE = 5
+    def _parse_date(s):
+        try: return _dt.fromisoformat(s)
+        except: return _dt.min
     _all_dates = sorted(
         {d for _pd in _by_person.values() for d in _pd.keys()},
-        reverse=True
+        key=_parse_date, reverse=True   # 最新日期在 index 0
     )
     _total_pages = max(1, (len(_all_dates) + _DATES_PER_PAGE - 1) // _DATES_PER_PAGE)
     if "photo_page" not in st.session_state:
@@ -89,7 +92,11 @@ if alerts:
         _search_map = _SEARCH_URLS.get(person, {})
 
         _html = ""
-        for _date in sorted(_dates.keys(), reverse=True):
+        # 明确按日期对象倒序，最新日期在最前（最上方）
+        def _d_key(s):
+            try: return _dt.fromisoformat(s)
+            except: return _dt.min
+        for _date in sorted(_dates.keys(), key=_d_key, reverse=True):
             _src_map = _dates[_date]
             try:
                 _dl = _dt.fromisoformat(_date)
