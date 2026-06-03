@@ -117,7 +117,11 @@ if alerts:
                     f'padding:0.1rem 0.45rem;border-radius:4px;white-space:nowrap">'
                     f'{_src}&nbsp;{len(_items)}</span></a> '
                 )
-                _links = [_a for _a in _items if _a.get("url")]
+                # found_at 升序 = monitor 最先抓到的（Getty 返回的最新图）排最上面
+                _links = sorted(
+                    [_a for _a in _items if _a.get("url")],
+                    key=lambda x: x.get("found_at", "")
+                )
                 if _links:
                     _details_html += (
                         f'<div style="color:#888;font-size:0.68rem;font-weight:600;'
