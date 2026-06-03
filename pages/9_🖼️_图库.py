@@ -66,7 +66,8 @@ if alerts:
             return
         _search_map = _SEARCH_URLS.get(person, {})
 
-        for _idx_d, _date in enumerate(sorted(_dates.keys(), reverse=True)):
+        _html = ""
+        for _date in sorted(_dates.keys(), reverse=True):
             _src_map = _dates[_date]
             try:
                 _dl = _dt.fromisoformat(_date)
@@ -74,56 +75,57 @@ if alerts:
             except Exception:
                 _date_label = _date
 
-            # 每行：日期 + 各图库徽章（徽章→搜索页）
-            _badges = ""
+            # 徽章 + 详细链接 HTML
+            _badges_html  = ""
+            _details_html = ""
+            _n_links = 0
             for _src, _items in sorted(_src_map.items()):
-                _href  = _search_map.get(_src, "#")
-                _count = len(_items)
-                _badges += (
+                _href = _search_map.get(_src, "#")
+                _badges_html += (
                     f'<a href="{_href}" target="_blank" style="text-decoration:none">'
-                    f'<span style="background:{color}22;color:{color};border:1px solid {color}55;'
-                    f'font-size:0.72rem;padding:0.1rem 0.45rem;border-radius:4px;'
-                    f'margin-left:0.4rem;white-space:nowrap">'
-                    f'{_src} {_count}</span></a>'
+                    f'<span style="background:{color}18;color:{color};'
+                    f'border:1px solid {color}44;font-size:0.71rem;'
+                    f'padding:0.1rem 0.45rem;border-radius:4px;white-space:nowrap">'
+                    f'{_src}&nbsp;{len(_items)}</span></a> '
                 )
+                _links = [_a for _a in _items if _a.get("url")]
+                if _links:
+                    _details_html += (
+                        f'<div style="color:#888;font-size:0.68rem;font-weight:600;'
+                        f'letter-spacing:0.04em;margin:0.35rem 0 0.1rem">{_src}</div>'
+                    )
+                    for _a in _links:
+                        _t = (_a.get("title") or "—")[:72]
+                        _u = _a["url"]
+                        _details_html += (
+                            f'<div style="font-size:0.78rem;line-height:1.6">'
+                            f'<a href="{_u}" target="_blank" '
+                            f'style="color:{color};text-decoration:none">↗ {_t}</a></div>'
+                        )
+                    _n_links += len(_links)
 
-            st.markdown(
-                f'<div style="padding:0.3rem 0;border-bottom:1px solid var(--bd)">'
-                f'<span style="color:var(--t3);font-size:0.78rem;font-weight:600">{_date_label}</span>'
-                f'{_badges}'
-                f'</div>',
-                unsafe_allow_html=True
+            _toggle = (f"↳ {_n_links} 张直链" if not _en
+                       else f"↳ {_n_links} direct links")
+            _details_block = (
+                f'<details style="margin:0.1rem 0 0.4rem 2.6rem">'
+                f'<summary style="color:#888;font-size:0.71rem;cursor:pointer;'
+                f'list-style:none;outline:none;user-select:none;display:inline-block">'
+                f'{_toggle}</summary>'
+                f'<div style="margin-top:0.25rem;padding-left:0.6rem;'
+                f'border-left:2px solid {color}33">{_details_html}</div>'
+                f'</details>'
+            ) if _n_links else ""
+
+            _html += (
+                f'<div style="padding:0.3rem 0 0;border-bottom:1px solid var(--bd)">'
+                f'<span style="color:var(--t3);font-size:0.78rem;font-weight:600;'
+                f'margin-right:0.5rem">{_date_label}</span>'
+                f'{_badges_html}'
+                f'</div>'
+                f'{_details_block}'
             )
 
-            # 折叠展示该日所有具体图片直链
-            _day_items = [
-                (_src, _a)
-                for _src, _items in sorted(_src_map.items())
-                for _a in _items
-                if _a.get("url")
-            ]
-            if _day_items:
-                _exp_label = (f"↳ 查看 {len(_day_items)} 张直链"
-                              if not _en else f"↳ {len(_day_items)} direct links")
-                with st.expander(_exp_label, expanded=False):
-                    _prev_src = None
-                    for _src, _a in _day_items:
-                        if _src != _prev_src:
-                            st.markdown(
-                                f'<div style="color:#aaa;font-size:0.7rem;font-weight:600;'
-                                f'letter-spacing:0.04em;margin:0.4rem 0 0.15rem">{_src}</div>',
-                                unsafe_allow_html=True
-                            )
-                            _prev_src = _src
-                        _title = (_a.get("title") or "—")[:80]
-                        _url   = _a.get("url", "")
-                        st.markdown(
-                            f'<div style="font-size:0.8rem;padding:0.1rem 0">'
-                            f'<a href="{_url}" target="_blank" '
-                            f'style="color:{color};text-decoration:none">↗ {_title}</a>'
-                            f'</div>',
-                            unsafe_allow_html=True
-                        )
+        st.markdown(_html, unsafe_allow_html=True)
 
     # 两栏并排：左 Séjourné，右 Attal
     _col_s, _col_a = st.columns(2)
