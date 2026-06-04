@@ -157,6 +157,12 @@ with tab1:
                 if st.button("🗑️", key=f"del_res_{r.get('id')}", help="删除"):
                     delete_resource(r.get("id"))
                     st.rerun()
+        st.markdown(f"**📺 {'Video replays' if _en else '视频回放'}**")
+        st.markdown(
+            "- [📺 LCP – Replays Attal (QAG · débats · interviews)]"
+            "(https://lcp.fr/recherche?q=attal&f%5B0%5D=type_de_contenu%3Aepisode)"
+        )
+        st.caption("La Chaîne Parlementaire · " + ("parliament TV channel" if _en else "议会电视台"))
 
 # ── 图库来源 ─────────────────────────────────────────────
 with tab2:
