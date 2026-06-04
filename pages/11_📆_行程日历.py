@@ -207,6 +207,13 @@ with col_a:
         unsafe_allow_html=True
     )
     st.caption("🏛️ " + ("QAG reminders auto-synced from AN · manual entries for other events" if st.session_state.get("lang")=="en" else "QAG质询提醒自动同步（周二/三）· 其他行程手动录入"))
+    st.markdown(
+        '<a href="https://lcp.fr/recherche?q=attal&f%5B0%5D=type_de_contenu%3Aepisode" '
+        'target="_blank" style="color:#aaa;font-size:0.75rem;text-decoration:none">'
+        '📺 ' + ("LCP replays – Attal on parliament TV" if st.session_state.get("lang")=="en" else "LCP 回放 – 议会电视台 Attal 出镜合集") +
+        '</a>',
+        unsafe_allow_html=True
+    )
 
     a_events  = get_attal_schedule()
     today_str = date.today().isoformat()
