@@ -78,6 +78,8 @@ MEDIA_FEEDS = [
     # Le Canard Enchaîné（无 RSS，通过 Google News 间接捕捉）
     {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Attal&hl=fr&gl=FR&ceid=FR:fr",                      "source": "lecanardenchaine.fr"},
     {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                   "source": "lecanardenchaine.fr"},
+    # LCP – La Chaîne Parlementaire（议会电视台，直接 RSS，含 AN 直播报道与时政新闻）
+    {"url": "https://lcp.fr/rss.xml",                                                                                  "source": "lcp.fr"},
 ]
 
 # 关键词 → 人物映射
