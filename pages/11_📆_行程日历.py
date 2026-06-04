@@ -73,7 +73,8 @@ def get_attal_schedule() -> list:
 
 # ── 卡片渲染 ─────────────────────────────────────────────────────────────────
 def _event_card(title: str, ev_date: str, location: str,
-                status: str, color: str, source_url: str = ""):
+                status: str, color: str, source_url: str = "",
+                description: str = ""):
     if status in ("upcoming", "ongoing"):
         bg           = f"background:var(--cb);border-left:4px solid {color}"
         date_color   = color
@@ -106,6 +107,13 @@ def _event_card(title: str, ev_date: str, location: str,
         except ValueError:
             pass
 
+    # AN 自动同步标签
+    an_badge = ""
+    if description and "[AN_AUTO]" in description:
+        an_badge = (f'<span style="color:#888;font-size:0.62rem;'
+                    f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
+                    f'margin-left:0.4rem">🏛️ AN</span>')
+
     loc_html  = (f'<div style="color:var(--t3);font-size:0.73rem;margin-top:0.15rem">'
                  f'📍 {location}</div>') if location else ""
     link_html = (f' <a href="{source_url}" target="_blank" '
@@ -113,7 +121,7 @@ def _event_card(title: str, ev_date: str, location: str,
 
     st.markdown(
         f'<div style="{bg};border-radius:0 8px 8px 0;padding:0.55rem 0.85rem;margin:0.3rem 0;opacity:{opacity}">'
-        f'<div style="color:{date_color};font-size:0.73rem;font-weight:600">{ev_date}{badge}</div>'
+        f'<div style="color:{date_color};font-size:0.73rem;font-weight:600">{ev_date}{badge}{an_badge}</div>'
         f'<div style="color:var(--t1);font-size:0.88rem;margin-top:0.1rem;line-height:1.35">{title}{link_html}</div>'
         f'{loc_html}'
         f'</div>',
@@ -198,7 +206,7 @@ with col_a:
         f'margin-bottom:0.2rem">🟡 Gabriel Attal</div>',
         unsafe_allow_html=True
     )
-    st.caption("✏️ " + ("Maintained manually by the team" if st.session_state.get("lang")=="en" else "由团队手动维护"))
+    st.caption("🏛️ " + ("QAG reminders auto-synced from AN · manual entries for other events" if st.session_state.get("lang")=="en" else "QAG质询提醒自动同步（周二/三）· 其他行程手动录入"))
 
     a_events  = get_attal_schedule()
     today_str = date.today().isoformat()
@@ -224,7 +232,8 @@ with col_a:
                 with _c1:
                     _event_card(ev.get("title",""), ev_date_str,
                                 ev.get("location",""), status,
-                                ATTAL_COLOR, ev.get("source_url",""))
+                                ATTAL_COLOR, ev.get("source_url",""),
+                                ev.get("description",""))
                 with _c2:
                     if st.button("🗑️", key=f"del_attal_{ev.get('id')}",
                                  help="删除", use_container_width=True):
@@ -234,7 +243,8 @@ with col_a:
             else:
                 _event_card(ev.get("title",""), ev_date_str,
                             ev.get("location",""), status,
-                            ATTAL_COLOR, ev.get("source_url",""))
+                            ATTAL_COLOR, ev.get("source_url",""),
+                            ev.get("description",""))
     elif not a_events:
         st.info("No schedule entries" if st.session_state.get("lang")=="en" else "暂无行程记录")
 
@@ -247,7 +257,8 @@ with col_a:
                     with _c1:
                         _event_card(ev.get("title",""), ev_date_str,
                                     ev.get("location",""), "past",
-                                    ATTAL_COLOR, ev.get("source_url",""))
+                                    ATTAL_COLOR, ev.get("source_url",""),
+                                    ev.get("description",""))
                     with _c2:
                         if st.button("🗑️", key=f"del_attal_past_{ev.get('id')}",
                                      help="删除", use_container_width=True):
@@ -257,7 +268,8 @@ with col_a:
                 else:
                     _event_card(ev.get("title",""), ev_date_str,
                                 ev.get("location",""), "past",
-                                ATTAL_COLOR, ev.get("source_url",""))
+                                ATTAL_COLOR, ev.get("source_url",""),
+                                ev.get("description",""))
 
     # ── 管理员：添加 Attal 行程 ──────────────────────────────
     if st.session_state.get("is_admin"):

@@ -1,4 +1,4 @@
-name: 定时抓取新闻
+name: 定时抓取新闻与日程
 
 on:
   schedule:
@@ -18,10 +18,17 @@ jobs:
           python-version: '3.11'
 
       - name: 安装依赖
-        run: pip install supabase feedparser
+        run: pip install supabase feedparser requests
 
       - name: 抓取新闻
         run: python scripts/fetch_news.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      - name: 抓取 Attal 国民议会日程
+        run: python scripts/fetch_an_schedule.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
