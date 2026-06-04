@@ -72,9 +72,12 @@ MEDIA_FEEDS = [
     {"url": "https://www.france24.com/fr/europe/rss",                           "source": "france24.com"},
     {"url": "https://www.euractiv.com/feed/",                                   "source": "euractiv.com"},
     # Google News en secours (URLs nécessitent VPN/Google)
-    {"url": "https://news.google.com/rss/search?q=Gabriel+Attal&hl=fr&gl=FR&ceid=FR:fr",         "source": ""},
-    {"url": "https://news.google.com/rss/search?q=Stéphane+Séjourné&hl=fr&gl=FR&ceid=FR:fr",     "source": ""},
-    {"url": "https://news.google.com/rss/search?q=Attal+Séjourné&hl=fr&gl=FR&ceid=FR:fr",        "source": ""},
+    {"url": "https://news.google.com/rss/search?q=Gabriel+Attal&hl=fr&gl=FR&ceid=FR:fr",                              "source": ""},
+    {"url": "https://news.google.com/rss/search?q=Stéphane+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                          "source": ""},
+    {"url": "https://news.google.com/rss/search?q=Attal+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                             "source": ""},
+    # Le Canard Enchaîné（无 RSS，通过 Google News 间接捕捉）
+    {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Attal&hl=fr&gl=FR&ceid=FR:fr",                      "source": "lecanardenchaine.fr"},
+    {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                   "source": "lecanardenchaine.fr"},
 ]
 
 # 关键词 → 人物映射
