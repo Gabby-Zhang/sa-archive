@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-Fetch the Assemblée nationale plenary session calendar for Gabriel Attal.
+Fetch Gabriel Attal's schedule from two sources:
 
-Sources:
-  - https://www.assemblee-nationale.fr/dyn/seance-publique/textes-inscrits-ordre-du-jour
-    (multi-week order of the day: dates + legislative agenda items)
-  - https://www.assemblee-nationale.fr/dyn/seance-publique
-    (current week sessions with exact times)
+  1. Assemblée nationale plenary calendar
+     - QAG days (Tue/Wed) only
+     - Dedup: delete future [AN_AUTO] entries, re-insert fresh data
 
-Dedup strategy:
-  - All auto-synced entries carry description "[AN_AUTO]"
-  - On each run: delete future [AN_AUTO] entries, then re-insert fresh data
-  - Past entries are preserved as historical record
+  2. attalpresident.fr official campaign articles
+     - Parses sitemap.xml → extracts date/title/location from each article
+     - Dedup: checks existing source_url before inserting (never duplicates)
 
 Stored in Supabase 'schedule' table, person = "Gabriel Attal".
 """
@@ -243,6 +240,132 @@ def insert_schedule(items: list[dict]):
     print(f"   ✅ Inserted {inserted} / {len(items)} items")
 
 
+# ── attalpresident.fr → schedule ─────────────────────────────────────────────
+
+import json as _json
+
+_MEDIA_KEYWORDS = re.compile(
+    r"\b(?:RTL|TF1|France Inter|France 2|France 3|BFM|CNews|LCI|Europe 1|"
+    r"Figaro|Monde|Libération|Journal du dimanche|JDD|LCP|Mediapart)\b",
+    re.IGNORECASE,
+)
+
+_LOCATION_PATTERNS = [
+    # "dans l'Ain", "dans le Var", "dans les Hauts-de-Seine"
+    re.compile(r"\bdans\s+(?:l[ae']|les\s+)?([A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-\s]+?)(?:\.|,|$)", re.UNICODE),
+    # "en Aveyron", "en Saône-et-Loire"
+    re.compile(r"\ben\s+([A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-]+(?:\s+et\s+[A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-]+)?)(?:\.|,|\s)", re.UNICODE),
+    # "à Paris", "à Bourg-en-Bresse"
+    re.compile(r"\bà\s+([A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-]+(?:\s+[A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-]+)?)(?:\s|\.|,|$)", re.UNICODE),
+    # "au lycée … d'Orléans"  → capture trailing city after de/d'
+    re.compile(r"\bd[e']([A-ZÀ-Ö][A-Za-zÀ-öù-ÿ\-]+)(?:\s|\.|,|$)", re.UNICODE),
+]
+
+
+def _extract_location(headline: str, description: str) -> str:
+    """Try to extract a location from headline then description."""
+    for text in (headline, description[:200]):
+        for pat in _LOCATION_PATTERNS:
+            m = pat.search(text)
+            if m:
+                loc = m.group(1).strip().rstrip(".")
+                if len(loc) > 2 and not any(w in loc.lower() for w in ("son", "ses", "sa", "la", "le")):
+                    return loc
+    return ""
+
+
+def fetch_attal_officiel_schedule() -> list[dict]:
+    """
+    Scrape attalpresident.fr sitemap → extract schedule entries.
+    Uses source_url for dedup (never re-inserts an existing article).
+    """
+    BASE = "https://attalpresident.fr"
+    items = []
+
+    # 1. Get sitemap
+    try:
+        sitemap = requests.get(f"{BASE}/sitemap.xml", headers=HEADERS, timeout=15).text
+        urls = re.findall(
+            r"<loc>(https://attalpresident\.fr/actualites/[^<]+)</loc>", sitemap
+        )
+    except Exception as e:
+        print(f"   ⚠️  attalpresident.fr sitemap failed: {e}")
+        return []
+
+    # 2. Fetch existing source_urls to avoid duplicates
+    try:
+        existing = db.table("schedule") \
+            .select("source_url") \
+            .eq("person", "Gabriel Attal") \
+            .ilike("source_url", "%attalpresident.fr%") \
+            .execute().data or []
+        existing_urls = {r["source_url"] for r in existing}
+    except Exception as e:
+        print(f"   ⚠️  Could not fetch existing entries: {e}")
+        existing_urls = set()
+
+    new_urls = [u for u in urls if u not in existing_urls]
+    print(f"   attalpresident.fr: {len(urls)} articles, {len(new_urls)} new")
+
+    if not new_urls:
+        return []
+
+    # 3. Fetch and parse each new article
+    for url in new_urls:
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            text = r.text
+
+            # Extract JSON-LD NewsArticle
+            json_lds = re.findall(
+                r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>',
+                text, re.DOTALL
+            )
+            article = None
+            for jld in json_lds:
+                try:
+                    data = _json.loads(jld)
+                    objs = data if isinstance(data, list) else [data]
+                    for obj in objs:
+                        if obj.get("@type") in ("NewsArticle", "Article", "BlogPosting"):
+                            article = obj
+                            break
+                except Exception:
+                    pass
+                if article:
+                    break
+
+            if not article:
+                continue
+
+            headline    = article.get("headline", "").strip().rstrip(".")
+            description = article.get("description", "").strip()
+            date_raw    = article.get("datePublished", "")
+
+            try:
+                ev_date = date.fromisoformat(date_raw[:10]).isoformat()
+            except Exception:
+                ev_date = date.today().isoformat()
+
+            # Location: skip media appearances, extract for déplacements
+            is_media = bool(_MEDIA_KEYWORDS.search(headline))
+            location = "" if is_media else _extract_location(headline, description)
+
+            items.append({
+                "person":      "Gabriel Attal",
+                "event_date":  ev_date,
+                "title":       headline,
+                "location":    location,
+                "description": "attalpresident.fr · auto-sync",
+                "source_url":  url,
+            })
+
+        except Exception as e:
+            print(f"   ⚠️  Failed to parse {url}: {e}")
+
+    return items
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -252,26 +375,26 @@ def main():
     week_sessions = fetch_current_week_sessions()
 
     if not order_of_day:
-        print("⚠️  No session data retrieved. Exiting.")
-        return
+        print("⚠️  No AN session data retrieved.")
+    else:
+        items = build_schedule_items(order_of_day, week_sessions)
+        print(f"   → {len(items)} QAG items built")
+        if items:
+            clear_future_an_entries()
+            insert_schedule(items)
 
-    items = build_schedule_items(order_of_day, week_sessions)
-    print(f"   → {len(items)} schedule items built")
+    print("\n📰  Fetching attalpresident.fr campaign articles…")
+    officiel_items = fetch_attal_officiel_schedule()
+    if officiel_items:
+        insert_schedule(officiel_items)
+        print("\n📅  New entries from attalpresident.fr:")
+        for it in sorted(officiel_items, key=lambda x: x["event_date"], reverse=True)[:8]:
+            loc = f"  📍 {it['location']}" if it["location"] else ""
+            print(f"   {it['event_date']}  {it['title'][:60]}{loc}")
+    else:
+        print("   → No new articles to add")
 
-    if not items:
-        print("⚠️  Nothing to insert.")
-        return
-
-    clear_future_an_entries()
-    insert_schedule(items)
-
-    print("\n📅 Summary:")
-    for it in sorted(items, key=lambda x: x["event_date"])[:8]:
-        print(f"   {it['event_date']}  {it['title'][:70]}")
-    if len(items) > 8:
-        print(f"   … and {len(items) - 8} more")
-
-    print("✅ Done.")
+    print("\n✅ Done.")
 
 
 if __name__ == "__main__":
