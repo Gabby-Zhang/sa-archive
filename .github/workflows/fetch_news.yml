@@ -33,3 +33,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: 失败时推送 ntfy 通知
+        if: failure()
+        run: |
+          curl -s -H "Title: sa-archive 新闻抓取失败" -H "Tags: warning" \
+               -d "定时抓取 workflow 失败（新闻或 AN 日程），请检查 GitHub Actions 日志" \
+               https://ntfy.sh/ss-calendar-update

@@ -254,12 +254,22 @@ st.divider()
 # ── 统计数字 ─────────────────────────────────────────────
 st.subheader(t("home_stats"))
 
-try:
+@st.cache_data(ttl=300, show_spinner=False)
+def _table_counts():
+    """用 count='exact' 让数据库直接计数——拉全表 id 会被 1000 行上限截断导致少报。"""
     db = get_supabase()
-    events_count = len(db.table("events").select("id").execute().data)
-    news_count   = len(db.table("news").select("id").execute().data)
-    files_count  = len(db.table("files").select("id").execute().data)
-    images_count = len(db.table("images").select("id").execute().data)
+    counts = {}
+    for tbl in ("events", "news", "files", "images"):
+        counts[tbl] = (db.table(tbl).select("id", count="exact")
+                       .limit(1).execute().count)
+    return counts
+
+try:
+    _c = _table_counts()
+    events_count = _c["events"]
+    news_count   = _c["news"]
+    files_count  = _c["files"]
+    images_count = _c["images"]
 except Exception:
     events_count = news_count = files_count = images_count = "—"
 

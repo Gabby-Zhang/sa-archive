@@ -1,9 +1,10 @@
-streamlit
-supabase
-pandas
-plotly
-feedparser
-requests
-python-dateutil
-openpyxl
-beautifulsoup4
+# 上界锁定大版本，防止 Streamlit Cloud 重新部署时装到不兼容的新版
+streamlit>=1.35,<2
+supabase>=2.4,<3
+pandas>=2,<3
+plotly>=5,<7
+feedparser>=6,<7
+requests>=2.31,<3
+python-dateutil>=2.8,<3
+openpyxl>=3.1,<4
+beautifulsoup4>=4.12,<5

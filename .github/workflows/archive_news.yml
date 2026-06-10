@@ -1,0 +1,33 @@
+name: 每日新闻链接存档
+
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 每天 21:30 UTC，一天的新闻都入库之后
+  workflow_dispatch:
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install supabase requests
+
+      - name: 提交新链接到 Wayback Machine
+        run: python scripts/archive_news.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: 失败时推送 ntfy 通知
+        if: failure()
+        run: |
+          curl -s -H "Title: sa-archive 新闻存档失败" -H "Tags: warning" \
+               -d "每日 Wayback 存档 workflow 失败，请检查 GitHub Actions 日志" \
+               https://ntfy.sh/ss-calendar-update
