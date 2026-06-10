@@ -4,7 +4,6 @@ from datetime import date
 from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase_admin
-from utils.i18n import t
 
 admin_sidebar()
 
@@ -58,17 +57,14 @@ def get_sejourne_schedule() -> list:
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_attal_schedule() -> list:
-    """从 Supabase schedule 表读取 Attal 行程。"""
-    try:
-        rows = (get_supabase_admin()
-                .table("schedule")
-                .select("*")
-                .eq("person", "Gabriel Attal")
-                .order("event_date", desc=False)
-                .execute().data)
-        return rows or []
-    except Exception:
-        return []
+    """从 Supabase schedule 表读取 Attal 行程。失败时抛出异常，由调用方提示。"""
+    rows = (get_supabase_admin()
+            .table("schedule")
+            .select("*")
+            .eq("person", "Gabriel Attal")
+            .order("event_date", desc=False)
+            .execute().data)
+    return rows or []
 
 
 # ── 卡片渲染 ─────────────────────────────────────────────────────────────────
@@ -148,13 +144,13 @@ with col_s:
         f'margin-bottom:0.2rem">🔵 Stéphane Séjourné</div>',
         unsafe_allow_html=True
     )
-    st.caption("📡 " + ("EU Commission · auto-sync · hourly" if st.session_state.get("lang")=="en" else "欧盟委员会官网 · 自动同步 · 每小时刷新"))
+    st.caption("📡 " + t("sched_ss_src"))
 
-    if st.button("🔄", key="refresh_s", help="Refresh" if st.session_state.get("lang")=="en" else "强制刷新 Séjourné 日程"):
+    if st.button("🔄", key="refresh_s", help=t("sched_refresh")):
         st.cache_data.clear()
         st.rerun()
 
-    with st.spinner("Loading…" if st.session_state.get("lang")=="en" else "正在读取日程…"):
+    with st.spinner(t("sched_loading")):
         try:
             s_events = get_sejourne_schedule()
         except Exception as _e:
@@ -175,24 +171,22 @@ with col_s:
         except Exception:
             ev["status"] = "past"
 
-    _en = st.session_state.get("lang") == "en"
     if not s_events:
-        st.info("No schedule data" if _en else "暂无日程数据")
+        st.info(t("sched_no_data"))
     else:
         s_upcoming = sorted([e for e in s_events if e["status"] != "past"], key=lambda x: x["date"])
         s_past     = sorted([e for e in s_events if e["status"] == "past"],  key=lambda x: x["date"], reverse=True)
 
         if s_upcoming:
-            _section_header(f"▶ {'Upcoming' if _en else '即将到来'} · {len(s_upcoming)}")
+            _section_header(f"▶ {t('sched_upcoming_hdr')} · {len(s_upcoming)}")
             for ev in s_upcoming:
                 _event_card(ev["title"], ev["date"], ev["location"],
                             ev["status"], SEJOURNE_COLOR)
         else:
-            st.info("No upcoming events" if _en else "暂无即将到来的行程")
+            st.info(t("sched_no_upcoming"))
 
         if s_past:
-            _lbl = f"Past events ({len(s_past)})" if _en else f"历史行程（{len(s_past)} 条）"
-            with st.expander(_lbl, expanded=not s_upcoming):
+            with st.expander(f"{t('sched_past_hdr')}（{len(s_past)}）", expanded=not s_upcoming):
                 for ev in s_past:
                     _event_card(ev["title"], ev["date"], ev["location"],
                                 "past", SEJOURNE_COLOR)
@@ -206,16 +200,19 @@ with col_a:
         f'margin-bottom:0.2rem">🟡 Gabriel Attal</div>',
         unsafe_allow_html=True
     )
-    st.caption("🏛️ " + ("QAG reminders auto-synced from AN · manual entries for other events" if st.session_state.get("lang")=="en" else "QAG质询提醒自动同步（周二/三）· 其他行程手动录入"))
+    st.caption("🏛️ " + t("sched_ga_src"))
     st.markdown(
         '<a href="https://lcp.fr/recherche?q=attal&f%5B0%5D=type_de_contenu%3Aepisode" '
         'target="_blank" style="color:#aaa;font-size:0.75rem;text-decoration:none">'
-        '📺 ' + ("LCP replays – Attal on parliament TV" if st.session_state.get("lang")=="en" else "LCP 回放 – 议会电视台 Attal 出镜合集") +
-        '</a>',
+        '📺 ' + t("sched_lcp") + '</a>',
         unsafe_allow_html=True
     )
 
-    a_events  = get_attal_schedule()
+    try:
+        a_events = get_attal_schedule()
+    except Exception as _e:
+        st.warning(f"{t('sched_load_err')}: {_e}")
+        a_events = []
     today_str = date.today().isoformat()
 
     a_upcoming = [e for e in a_events if str(e.get("event_date",""))[:10] >= today_str]
@@ -224,59 +221,45 @@ with col_a:
         key=lambda x: x.get("event_date",""), reverse=True
     )
 
+    def _attal_row(ev, status: str, key_prefix: str):
+        """渲染一条 Attal 行程卡片；管理员模式附带删除按钮。"""
+        ev_date_str = str(ev.get("event_date", ""))[:10]
+
+        def _card():
+            _event_card(ev.get("title", ""), ev_date_str,
+                        ev.get("location", ""), status,
+                        ATTAL_COLOR, ev.get("source_url", ""),
+                        ev.get("description", ""))
+
+        if st.session_state.get("is_admin"):
+            _c1, _c2 = st.columns([11, 1])
+            with _c1:
+                _card()
+            with _c2:
+                if st.button("🗑️", key=f"{key_prefix}_{ev.get('id')}",
+                             help="删除", use_container_width=True):
+                    get_supabase_admin().table("schedule").delete().eq("id", ev["id"]).execute()
+                    st.cache_data.clear()
+                    st.rerun()
+        else:
+            _card()
+
     if a_upcoming:
-        _section_header(f"▶ 即将到来 · {len(a_upcoming)} 项")
+        _section_header(f"▶ {t('sched_upcoming_hdr')} · {len(a_upcoming)}")
         for ev in a_upcoming:
             ev_date_str = str(ev.get("event_date",""))[:10]
             try:
                 delta = (date.fromisoformat(ev_date_str) - date.today()).days
             except ValueError:
                 delta = 1
-            status = "ongoing" if delta == 0 else "upcoming"
-
-            if st.session_state.get("is_admin"):
-                _c1, _c2 = st.columns([11, 1])
-                with _c1:
-                    _event_card(ev.get("title",""), ev_date_str,
-                                ev.get("location",""), status,
-                                ATTAL_COLOR, ev.get("source_url",""),
-                                ev.get("description",""))
-                with _c2:
-                    if st.button("🗑️", key=f"del_attal_{ev.get('id')}",
-                                 help="删除", use_container_width=True):
-                        get_supabase_admin().table("schedule").delete().eq("id", ev["id"]).execute()
-                        st.cache_data.clear()
-                        st.rerun()
-            else:
-                _event_card(ev.get("title",""), ev_date_str,
-                            ev.get("location",""), status,
-                            ATTAL_COLOR, ev.get("source_url",""),
-                            ev.get("description",""))
+            _attal_row(ev, "ongoing" if delta == 0 else "upcoming", "del_attal")
     elif not a_events:
-        st.info("No schedule entries" if st.session_state.get("lang")=="en" else "暂无行程记录")
+        st.info(t("sched_no_entries"))
 
     if a_past:
-        with st.expander(f"历史行程（{len(a_past)} 条）"):
+        with st.expander(f"{t('sched_past_hdr')}（{len(a_past)}）"):
             for ev in a_past:
-                ev_date_str = str(ev.get("event_date",""))[:10]
-                if st.session_state.get("is_admin"):
-                    _c1, _c2 = st.columns([11, 1])
-                    with _c1:
-                        _event_card(ev.get("title",""), ev_date_str,
-                                    ev.get("location",""), "past",
-                                    ATTAL_COLOR, ev.get("source_url",""),
-                                    ev.get("description",""))
-                    with _c2:
-                        if st.button("🗑️", key=f"del_attal_past_{ev.get('id')}",
-                                     help="删除", use_container_width=True):
-                            get_supabase_admin().table("schedule").delete().eq("id", ev["id"]).execute()
-                            st.cache_data.clear()
-                            st.rerun()
-                else:
-                    _event_card(ev.get("title",""), ev_date_str,
-                                ev.get("location",""), "past",
-                                ATTAL_COLOR, ev.get("source_url",""),
-                                ev.get("description",""))
+                _attal_row(ev, "past", "del_attal_past")
 
     # ── 管理员：添加 Attal 行程 ──────────────────────────────
     if st.session_state.get("is_admin"):

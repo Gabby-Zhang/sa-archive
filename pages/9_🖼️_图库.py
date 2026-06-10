@@ -1,11 +1,10 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin
 
 admin_sidebar()
 
-st.set_page_config(page_title="图库 · 档案馆", page_icon="🖼️", layout="wide")
 
 st.title(t("gallery_title"))
 st.caption(t("gallery_caption"))
@@ -27,7 +26,7 @@ if alerts:
     from collections import defaultdict
     from datetime import datetime as _dt
 
-    _header = "📸 Latest photo finds" if _en else "📸 最新图片动态"
+    _header = t("gallery_latest")
     st.markdown(
         f'<div style="font-size:1rem;font-weight:700;margin:0.3rem 0 0.5rem">{_header}</div>',
         unsafe_allow_html=True
@@ -87,7 +86,7 @@ if alerts:
         _dates = {d: v for d, v in _by_person.get(person, {}).items()
                   if d in _page_dates}
         if not _dates:
-            st.caption("暂无数据" if not _en else "No data yet")
+            st.caption(t("gallery_no_data"))
             return
         _search_map = _SEARCH_URLS.get(person, {})
 
@@ -137,8 +136,7 @@ if alerts:
                         )
                     _n_links += len(_links)
 
-            _toggle = (f"↳ {_n_links} 张直链" if not _en
-                       else f"↳ {_n_links} direct links")
+            _toggle = f"↳ {_n_links} {t('gallery_links')}"
             _details_block = (
                 f'<details style="margin:0.1rem 0 0.4rem 2.6rem">'
                 f'<summary style="color:#888;font-size:0.71rem;cursor:pointer;'
@@ -178,24 +176,22 @@ if alerts:
         _render_person_col("Gabriel Attal", "#C9A84C")
 
     # ── 分页控件 ────────────────────────────────────────────
-    _pg_en = st.session_state.get("lang") == "en"
     _pc1, _pc2, _pc3 = st.columns([1, 4, 1])
     with _pc1:
-        if st.button("◀ Prev" if _pg_en else "◀ 上一页",
+        if st.button(t("pg_prev"),
                      key="photo_prev", disabled=(_pp == 0),
                      use_container_width=True):
             st.session_state.photo_page -= 1
             st.rerun()
     with _pc2:
-        _pg_info = (f"Page {_pp + 1} / {_total_pages}"
-                    if _pg_en else f"第 {_pp + 1} / {_total_pages} 页")
+        _pg_info = f"{_pp + 1} / {_total_pages}"
         st.markdown(
             f"<div style='text-align:center;color:#aaa;font-size:0.8rem;"
             f"padding-top:0.4rem'>{_pg_info}</div>",
             unsafe_allow_html=True
         )
     with _pc3:
-        if st.button("Next ▶" if _pg_en else "下一页 ▶",
+        if st.button(t("pg_next"),
                      key="photo_next", disabled=(_pp >= _total_pages - 1),
                      use_container_width=True):
             st.session_state.photo_page += 1
@@ -236,19 +232,7 @@ function openLB(src) {
 """, unsafe_allow_html=True)
 
 # ── Google Drive 链接转换为可显示的图片 URL ───────────────
-def gdrive_to_img_url(url: str) -> str:
-    """把 Google Drive 分享链接转成直接可显示的图片链接"""
-    if not url:
-        return ""
-    # 格式1: https://drive.google.com/file/d/FILE_ID/view...
-    if "/file/d/" in url:
-        file_id = url.split("/file/d/")[1].split("/")[0]
-        return f"https://lh3.googleusercontent.com/d/{file_id}"
-    # 格式2: https://drive.google.com/open?id=FILE_ID
-    if "id=" in url:
-        file_id = url.split("id=")[1].split("&")[0]
-        return f"https://lh3.googleusercontent.com/d/{file_id}"
-    return url
+from utils.ui import gdrive_to_img_url
 
 # ── 加载图片数据 ─────────────────────────────────────────
 def get_images(person=None, tag=None):
@@ -265,12 +249,10 @@ def get_images(person=None, tag=None):
         return []
 
 def add_image(data: dict):
-    db = get_supabase()
-    return db.table("images").insert(data).execute()
+    return get_supabase_admin().table("images").insert(data).execute()
 
 def delete_image(img_id: int):
-    db = get_supabase()
-    return db.table("images").delete().eq("id", img_id).execute()
+    return get_supabase_admin().table("images").delete().eq("id", img_id).execute()
 
 # ── 筛选栏 ───────────────────────────────────────────────
 col1, col2, col3 = st.columns([2, 2, 3])

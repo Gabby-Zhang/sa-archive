@@ -1,11 +1,10 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin
 
 admin_sidebar()
 
-st.set_page_config(page_title="团队成员 · 档案馆", page_icon="🏛️", layout="wide")
 
 st.title(t("team_title"))
 st.caption("SS 内阁成员 与 GA 核心团队")
@@ -25,10 +24,10 @@ def load_team(person):
         return []
 
 def delete_member(mid):
-    db.table("team_members").delete().eq("id", mid).execute()
+    get_supabase_admin().table("team_members").delete().eq("id", mid).execute()
 
 def update_member(mid, data):
-    db.table("team_members").update(data).eq("id", mid).execute()
+    get_supabase_admin().table("team_members").update(data).eq("id", mid).execute()
 
 # ── 管理员：添加成员 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -44,7 +43,7 @@ if st.session_state.get("is_admin"):
                 new_note   = st.text_area("备注", height=80)
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if new_name and new_team:
-                    db.table("team_members").insert({
+                    get_supabase_admin().table("team_members").insert({
                         "person": new_person,
                         "team":   new_team,
                         "name":   new_name,

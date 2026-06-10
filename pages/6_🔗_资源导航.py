@@ -1,11 +1,10 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t, tlabel
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin
 
 admin_sidebar()
 
-st.set_page_config(page_title="资源导航 · 档案馆", page_icon="🔗", layout="wide")
 
 st.title(t("resources_title"))
 st.caption("实用链接、图库来源、小工具汇总")
@@ -20,7 +19,7 @@ def load_resources(tab):
         return []
 
 def delete_resource(rid):
-    db.table("resources").delete().eq("id", rid).execute()
+    get_supabase_admin().table("resources").delete().eq("id", rid).execute()
 
 # ── 管理员：添加条目 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -37,7 +36,7 @@ if st.session_state.get("is_admin"):
                 r_icon = st.text_input("图标 emoji（可选）", placeholder="🔗")
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if r_name:
-                    db.table("resources").insert({
+                    get_supabase_admin().table("resources").insert({
                         "tab": r_tab, "category": r_category,
                         "name": r_name, "url": r_url,
                         "description": r_desc, "icon": r_icon or "🔗",
@@ -115,11 +114,8 @@ def render_tool_card(r):
             st.rerun()
 
 # ── 三个 Tab ─────────────────────────────────────────────
-_en = st.session_state.get("lang") == "en"
 tab1, tab2, tab3 = st.tabs(
-    ["📌 Official links", "🖼️ Image sources", "🛠️ Tools"]
-    if _en else
-    ["📌 官方链接", "🖼️ 图库来源", "🛠️ 小工具"]
+    [t("res_tab_official"), t("res_tab_images"), t("res_tab_tools")]
 )
 
 # ── 官方链接 ─────────────────────────────────────────────
@@ -129,10 +125,10 @@ with tab1:
 
     with col1:
         st.subheader("🔵 Stéphane Séjourné")
-        st.markdown(f"**🔗 {'Official pages' if _en else '官方页面'}**")
+        st.markdown(f"**🔗 {t('res_official_pages')}**")
         for r in [i for i in items if i.get("category") == "SS"]:
             render_link_card(r, "#4A90D9")
-        st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
+        st.markdown(f"**📅 {t('res_regular')}**")
         for r in [i for i in items if i.get("category") == "SS_日程"]:
             st.markdown(f"- {tlabel(r.get('name',''))}")
             if st.session_state.get("is_admin"):
@@ -142,10 +138,10 @@ with tab1:
 
     with col2:
         st.subheader("🟡 Gabriel Attal")
-        st.markdown(f"**🔗 {'Official pages' if _en else '官方页面'}**")
+        st.markdown(f"**🔗 {t('res_official_pages')}**")
         for r in [i for i in items if i.get("category") == "GA"]:
             render_link_card(r, "#C9A84C")
-        st.markdown(f"**📅 {'Regular appearances' if _en else '固定露面场合'}**")
+        st.markdown(f"**📅 {t('res_regular')}**")
         for r in [i for i in items if i.get("category") == "GA_日程"]:
             url = r.get("url","")
             name = tlabel(r.get("name",""))
@@ -157,23 +153,23 @@ with tab1:
                 if st.button("🗑️", key=f"del_res_{r.get('id')}", help="删除"):
                     delete_resource(r.get("id"))
                     st.rerun()
-        st.markdown(f"**📺 {'Video replays' if _en else '视频回放'}**")
+        st.markdown(f"**📺 {t('res_videos')}**")
         st.markdown(
             "- [📺 LCP – Replays Attal (QAG · débats · interviews)]"
             "(https://lcp.fr/recherche?q=attal&f%5B0%5D=type_de_contenu%3Aepisode)"
         )
-        st.caption("La Chaîne Parlementaire · " + ("parliament TV channel" if _en else "议会电视台"))
+        st.caption("La Chaîne Parlementaire · " + t("res_lcp_caption"))
 
 # ── 图库来源 ─────────────────────────────────────────────
 with tab2:
     items = load_resources("图库来源")
 
-    st.subheader("💰 " + ("Paid archives" if _en else "付费图库"))
-    st.caption("Subscription required; downloaded images may have watermarks and vary by region." if _en else "需要订阅，非购买下载的图片会带水印，不同地区图片会有所差异")
+    st.subheader("💰 " + t("res_paid"))
+    st.caption(t("res_paid_hint"))
     for r in [i for i in items if i.get("category") == "付费图库"]:
         render_box_card(r, "#4A90D9")
 
-    st.subheader("🆓 " + ("Official free archives" if _en else "官方免费图库"))
+    st.subheader("🆓 " + t("res_free"))
     for r in [i for i in items if i.get("category") == "官方免费图库"]:
         render_box_card(r, "#7EC8A4")
 

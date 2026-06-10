@@ -8,12 +8,14 @@ from utils.database import get_news, add_news_manual, add_event, delete_news, ge
 from utils.news_fetcher import fetch_all_news
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
-st.set_page_config(page_title="新闻 · 档案馆", page_icon="📰", layout="wide")
 
 st.title(t("news_title"))
 st.caption(t("news_caption"))
 
 st.info(t("news_vpn"), icon=None)
+
+# ── 数据库查询缓存（2 分钟）；管理员增删后调用 st.cache_data.clear() ──
+_get_news_cached = st.cache_data(ttl=120, show_spinner=False)(get_news)
 
 # ── 刷新按钮 ─────────────────────────────────────────────
 col_btn, col_info = st.columns([1, 4])
@@ -22,6 +24,7 @@ with col_btn:
         with st.spinner("正在抓取…"):
             try:
                 n = fetch_all_news()
+                st.cache_data.clear()
                 st.success(f"已更新 {n} 条新闻")
             except Exception as e:
                 st.error(f"抓取失败：{e}")
@@ -52,7 +55,7 @@ _offset = _page * limit
 
 # ── 加载数据（多取 1 条判断是否有下一页）────────────────
 try:
-    news = get_news(
+    news = _get_news_cached(
         person=person_filter if person_filter not in ("全部", "All") else None,
         keyword=keyword if keyword else None,
         limit=limit,
@@ -66,25 +69,31 @@ _has_next = len(news) > limit
 if _has_next:
     news = news[:limit]   # 截掉多取的那 1 条
 
-# ── 分页控件（上方）────────────────────────────────────
+# ── 分页控件（页面上下各一份）──────────────────────────
 _en_pg = st.session_state.get("lang") == "en"
 _pg_info = (f"Page {_page + 1}  ·  {len(news)} items"
             if _en_pg else
             f"第 {_page + 1} 页 · 本页 {len(news)} 条")
-pc1, pc2, pc3 = st.columns([1, 4, 1])
-with pc1:
-    if st.button("◀ Prev" if _en_pg else "◀ 上一页",
-                 disabled=(_page == 0), use_container_width=True):
-        st.session_state.news_page -= 1
-        st.rerun()
-with pc2:
-    st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>{_pg_info}</div>",
-                unsafe_allow_html=True)
-with pc3:
-    if st.button("Next ▶" if _en_pg else "下一页 ▶",
-                 disabled=(not _has_next), use_container_width=True):
-        st.session_state.news_page += 1
-        st.rerun()
+
+def _render_pagination(key_prefix: str):
+    c1, c2, c3 = st.columns([1, 4, 1])
+    with c1:
+        if st.button(t("pg_prev"),
+                     key=f"{key_prefix}_prev", disabled=(_page == 0),
+                     use_container_width=True):
+            st.session_state.news_page -= 1
+            st.rerun()
+    with c2:
+        st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>{_pg_info}</div>",
+                    unsafe_allow_html=True)
+    with c3:
+        if st.button(t("pg_next"),
+                     key=f"{key_prefix}_next", disabled=(not _has_next),
+                     use_container_width=True):
+            st.session_state.news_page += 1
+            st.rerun()
+
+_render_pagination("news_top")
 
 # ── 新闻列表 ─────────────────────────────────────────────
 PERSON_COLOR = {
@@ -219,6 +228,7 @@ for item in news:
                         "source_url": url,
                         "note": "",
                     })
+                    st.cache_data.clear()
                     st.success("✅ 已加入大事记！")
             with bcb:
                 if st.button("🔗", key=f"link_{item_id}",
@@ -229,26 +239,14 @@ for item in news:
                 if st.button("🗑️", key=f"del_news_{item_id}",
                              help="删除此条新闻", use_container_width=True):
                     delete_news(item_id)
+                    st.cache_data.clear()
                     st.rerun()
 
 if not news:
     st.info("暂无新闻，点击上方「抓取最新新闻」按钮开始收集。")
 
 # ── 分页控件（下方）────────────────────────────────────
-bc1, bc2, bc3 = st.columns([1, 4, 1])
-with bc1:
-    if st.button("◀ Prev" if _en_pg else "◀ 上一页",
-                 key="news_prev_bot", disabled=(_page == 0), use_container_width=True):
-        st.session_state.news_page -= 1
-        st.rerun()
-with bc2:
-    st.markdown(f"<div style='text-align:center;color:#aaa;padding-top:0.4rem'>{_pg_info}</div>",
-                unsafe_allow_html=True)
-with bc3:
-    if st.button("Next ▶" if _en_pg else "下一页 ▶",
-                 key="news_next_bot", disabled=(not _has_next), use_container_width=True):
-        st.session_state.news_page += 1
-        st.rerun()
+_render_pagination("news_bot")
 
 st.divider()
 
@@ -311,6 +309,7 @@ with st.expander("➕ 手动添加新闻"):
                     "published_at": str(new_date),
                     "summary": new_summary,
                 })
+                st.cache_data.clear()
                 st.success("已添加！")
                 st.rerun()
             else:

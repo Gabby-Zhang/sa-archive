@@ -5,21 +5,10 @@ from utils.database import get_events, add_event, update_event, delete_event, up
 from utils.auth import admin_sidebar
 from utils.i18n import t
 
-# ── Google Drive 链接转换 ─────────────────────────────────
-def gdrive_to_img_url(url: str) -> str:
-    if not url:
-        return ""
-    if "/file/d/" in url:
-        file_id = url.split("/file/d/")[1].split("/")[0]
-        return f"https://lh3.googleusercontent.com/d/{file_id}"
-    if "id=" in url:
-        file_id = url.split("id=")[1].split("&")[0]
-        return f"https://lh3.googleusercontent.com/d/{file_id}"
-    return url
+from utils.ui import gdrive_to_img_url
 
 admin_sidebar()
 
-st.set_page_config(page_title="大事记 · 档案馆", page_icon="📅", layout="wide")
 
 TAG_OPTIONS = [
     "📰 新闻报道",
@@ -207,11 +196,10 @@ if not df.empty:
                         'source':'消息来源','source_url':'来源链接','note':'内容摘要'}.get(c,c)
                       for c in export_cols]
     df_exp.to_excel(out, index=False, engine='openpyxl')
-    _en = st.session_state.get("lang") == "en"
     st.download_button(
-        "📥 Export Excel" if _en else "📥 导出 Excel",
+        t("timeline_export"),
         data=out.getvalue(),
-        file_name="timeline.xlsx" if _en else "大事记.xlsx",
+        file_name=t("timeline_export_file"),
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 # ── 时间轴展示 ───────────────────────────────────────────
@@ -734,9 +722,7 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
                 prog = st.progress(0, text="导入中…")
                 batch = 50
                 for i in range(0, len(events), batch):
-                    add_event.__func__ if hasattr(add_event,'__func__') else None
-                    from utils.database import get_supabase
-                    get_supabase().table('events').insert(events[i:i+batch]).execute()
+                    get_supabase_admin().table('events').insert(events[i:i+batch]).execute()
                     prog.progress(min((i+batch)/len(events), 1.0), text=f"已导入 {min(i+batch,len(events))}/{len(events)}")
 
                 st.success(f"✅ 成功导入 {len(events)} 条大事记！")

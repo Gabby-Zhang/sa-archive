@@ -6,7 +6,6 @@ from utils.database import get_files, add_file, get_supabase, get_supabase_admin
 from utils.i18n import t
 import html as _html
 
-st.set_page_config(page_title="文件存档 · 档案馆", page_icon="📁", layout="wide")
 
 st.title(t("files_title"))
 st.caption(t("files_caption"))

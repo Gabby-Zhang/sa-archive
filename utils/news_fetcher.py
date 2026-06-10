@@ -1,8 +1,23 @@
+"""
+新闻抓取共享模块 — 同时供两个入口使用：
+  1. Streamlit 页面「抓取最新新闻」按钮 → fetch_all_news()
+  2. GitHub Actions 定时任务 scripts/fetch_news.py → collect_news()
+
+本模块不在顶层 import streamlit，保证 Actions 环境（无 streamlit）可直接使用。
+"""
+import re
+import json
 import feedparser
 import hashlib
 import base64
+import requests
 from datetime import datetime
-from utils.database import upsert_news
+
+_UA_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/124.0.0.0 Safari/537.36"
+}
 
 
 def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
@@ -11,8 +26,6 @@ def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
     先尝试 Base64 解码（快，不需网络），失败则跟随 HTTP 跳转。
     两者均失败时原样返回。
     """
-    import requests as _req
-
     # ── 1. Base64 尝试（新格式多为 protobuf，可能失败）──────
     try:
         for marker in ["/rss/articles/", "/articles/"]:
@@ -35,13 +48,8 @@ def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
 
     # ── 2. HTTP 跳转（Streamlit Cloud 在美国可访问 Google）──
     try:
-        resp = _req.get(
-            gnews_url,
-            allow_redirects=True,
-            timeout=timeout,
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                                   "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                   "Chrome/124.0.0.0 Safari/537.36"},
+        resp = requests.get(
+            gnews_url, allow_redirects=True, timeout=timeout, headers=_UA_HEADERS,
         )
         final = resp.url
         if "google.com" not in final and "." in final and len(final) > 15:
@@ -50,6 +58,7 @@ def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
         pass
 
     return gnews_url
+
 
 # ── 直接媒体 RSS 源（真实文章 URL，无 Google 跳转）────────────────────────
 MEDIA_FEEDS = [
@@ -88,6 +97,7 @@ _KW_PERSON = [
     (["séjourné", "sejourne", "stéphane séjourné"],       "Stéphane Séjourné"),
 ]
 
+
 def _detect_person(text: str):
     t = text.lower()
     has_a = "attal" in t
@@ -101,7 +111,72 @@ def _detect_person(text: str):
     return None
 
 
-def fetch_all_news():
+def fetch_attal_officiel() -> list:
+    """
+    抓取 attalpresident.fr 官方竞选网站：
+    通过 sitemap.xml 找出所有 /actualites/* 文章，
+    解析 JSON-LD 提取标题、日期、描述。
+    """
+    BASE = "https://attalpresident.fr"
+    items = []
+
+    try:
+        sitemap = requests.get(f"{BASE}/sitemap.xml", headers=_UA_HEADERS, timeout=15).text
+        urls = re.findall(r"<loc>(https://attalpresident\.fr/actualites/[^<]+)</loc>", sitemap)
+    except Exception as e:
+        print(f"⚠️ attalpresident.fr sitemap 失败: {e}")
+        return []
+
+    for url in urls:
+        try:
+            r = requests.get(url, headers=_UA_HEADERS, timeout=15)
+            json_lds = re.findall(
+                r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', r.text, re.DOTALL
+            )
+            article = None
+            for jld in json_lds:
+                try:
+                    data = json.loads(jld)
+                    objs = data if isinstance(data, list) else [data]
+                    for obj in objs:
+                        if obj.get("@type") in ("NewsArticle", "Article", "BlogPosting"):
+                            article = obj
+                            break
+                except Exception:
+                    pass
+                if article:
+                    break
+
+            if not article:
+                continue
+
+            date_raw = article.get("datePublished", "")
+            try:
+                pub_dt = datetime.fromisoformat(date_raw.replace("Z", "+00:00")).isoformat()
+            except Exception:
+                pub_dt = datetime.now().isoformat()
+
+            items.append({
+                "id":           hashlib.md5(url.encode()).hexdigest(),
+                "title":        article.get("headline", "").strip(),
+                "url":          url,
+                "source":       "attalpresident.fr",
+                "person":       "Gabriel Attal",
+                "published_at": pub_dt,
+                "summary":      article.get("description", "").strip()[:500],
+            })
+        except Exception as e:
+            print(f"  ⚠️ 解析失败 {url}: {e}")
+
+    print(f"  attalpresident.fr: {len(items)} 篇文章")
+    return items
+
+
+def collect_news() -> list:
+    """
+    抓取全部新闻源（媒体 RSS + Google News + attalpresident.fr），
+    返回去重后的条目列表，不写数据库 — 由调用方负责入库。
+    """
     results = []
     seen_urls = set()
 
@@ -153,6 +228,14 @@ def fetch_all_news():
                 "summary":      summary[:500],
             })
 
+    results.extend(fetch_attal_officiel())
+    return results
+
+
+def fetch_all_news():
+    """Streamlit 页面入口：抓取并写入数据库，返回条数。"""
+    from utils.database import upsert_news  # 延迟 import，避免 Actions 环境引入 streamlit
+    results = collect_news()
     if results:
         upsert_news(results)
     return len(results)

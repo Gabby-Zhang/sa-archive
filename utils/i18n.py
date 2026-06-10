@@ -68,6 +68,8 @@ _S = {
     "timeline_caption": {"zh": "记录 Attal 与 Séjourné 的重要事件与新闻",
                          "en": "Key events and news about Attal and Séjourné"},
     "timeline_empty":   {"zh": "没有符合条件的大事记条目", "en": "No matching entries"},
+    "timeline_export":  {"zh": "📥 导出 Excel",           "en": "📥 Export Excel"},
+    "timeline_export_file": {"zh": "大事记.xlsx",         "en": "timeline.xlsx"},
     "related_links":    {"zh": "相关内容",                "en": "Related links"},
     "no_related":       {"zh": "暂无相关内容",            "en": "No related links yet"},
     "read_more":        {"zh": "查看详情",                "en": "Details"},
@@ -104,6 +106,19 @@ _S = {
     "sched_past":       {"zh": "已结束",                  "en": "Past"},
     "sched_empty":      {"zh": "暂无日程",                "en": "No events"},
     "sched_load_err":   {"zh": "抓取失败",                "en": "Failed to load"},
+    "sched_ss_src":     {"zh": "欧盟委员会官网 · 自动同步 · 每小时刷新",
+                         "en": "EU Commission · auto-sync · hourly"},
+    "sched_ga_src":     {"zh": "QAG质询提醒自动同步（周二/三）· 其他行程手动录入",
+                         "en": "QAG reminders auto-synced from AN · manual entries for other events"},
+    "sched_refresh":    {"zh": "强制刷新 Séjourné 日程",  "en": "Refresh"},
+    "sched_loading":    {"zh": "正在读取日程…",           "en": "Loading…"},
+    "sched_no_data":    {"zh": "暂无日程数据",            "en": "No schedule data"},
+    "sched_upcoming_hdr": {"zh": "即将到来",              "en": "Upcoming"},
+    "sched_no_upcoming":  {"zh": "暂无即将到来的行程",    "en": "No upcoming events"},
+    "sched_past_hdr":   {"zh": "历史行程",                "en": "Past events"},
+    "sched_no_entries": {"zh": "暂无行程记录",            "en": "No schedule entries"},
+    "sched_lcp":        {"zh": "LCP 回放 – 议会电视台 Attal 出镜合集",
+                         "en": "LCP replays – Attal on parliament TV"},
 
     # ── 人物档案 ─────────────────────────────────────────
     "profiles_title":   {"zh": "👤 人物档案",             "en": "👤 Profiles"},
@@ -141,11 +156,27 @@ _S = {
 
     # ── 图库 ─────────────────────────────────────────────
     "gallery_title":    {"zh": "🖼️ 图库",                "en": "🖼️ Gallery"},
+    "gallery_latest":   {"zh": "📸 最新图片动态",         "en": "📸 Latest photo finds"},
+    "gallery_no_data":  {"zh": "暂无数据",                "en": "No data yet"},
+    "gallery_links":    {"zh": "张直链",                  "en": "direct links"},
+    "pg_prev":          {"zh": "◀ 上一页",                "en": "◀ Prev"},
+    "pg_next":          {"zh": "下一页 ▶",                "en": "Next ▶"},
     "gallery_caption":  {"zh": "照片、截图存档 — 图片存于 Google Drive",
                          "en": "Photos and screenshots — stored on Google Drive"},
 
     # ── 资源导航 ─────────────────────────────────────────
     "resources_title":  {"zh": "🔗 资源导航",             "en": "🔗 Resources"},
+    "res_tab_official": {"zh": "📌 官方链接",             "en": "📌 Official links"},
+    "res_tab_images":   {"zh": "🖼️ 图库来源",            "en": "🖼️ Image sources"},
+    "res_tab_tools":    {"zh": "🛠️ 小工具",              "en": "🛠️ Tools"},
+    "res_official_pages": {"zh": "官方页面",              "en": "Official pages"},
+    "res_regular":      {"zh": "固定露面场合",            "en": "Regular appearances"},
+    "res_videos":       {"zh": "视频回放",                "en": "Video replays"},
+    "res_lcp_caption":  {"zh": "议会电视台",              "en": "parliament TV channel"},
+    "res_paid":         {"zh": "付费图库",                "en": "Paid archives"},
+    "res_paid_hint":    {"zh": "需要订阅，非购买下载的图片会带水印，不同地区图片会有所差异",
+                         "en": "Subscription required; downloaded images may have watermarks and vary by region."},
+    "res_free":         {"zh": "官方免费图库",            "en": "Official free archives"},
 
     # ── 团队成员 ─────────────────────────────────────────
     "team_title":       {"zh": "🏛️ 团队成员",            "en": "🏛️ Team"},

@@ -26,15 +26,15 @@ def get_events(person=None, keyword=None):
     return query.execute().data
 
 def add_event(data: dict):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("events").insert(data).execute()
 
 def update_event(event_id: int, data: dict):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("events").update(data).eq("id", event_id).execute()
 
 def delete_event(event_id: int):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("events").delete().eq("id", event_id).execute()
 
 # ── 新闻 ────────────────────────────────────────────────
@@ -49,7 +49,7 @@ def get_news(person=None, keyword=None, limit=50, offset=0):
     return query.execute().data
 
 def upsert_news(items: list):
-    db = get_supabase()
+    db = get_supabase_admin()
     # 去重：同一批次内按 id 去重
     seen = {}
     for item in items:
@@ -58,11 +58,11 @@ def upsert_news(items: list):
     return db.table("news").upsert(unique_items, on_conflict="id").execute()
 
 def add_news_manual(data: dict):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("news").insert(data).execute()
 
 def delete_news(news_id: str):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("news").delete().eq("id", news_id).execute()
 
 # ── 文件上传记录 ─────────────────────────────────────────
@@ -74,7 +74,7 @@ def get_files(person=None):
     return query.execute().data
 
 def add_file(data: dict):
-    db = get_supabase()
+    db = get_supabase_admin()
     return db.table("files").insert(data).execute()
 
 # ── Supabase Storage 上传 ────────────────────────────────

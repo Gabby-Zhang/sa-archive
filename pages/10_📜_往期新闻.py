@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 from datetime import datetime, date, timedelta
 import hashlib
@@ -294,11 +294,13 @@ for group in clustered:
                 o_emoji = LEAN_EMOJI.get(o_mi["label"], "")
                 o_label = o_mi["label"]
                 o_color = o_mi["color"]
+                _o_link = (f'  <a href="{o_url}" target="_blank" '
+                           f'style="color:#4A90D9;font-size:0.85rem">🔗 原文</a>') if o_url else ""
                 st.markdown(
                     f'<span style="background:{o_color};color:white;padding:0.05rem 0.35rem;'
                     f'border-radius:3px;font-size:0.7rem">{o_emoji} {o_label}</span> '
                     f'<span style="color:#aaa;font-size:0.85rem">{o.get("source","")}</span>'
-                    f'{"  <a href=\'" + o_url + "\' target=\'_blank\' style=\'color:#4A90D9;font-size:0.85rem\'>🔗 原文</a>" if o_url else ""}',
+                    f'{_o_link}',
                     unsafe_allow_html=True
                 )
 
@@ -308,7 +310,7 @@ for group in clustered:
         with _bd:
             if st.button("🗑️", key=f"del_hist_{item_id}",
                          help="删除此条新闻", use_container_width=True):
-                get_supabase().table("news").delete().eq("id", item_id).execute()
+                get_supabase_admin().table("news").delete().eq("id", item_id).execute()
                 st.cache_data.clear()
                 st.rerun()
 

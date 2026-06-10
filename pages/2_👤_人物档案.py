@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t, tlabel
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin
 
 # 偏好标签翻译对照（DB 存中文，英文模式展示英文；含 emoji 变体）
 _PREF_KEY_EN = {
@@ -25,7 +25,6 @@ _PREF_KEY_EN = {
 
 admin_sidebar()
 
-st.set_page_config(page_title="人物档案 · 档案馆", page_icon="👤", layout="wide")
 
 st.title(t("profiles_title"))
 st.caption(t("profiles_caption"))
@@ -53,10 +52,10 @@ def load_section(person, section):
         return []
 
 def delete_item(iid):
-    db.table("profile_items").delete().eq("id", iid).execute()
+    get_supabase_admin().table("profile_items").delete().eq("id", iid).execute()
 
 def update_item(iid, data):
-    db.table("profile_items").update(data).eq("id", iid).execute()
+    get_supabase_admin().table("profile_items").update(data).eq("id", iid).execute()
 
 # ── 管理员：添加条目 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -73,7 +72,7 @@ if st.session_state.get("is_admin"):
                 p_note  = st.text_area("备注", height=80)
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if p_key:
-                    db.table("profile_items").insert({
+                    get_supabase_admin().table("profile_items").insert({
                         "person": p_person, "section": p_section,
                         "key": p_key, "value": p_value, "note": p_note,
                     }).execute()
