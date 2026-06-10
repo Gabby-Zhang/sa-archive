@@ -47,7 +47,7 @@ def main():
     for u in urls:
         try:
             r = requests.get(f"https://web.archive.org/save/{u}",
-                             timeout=60,
+                             timeout=(10, 60),
                              headers={"User-Agent": "sa-archive-bot/1.0"})
             if r.status_code in (200, 301, 302):
                 ok += 1
@@ -55,6 +55,10 @@ def main():
             else:
                 failed += 1
                 print(f"⚠️ HTTP {r.status_code}: {u[:80]}")
+        except requests.exceptions.ReadTimeout:
+            # Wayback 同步抓取常超过 60s 才返回；请求已被收下，捕获在后台继续
+            ok += 1
+            print(f"✅ 已提交（未等待捕获完成）: {u[:70]}")
         except Exception as e:
             failed += 1
             print(f"⚠️ {type(e).__name__}: {u[:80]}")
