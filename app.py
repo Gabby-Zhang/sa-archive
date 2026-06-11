@@ -266,9 +266,9 @@ with st.sidebar:
     st.divider()
 
 pg = st.navigation([
+    st.Page("pages/12_💞_交织时间轴.py", title=t("nav_weave"),    icon="💞"),
     st.Page("pages/0_🗂️_首页.py",     title=t("nav_home"),      icon="🗂️"),
     st.Page("pages/1_📅_大事记.py",    title=t("nav_timeline"),  icon="📖"),
-    st.Page("pages/12_💞_交织时间轴.py", title=t("nav_weave"),    icon="💞"),
     st.Page("pages/3_📰_新闻.py",      title=t("nav_news"),      icon="📰"),
     st.Page("pages/11_📆_行程日历.py", title=t("nav_schedule"),  icon="📆"),
     st.Page("pages/2_👤_人物档案.py",  title=t("nav_profiles"),  icon="👤"),
