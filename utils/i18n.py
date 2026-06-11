@@ -74,8 +74,8 @@ _S = {
     "home_days_later":  {"zh": "天后",                    "en": "days away"},
 
     # ── 交织时间轴 ────────────────────────────────────────
-    "nav_weave":        {"zh": "交织时间轴",              "en": "Woven Timeline"},
-    "weave_title":      {"zh": "💞 交织时间轴",           "en": "💞 Woven Timeline"},
+    "nav_weave":        {"zh": "交汇时刻",                "en": "Crossing Paths"},
+    "weave_title":      {"zh": "💞 交汇时刻",             "en": "💞 Crossing Paths"},
     "weave_caption":    {"zh": "两条平行线与它们的每一次交汇 · 左 Séjourné · 右 Attal · 中间是同框",
                          "en": "Two parallel paths and every crossing · Séjourné left · Attal right · S&A in the middle"},
     "weave_only_sa":    {"zh": "💗 只看同框",             "en": "💗 S&A moments only"},
