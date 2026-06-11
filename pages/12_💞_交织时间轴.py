@@ -4,6 +4,7 @@ from datetime import date
 from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase
+from utils.ui import gdrive_to_img_url
 
 admin_sidebar()
 
@@ -58,6 +59,12 @@ st.markdown("""
 .wv-sa .wv-date { color:#FF6B9D; font-weight:600; }
 .wv-sa .wv-title { font-size:0.9rem; }
 .wv-heart { font-size:0.85rem; }
+.wv-img {
+    display:block; max-width:100%; max-height:300px;
+    margin:0.45rem auto 0; border-radius:8px; object-fit:cover;
+}
+.wv-card .wv-img { max-height:130px; margin:0.35rem 0 0; }
+.wv-card.ss .wv-img { margin-left:auto; }
 @media (max-width: 640px) {
     .wv-grid { grid-template-columns: 1fr 18px 1fr; }
     .wv-card { font-size:0.78rem; padding:0.4rem 0.55rem; }
@@ -69,7 +76,7 @@ st.markdown("""
 @st.cache_data(ttl=300, show_spinner=False)
 def _load_events(year: str):
     q = (get_supabase().table("events")
-         .select("date,person,title,source_url,tag")
+         .select("date,person,title,source_url,tag,image_url")
          .order("date", desc=True))
     if year != "ALL":
         q = q.gte("date", f"{year}-01-01").lte("date", f"{year}-12-31")
@@ -109,6 +116,15 @@ _sa_count = sum(1 for r in rows if r.get("person") == "S&A")
 st.caption(f"{len(rows)} {t('weave_entries')} · 💗 ×{_sa_count}")
 
 # ── 渲染 ──────────────────────────────────────────────────
+def _img_tag(r):
+    raw = r.get("image_url") or ""
+    if not raw:
+        return ""
+    src_url = gdrive_to_img_url(raw)
+    return (f'<img class="wv-img" src="{_html.escape(src_url)}" loading="lazy" '
+            f'onerror="this.style.display=\'none\'">')
+
+
 def _card(r, cls):
     d     = str(r.get("date", ""))[:10]
     title = _html.escape((r.get("title") or "")[:90])
@@ -116,7 +132,8 @@ def _card(r, cls):
     link  = f' <a href="{_html.escape(url)}" target="_blank">🔗</a>' if url else ""
     return (f'<div class="wv-card {cls}">'
             f'<div class="wv-date">{d}</div>'
-            f'<div class="wv-title">{title}{link}</div></div>')
+            f'<div class="wv-title">{title}{link}</div>'
+            f'{_img_tag(r)}</div>')
 
 _parts = ['<div class="wv-grid">']
 for r in rows:
@@ -129,7 +146,8 @@ for r in rows:
         _parts.append(
             f'<div class="wv-sa">'
             f'<div class="wv-date"><span class="wv-heart">💗</span> {d}</div>'
-            f'<div class="wv-title">{title}{link}</div></div>'
+            f'<div class="wv-title">{title}{link}</div>'
+            f'{_img_tag(r)}</div>'
         )
     elif person == "Stéphane Séjourné":
         _parts.append(_card(r, "ss"))

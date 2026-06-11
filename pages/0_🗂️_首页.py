@@ -123,13 +123,14 @@ st.markdown(f"""
 # ════════════════════════════════════════════════════════
 from datetime import date as _date
 from utils.anniversaries import upcoming as _anniv_upcoming
+from utils.ui import gdrive_to_img_url as _gdrive_img
 
 @st.cache_data(ttl=600, show_spinner=False)
 def _events_lite():
     """轻量拉取大事记（日期/人物/标题/链接），一次查询驱动首页全部 S&A 模块。"""
     try:
         return (get_supabase().table("events")
-                .select("date,person,title,source_url")
+                .select("date,person,title,source_url,image_url")
                 .order("date", desc=True)
                 .limit(1000).execute().data) or []
     except Exception:
@@ -151,12 +152,17 @@ if _sa:
     _gap_html = (f'<div class="sa-num">{t("home_today_sa")}</div>' if _gap == 0 else
                  f'<div class="sa-num">{_gap} <span class="sa-unit">{t("home_days_unit")}</span></div>')
     _link = f' <a href="{_html.escape(_last.get("source_url") or "")}" target="_blank" style="text-decoration:none">🔗</a>' if _last.get("source_url") else ""
+    _thumb = ""
+    if _last.get("image_url"):
+        _thumb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(_last["image_url"]))}" '
+                  f'loading="lazy" onerror="this.style.display=\'none\'">')
     _sa_html = (
         f'<div class="sa-hero">'
         f'<div class="sa-counter"><div class="sa-label">{t("home_days_since")}</div>{_gap_html}</div>'
         f'<div class="sa-latest"><div class="sa-label">{t("home_latest_sa")}</div>'
         f'<div class="sa-title">{_html.escape(_last.get("title") or "")}{_link}</div>'
         f'<div class="sa-date">{_last_date}</div></div>'
+        f'{_thumb}'
         f'</div>'
     )
 else:
@@ -175,6 +181,8 @@ st.markdown("""
 .sa-unit  { font-size:1rem; font-weight:normal; }
 .sa-label { font-size:0.72rem; color:var(--t2); margin-bottom:0.15rem; }
 .sa-latest{ flex:1; min-width:200px; }
+.sa-thumb { width:84px; height:84px; object-fit:cover; border-radius:10px;
+            border:1px solid #FF6B9D55; flex-shrink:0; }
 .sa-title { color:var(--t1); font-size:0.95rem; line-height:1.4; }
 .sa-date  { color:var(--t3); font-size:0.75rem; margin-top:0.15rem; }
 .otd-card {
