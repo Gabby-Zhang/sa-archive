@@ -62,6 +62,24 @@ _S = {
                                 "Currently President of Renaissance and MP for Hauts-de-Seine.")},
     "campaign_label":   {"zh": "🗳️ Attal Président · 2027年法国总统竞选账号",
                          "en": "🗳️ Attal Président · 2027 French presidential campaign"},
+    "home_days_since":  {"zh": "距上次同框",              "en": "Days since last S&A moment"},
+    "home_days_unit":   {"zh": "天",                      "en": "days"},
+    "home_today_sa":    {"zh": "就是今天 💗",             "en": "Today 💗"},
+    "home_latest_sa":   {"zh": "💗 最新同框",             "en": "💗 Latest S&A moment"},
+    "home_no_sa":       {"zh": "暂无同框记录",            "en": "No S&A moments yet"},
+    "home_otd":         {"zh": "📅 历史上的今天",         "en": "📅 On this day"},
+    "home_otd_empty":   {"zh": "往年的今天暂无记录",      "en": "Nothing on this day in past years"},
+    "home_next_anniv":  {"zh": "🎂 下一个纪念日",         "en": "🎂 Next anniversary"},
+    "home_anniv_today": {"zh": "就是今天！",              "en": "Today!"},
+    "home_days_later":  {"zh": "天后",                    "en": "days away"},
+
+    # ── 交织时间轴 ────────────────────────────────────────
+    "nav_weave":        {"zh": "交织时间轴",              "en": "Woven Timeline"},
+    "weave_title":      {"zh": "💞 交织时间轴",           "en": "💞 Woven Timeline"},
+    "weave_caption":    {"zh": "两条平行线与它们的每一次交汇 · 左 Séjourné · 右 Attal · 中间是同框",
+                         "en": "Two parallel paths and every crossing · Séjourné left · Attal right · S&A in the middle"},
+    "weave_only_sa":    {"zh": "💗 只看同框",             "en": "💗 S&A moments only"},
+    "weave_entries":    {"zh": "条记录",                  "en": "entries"},
 
     # ── 大事记 ────────────────────────────────────────────
     "timeline_title":   {"zh": "📅 大事记时间轴",         "en": "📅 Timeline"},

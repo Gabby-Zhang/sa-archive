@@ -255,16 +255,20 @@ def delete_image(img_id: int):
     return get_supabase_admin().table("images").delete().eq("id", img_id).execute()
 
 # ── 筛选栏 ───────────────────────────────────────────────
+_sa_only = st.toggle(t("weave_only_sa"), key="gallery_sa_only",
+                     help="只显示两人同框的照片")
 col1, col2, col3 = st.columns([2, 2, 3])
 with col1:
-    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"])
+    person_filter = st.selectbox("人物", ["全部", "Gabriel Attal", "Stéphane Séjourné", "S&A"],
+                                 disabled=_sa_only)
 with col2:
     tag_filter = st.selectbox("分类", ["全部", "官方活动", "私下照片", "新闻截图", "社媒截图", "其他"])
 with col3:
     keyword = st.text_input("🔍 搜索", placeholder="输入关键词…")
 
+_person_q = "S&A" if _sa_only else (person_filter if person_filter != "全部" else None)
 images = get_images(
-    person=person_filter if person_filter != "全部" else None,
+    person=_person_q,
     tag=tag_filter if tag_filter != "全部" else None,
 )
 

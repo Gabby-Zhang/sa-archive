@@ -1,0 +1,22 @@
+name: 每日纪念日提醒
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 每天早上 6 点 UTC（伦敦 7 点左右）
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install requests
+
+      - name: 检查临近纪念日并推送
+        run: python scripts/anniversary_notify.py

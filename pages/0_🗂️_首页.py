@@ -118,6 +118,106 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# ════════════════════════════════════════════════════════
+# 💗 S&A 时刻：断糖计数器 · 最新同框 · 历史上的今天 · 纪念日
+# ════════════════════════════════════════════════════════
+from datetime import date as _date
+from utils.anniversaries import upcoming as _anniv_upcoming
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _events_lite():
+    """轻量拉取大事记（日期/人物/标题/链接），一次查询驱动首页全部 S&A 模块。"""
+    try:
+        return (get_supabase().table("events")
+                .select("date,person,title,source_url")
+                .order("date", desc=True)
+                .limit(1000).execute().data) or []
+    except Exception:
+        return []
+
+_rows   = _events_lite()
+_today  = _date.today()
+_sa     = [r for r in _rows if r.get("person") == "S&A" and r.get("date")]
+
+# 断糖计数 + 最新同框
+_sa_html = ""
+if _sa:
+    _last      = _sa[0]
+    _last_date = str(_last["date"])[:10]
+    try:
+        _gap = (_today - _date.fromisoformat(_last_date)).days
+    except ValueError:
+        _gap = None
+    _gap_html = (f'<div class="sa-num">{t("home_today_sa")}</div>' if _gap == 0 else
+                 f'<div class="sa-num">{_gap} <span class="sa-unit">{t("home_days_unit")}</span></div>')
+    _link = f' <a href="{_html.escape(_last.get("source_url") or "")}" target="_blank" style="text-decoration:none">🔗</a>' if _last.get("source_url") else ""
+    _sa_html = (
+        f'<div class="sa-hero">'
+        f'<div class="sa-counter"><div class="sa-label">{t("home_days_since")}</div>{_gap_html}</div>'
+        f'<div class="sa-latest"><div class="sa-label">{t("home_latest_sa")}</div>'
+        f'<div class="sa-title">{_html.escape(_last.get("title") or "")}{_link}</div>'
+        f'<div class="sa-date">{_last_date}</div></div>'
+        f'</div>'
+    )
+else:
+    _sa_html = f'<div class="sa-hero"><div class="sa-latest">{t("home_no_sa")}</div></div>'
+
+st.markdown("""
+<style>
+.sa-hero {
+    display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;
+    background:linear-gradient(135deg, #FF6B9D11, #FF6B9D22);
+    border:1px solid #FF6B9D44; border-radius:12px;
+    padding:1rem 1.5rem; margin:0.3rem 0 0.8rem;
+}
+.sa-counter { text-align:center; min-width:130px; }
+.sa-num   { font-size:2.2rem; font-weight:bold; color:#FF6B9D; line-height:1.1; }
+.sa-unit  { font-size:1rem; font-weight:normal; }
+.sa-label { font-size:0.72rem; color:var(--t2); margin-bottom:0.15rem; }
+.sa-latest{ flex:1; min-width:200px; }
+.sa-title { color:var(--t1); font-size:0.95rem; line-height:1.4; }
+.sa-date  { color:var(--t3); font-size:0.75rem; margin-top:0.15rem; }
+.otd-card {
+    background:var(--cb); border:1px solid var(--bd); border-radius:10px;
+    padding:0.8rem 1.1rem; margin:0.2rem 0; min-height:5.2rem;
+}
+.otd-head { font-size:0.8rem; font-weight:600; color:var(--t2); margin-bottom:0.4rem; }
+.otd-row  { font-size:0.85rem; color:var(--t1); line-height:1.6; }
+.otd-year { color:#FF6B9D; font-weight:600; }
+.otd-empty{ font-size:0.8rem; color:var(--t3); }
+</style>
+""", unsafe_allow_html=True)
+st.markdown(_sa_html, unsafe_allow_html=True)
+
+# 历史上的今天 + 下一个纪念日
+_md = _today.strftime("%m-%d")
+_otd = [r for r in _rows
+        if str(r.get("date",""))[5:10] == _md and str(r.get("date",""))[:4] != str(_today.year)][:4]
+
+_otd_rows = "".join(
+    f'<div class="otd-row"><span class="otd-year">{str(r["date"])[:4]}</span> · '
+    f'{_html.escape((r.get("title") or "")[:48])}</div>'
+    for r in _otd
+) or f'<div class="otd-empty">{t("home_otd_empty")}</div>'
+
+_next = (_anniv_upcoming(_today) or [None])[0]
+if _next:
+    _lbl  = _next["label"] if st.session_state.get("lang","zh") == "zh" else _next.get("label_en", _next["label"])
+    _when = t("home_anniv_today") if _next["days_until"] == 0 else f'{_next["days_until"]} {t("home_days_later")}'
+    _nth  = f'<span style="color:var(--t3);font-size:0.78rem"> · {_next["next_date"].strftime("%m-%d")}</span>'
+    _anniv_html = (f'<div class="otd-row">{_html.escape(_lbl)}{_nth}</div>'
+                   f'<div class="otd-row" style="color:#FF6B9D;font-weight:600">{_when}</div>')
+else:
+    _anniv_html = f'<div class="otd-empty">—</div>'
+
+_oc1, _oc2 = st.columns(2)
+with _oc1:
+    st.markdown(f'<div class="otd-card"><div class="otd-head">{t("home_otd")} · {_md}</div>{_otd_rows}</div>',
+                unsafe_allow_html=True)
+with _oc2:
+    st.markdown(f'<div class="otd-card"><div class="otd-head">{t("home_next_anniv")}</div>{_anniv_html}</div>',
+                unsafe_allow_html=True)
+
 st.divider()
 
 # ── 人物卡片 ─────────────────────────────────────────────

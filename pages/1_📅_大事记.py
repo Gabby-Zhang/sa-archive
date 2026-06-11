@@ -20,6 +20,7 @@ TAG_OPTIONS = [
     "▶️ YouTube",
     "📺 Bilibili",
     "🎙️ 采访",
+    "💬 互相提及",
     "📋 官方声明",
     "⚪ 其他",
 ]
@@ -34,6 +35,7 @@ TAG_OPTIONS_EN = [
     "▶️ YouTube",
     "📺 Bilibili",
     "🎙️ Interview",
+    "💬 Mentions each other",
     "📋 Official statement",
     "⚪ Other",
 ]
@@ -51,6 +53,7 @@ TAG_COLOR = {
     "▶️ YouTube":  "#FF0000",
     "📺 Bilibili":  "#00A1D6",
     "🎙️ 采访":     "#7EC8A4",
+    "💬 互相提及":  "#FF6B9D",
     "📋 官方声明":  "#C9A84C",
     "⚪ 其他":      "#666666",
 }
