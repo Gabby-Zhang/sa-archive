@@ -37,6 +37,39 @@ def delete_event(event_id: int):
     db = get_supabase_admin()
     return db.table("events").delete().eq("id", event_id).execute()
 
+# ── 首页「上一次同框」置顶 ───────────────────────────────
+# 复用 profile_items 作为站点级键值存储：person="S&A" / section="featured_moment" / key="event_id"。
+# 人物档案页只查两位真人 + 四个已知 section，这条记录不会泄漏到其它页面，也无需改库结构。
+_FEAT_FILTER = dict(person="S&A", section="featured_moment", key="event_id")
+
+def get_featured_sa_event_id():
+    """管理员置顶的「上一次同框」事件 id；未设置返回 None（首页回退到取最新 S&A 事件）。"""
+    try:
+        rows = (get_supabase().table("profile_items").select("value")
+                .eq("person", "S&A").eq("section", "featured_moment")
+                .eq("key", "event_id").limit(1).execute().data) or []
+        if rows and str(rows[0].get("value") or "").strip():
+            return int(rows[0]["value"])
+    except Exception:
+        pass
+    return None
+
+def set_featured_sa_event_id(event_id):
+    """置顶某条 S&A 事件作为「上一次同框」；传 None 清除置顶（恢复自动取最新）。"""
+    db = get_supabase_admin()
+    existing = (db.table("profile_items").select("id")
+                .eq("person", "S&A").eq("section", "featured_moment")
+                .eq("key", "event_id").limit(1).execute().data) or []
+    if event_id is None:
+        if existing:
+            db.table("profile_items").delete().eq("id", existing[0]["id"]).execute()
+        return
+    if existing:
+        db.table("profile_items").update({"value": str(event_id)}) \
+            .eq("id", existing[0]["id"]).execute()
+    else:
+        db.table("profile_items").insert({**_FEAT_FILTER, "value": str(event_id)}).execute()
+
 # ── 新闻 ────────────────────────────────────────────────
 def get_news(person=None, keyword=None, limit=50, offset=0):
     db = get_supabase()

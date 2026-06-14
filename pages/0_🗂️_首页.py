@@ -130,7 +130,7 @@ def _events_lite():
     """轻量拉取大事记（日期/人物/标题/链接），一次查询驱动首页全部 S&A 模块。"""
     try:
         return (get_supabase().table("events")
-                .select("date,person,title,source_url,image_url")
+                .select("id,date,person,title,source_url,image_url")
                 .order("date", desc=True)
                 .limit(1000).execute().data) or []
     except Exception:
@@ -140,10 +140,18 @@ _rows   = _events_lite()
 _today  = _date.today()
 _sa     = [r for r in _rows if r.get("person") == "S&A" and r.get("date")]
 
-# 断糖计数 + 最新同框
+# 「上一次同框」取管理员置顶的那条；未置顶 / 置顶条目已删除时回退到最新 S&A 事件
+from utils.database import get_featured_sa_event_id as _get_featured_sa, set_featured_sa_event_id as _set_featured_sa
+_featured_id = _get_featured_sa()
+_last = None
+if _featured_id is not None:
+    _last = next((r for r in _sa if r.get("id") == _featured_id), None)
+if _last is None and _sa:
+    _last = _sa[0]
+
+# 断糖计数 + 上一次同框
 _sa_html = ""
-if _sa:
-    _last      = _sa[0]
+if _last:
     _last_date = str(_last["date"])[:10]
     try:
         _gap = (_today - _date.fromisoformat(_last_date)).days
@@ -196,6 +204,27 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 st.markdown(_sa_html, unsafe_allow_html=True)
+
+# ── 管理员：置顶「上一次同框」展示哪一条 ───────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("⚙️ 设置「上一次同框」置顶（仅管理员可见）", expanded=False):
+        _AUTO = "__auto__"
+        _opts = [_AUTO] + [r["id"] for r in _sa]
+        _label = {_AUTO: "🔄 自动（取最新 S&A 事件）"}
+        for r in _sa:
+            _label[r["id"]] = f'{str(r.get("date",""))[:10]} · {(r.get("title") or "")[:42]}'
+        _cur = _featured_id if _featured_id in _label else _AUTO
+        _sel = st.selectbox(
+            "选择要在首页置顶展示的同框时刻",
+            _opts,
+            index=_opts.index(_cur) if _cur in _opts else 0,
+            format_func=lambda v: _label.get(v, str(v)),
+        )
+        if st.button("💾 保存置顶", key="save_featured_sa"):
+            _set_featured_sa(None if _sel == _AUTO else _sel)
+            st.cache_data.clear()
+            st.success("已更新「上一次同框」")
+            st.rerun()
 
 # 历史上的今天 + 下一个纪念日
 _md = _today.strftime("%m-%d")

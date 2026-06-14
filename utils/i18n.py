@@ -65,7 +65,7 @@ _S = {
     "home_days_since":  {"zh": "距上次同框",              "en": "Days since last S&A moment"},
     "home_days_unit":   {"zh": "天",                      "en": "days"},
     "home_today_sa":    {"zh": "就是今天 💗",             "en": "Today 💗"},
-    "home_latest_sa":   {"zh": "💗 最新同框",             "en": "💗 Latest S&A moment"},
+    "home_latest_sa":   {"zh": "💗 上一次同框",           "en": "💗 Last S&A moment"},
     "home_no_sa":       {"zh": "暂无同框记录",            "en": "No S&A moments yet"},
     "home_otd":         {"zh": "📅 历史上的今天",         "en": "📅 On this day"},
     "home_otd_empty":   {"zh": "往年的今天暂无记录",      "en": "Nothing on this day in past years"},
