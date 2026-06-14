@@ -7,6 +7,34 @@ from utils.i18n import t
 
 from utils.ui import gdrive_to_img_url
 
+import re
+
+
+def parse_image_urls(raw) -> list:
+    """把多行 / 逗号分隔的图片链接拆成列表（兼容旧的单条链接）。"""
+    if not raw:
+        return []
+    parts = re.split(r"[\n,，]+", str(raw))
+    return [p.strip() for p in parts if p.strip() and p.strip().lower() != "nan"]
+
+
+def render_images(raw, width=280):
+    """显示一条大事记关联的所有图片：单张沿用原宽度，多张用三列网格。"""
+    urls = [gdrive_to_img_url(u) for u in parse_image_urls(raw)]
+    if not urls:
+        return
+    try:
+        if len(urls) == 1:
+            st.image(urls[0], width=width)
+        else:
+            cols = st.columns(min(len(urls), 3))
+            for i, u in enumerate(urls):
+                with cols[i % len(cols)]:
+                    st.image(u, use_container_width=True)
+    except Exception:
+        pass
+
+
 admin_sidebar()
 
 
@@ -77,12 +105,15 @@ if st.session_state.get("is_admin"):
             new_title = st.text_input("事件/新闻标题 *")
             new_tag = st.selectbox("类型标签", TAG_OPTIONS)
             new_note = st.text_area("内容摘要", height=68)
-            new_image_url = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...")
-            if new_image_url:
-                _prev = gdrive_to_img_url(new_image_url)
+            new_image_url = st.text_area(
+                "图片链接（Google Drive，可选，多张用逗号或换行分隔）",
+                placeholder="https://drive.google.com/file/d/...\nhttps://drive.google.com/file/d/...",
+                height=80,
+            )
+            if new_image_url and parse_image_urls(new_image_url):
                 st.caption("图片预览：")
                 try:
-                    st.image(_prev, width=200)
+                    render_images(new_image_url, width=200)
                 except Exception:
                     st.warning("无法预览，请确认链接已设为公开")
             uploaded_pdf = st.file_uploader(
@@ -281,7 +312,7 @@ if not df_page.empty:
                     tag_idx = TAG_OPTIONS.index(cur_tag) if cur_tag in TAG_OPTIONS else 0
                     e_tag = st.selectbox("类型标签", TAG_OPTIONS, index=tag_idx)
                     e_note = st.text_area("内容摘要", value=row.get("note", "") or "", height=80)
-                    e_image_url = st.text_input("图片链接（Google Drive，可选）", value=row.get("image_url", "") or "")
+                    e_image_url = st.text_area("图片链接（Google Drive，可选，多张用逗号或换行分隔）", value=row.get("image_url", "") or "", height=80)
                     sc1, sc2 = st.columns(2)
                     with sc1:
                         save = st.form_submit_button("💾 保存", use_container_width=True)
@@ -384,8 +415,6 @@ if not df_page.empty:
             _note = "" if str(_note).strip().lower() == "nan" else _note
             note_html = f'<div style="color:var(--t2);font-size:0.85rem;margin-top:0.4rem">{_note}</div>' if _note else ""
 
-            img_url = gdrive_to_img_url(row.get("image_url", "") or "")
-
             tag_val   = row.get("tag", "") or ""
             tag_color = TAG_COLOR.get(tag_val, "#555")
             tag_html  = (f'<span style="background:{tag_color};color:white;padding:0.05rem 0.45rem;'
@@ -408,11 +437,7 @@ if not df_page.empty:
             )
             st.markdown(_card, unsafe_allow_html=True)
 
-            if img_url:
-                try:
-                    st.image(img_url, width=280)
-                except Exception:
-                    pass
+            render_images(row.get("image_url", ""), width=280)
 
             # ── 相关内容折叠展示 ──────────────────────────────
             event_links = all_links.get(str(event_id), [])
@@ -627,7 +652,7 @@ with st.expander("➕ 手动添加新条目"):
         new_title = st.text_input("事件/新闻标题 *")
         new_tag_b = st.selectbox("类型标签", TAG_OPTIONS, key="bottom_tag")
         new_note = st.text_area("内容摘要", height=80)
-        new_image_url_b = st.text_input("图片链接（Google Drive，可选）", placeholder="https://drive.google.com/file/d/...", key="bottom_img_url")
+        new_image_url_b = st.text_area("图片链接（Google Drive，可选，多张用逗号或换行分隔）", placeholder="https://drive.google.com/file/d/...\nhttps://drive.google.com/file/d/...", key="bottom_img_url", height=80)
         submitted = st.form_submit_button("添加")
         if submitted:
             if new_title:
