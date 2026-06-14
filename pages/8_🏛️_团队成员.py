@@ -16,12 +16,19 @@ PERSON_COLOR = {
     "Gabriel Attal":     "#C9A84C",
 }
 
+# 分组的层级顺序（内阁/团队从高到低）。未列出的组别排在最后，按字母序。
+TEAM_ORDER = ["内阁领导", "内阁专家", "内阁成员", "政策助理", "支持团队"]
+
 def load_team(person):
     try:
-        return db.table("team_members").select("*").eq("person", person).order("team").execute().data
+        rows = db.table("team_members").select("*").eq("person", person).execute().data
     except Exception as e:
         st.error(f"加载失败：{e}")
         return []
+    rank = {name: i for i, name in enumerate(TEAM_ORDER)}
+    # 先按层级顺序分组，组内按姓名排序（主任 Bertrand 自然排在副主任 Estelle 前）
+    rows.sort(key=lambda m: (rank.get(m.get("team"), 999), m.get("team", ""), m.get("name", "")))
+    return rows
 
 def delete_member(mid):
     get_supabase_admin().table("team_members").delete().eq("id", mid).execute()
@@ -105,12 +112,28 @@ for tab, person in [(tab_ss, "Stéphane Séjourné"), (tab_ga, "Gabriel Attal")]
 
             # ── 正常显示 ──────────────────────────────────
             else:
-                _note_div = f'<div style="color:#bbb;font-size:0.82rem;margin-top:0.2rem">{m.get("note","")}</div>' if m.get("note") else ""
+                # title 约定格式「职位 · 分管领域」：职位作小灰字，分管领域用主色突出。
+                _parts = [p.strip() for p in (m.get("title", "") or "").split("·")]
+                _role = _parts[0] if _parts else ""
+                _area = " · ".join(_parts[1:]) if len(_parts) > 1 else ""
+                _role_span = f'<span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{_role}</span>' if _role else ""
+                _area_span = f'<span style="color:{color};font-size:0.82rem;margin-left:0.6rem;opacity:0.95">· {_area}</span>' if _area else ""
+
+                # note 若是邮箱 → ✉️ 可点击 mailto；否则当普通备注显示（兼容旧数据）。
+                _note = (m.get("note", "") or "").strip()
+                if "@" in _note and " " not in _note:
+                    _contact = (f'<div style="margin-top:0.25rem">'
+                                f'<a href="mailto:{_note}" style="color:#888;font-size:0.78rem;text-decoration:none">✉️ {_note}</a></div>')
+                elif _note:
+                    _contact = f'<div style="color:#bbb;font-size:0.82rem;margin-top:0.2rem">{_note}</div>'
+                else:
+                    _contact = ""
+
                 st.markdown(
                     f'<div style="background:var(--cb);border-left:3px solid {color};padding:0.6rem 1.2rem;margin:0.3rem 0;border-radius:0 6px 6px 0">'
                     f'<span style="color:{color};font-weight:bold">{m.get("name","")}</span>'
-                    f'<span style="color:#aaa;font-size:0.85rem;margin-left:1rem">{m.get("title","")}</span>'
-                    f'{_note_div}'
+                    f'{_role_span}{_area_span}'
+                    f'{_contact}'
                     f'</div>',
                     unsafe_allow_html=True)
 
