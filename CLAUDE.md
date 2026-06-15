@@ -13,8 +13,8 @@ pip install -r requirements.txt
 
 ## 目录结构
 
-- `app.py` — 入口:页面配置 + 全局 CSS(主题变量、中文字形缩放、手机端适配)。改全站样式在这里
-- `pages/` — 各页面,文件名格式 `序号_emoji_中文名.py`,序号决定侧边栏顺序
+- `app.py` — 入口:页面配置 + 全局 CSS(主题变量、中文字形缩放、手机端适配) + 侧边栏导航。改全站样式在这里。**侧边栏顺序由 app.py 里的 `st.navigation([...])` 列表决定**,改顺序就调这个列表,文件名里的数字前缀只是历史命名、不再决定顺序
+- `app_pages/` — 各页面,文件名格式 `序号_emoji_中文名.py`。**目录刻意不叫 `pages/`**:否则 Streamlit 会按文件名再自动生成一份导航菜单,和 `st.navigation` 手写的顺序/名字冲突(表现为顺序乱、名字变成文件名)。`13_🧾_操作记录` 仅在 `is_super_admin()` 时才加入导航
 - `utils/` — 共享模块:
   - `database.py` — Supabase 客户端和查询封装(所有页面共用);含审计日志 `log_audit`/`get_audit_log`,且 `add_event`/`update_event`/`delete_event` 内部已自动记日志(调用方别再重复记一次)
   - `i18n.py` — 中/法双语文案,`t()` 函数
