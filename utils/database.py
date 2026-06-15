@@ -107,7 +107,7 @@ def set_featured_sa_event_id(event_id):
     log_audit("update", "profile_items", "featured_moment", f"置顶「上一次同框」为事件 {event_id}")
 
 # ── 新闻 ────────────────────────────────────────────────
-def get_news(person=None, keyword=None, limit=50, offset=0):
+def get_news(person=None, keyword=None, limit=50, offset=0, day=None):
     db = get_supabase()
     # range(start, end) 两端均包含，end = offset + limit（多取1条用于判断是否有下一页）
     query = db.table("news").select("*").order("published_at", desc=True).range(offset, offset + limit)
@@ -115,6 +115,11 @@ def get_news(person=None, keyword=None, limit=50, offset=0):
         query = query.eq("person", person)
     if keyword:
         query = query.ilike("title", f"%{keyword}%")
+    if day:
+        # published_at 是带时间的时间戳，按当天 [day 00:00, 次日 00:00) 过滤
+        from datetime import date as _date, timedelta as _td
+        d = day if isinstance(day, _date) else _date.fromisoformat(str(day))
+        query = query.gte("published_at", d.isoformat()).lt("published_at", (d + _td(days=1)).isoformat())
     return query.execute().data
 
 def upsert_news(items: list):

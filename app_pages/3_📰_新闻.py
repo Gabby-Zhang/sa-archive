@@ -34,19 +34,22 @@ with col_info:
 st.divider()
 
 # ── 筛选栏 ───────────────────────────────────────────────
-col1, col2, col3 = st.columns([2, 2, 3])
+col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
     person_filter = st.selectbox(t("person_label"), [t("all"), "Gabriel Attal", "Stéphane Séjourné", "S&A"])
 with col2:
-    limit = st.selectbox(t("show_count"), [50, 100, 200], index=0)
+    # 按日期检索：留空=不限日期
+    day_filter = st.date_input("按日期检索", value=None, format="YYYY-MM-DD")
 with col3:
+    limit = st.selectbox(t("show_count"), [50, 100, 200], index=0)
+with col4:
     keyword = st.text_input(t("search_label"), placeholder=t("search_ph"))
 
 # ── 分页状态 ─────────────────────────────────────────────
 if "news_page" not in st.session_state:
     st.session_state.news_page = 0
 # 筛选条件变化时重置到第一页
-_fkey = f"{person_filter}|{limit}|{keyword}"
+_fkey = f"{person_filter}|{limit}|{keyword}|{day_filter}"
 if st.session_state.get("_news_fkey") != _fkey:
     st.session_state.news_page = 0
     st.session_state["_news_fkey"] = _fkey
@@ -60,6 +63,7 @@ try:
         keyword=keyword if keyword else None,
         limit=limit,
         offset=_offset,
+        day=day_filter if day_filter else None,
     )
 except Exception as e:
     st.error(f"数据库连接失败：{e}")
