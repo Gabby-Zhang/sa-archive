@@ -209,7 +209,7 @@ def _sejourne_row(ev: dict, status: str, key: str):
                     ev.get("location", ""), status, SEJOURNE_COLOR)
 
     if st.session_state.get("is_admin") and status in ("past", "ongoing"):
-        _c1, _c2 = st.columns([11, 1])
+        _c1, _c2 = st.columns([11, 1], vertical_alignment="center")
         with _c1:
             _card()
         with _c2:
@@ -331,7 +331,8 @@ with col_a:
         is_an_auto = "[AN_AUTO]" in (ev.get("description") or "")
         importable = status in ("past", "ongoing") and not is_an_auto
 
-        cols = st.columns([10, 1, 1] if importable else [11, 1])
+        cols = st.columns([10, 1, 1] if importable else [11, 1],
+                          vertical_alignment="center")
         with cols[0]:
             _card()
         if importable:

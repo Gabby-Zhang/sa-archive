@@ -1,5 +1,5 @@
 # 上界锁定大版本，防止 Streamlit Cloud 重新部署时装到不兼容的新版
-streamlit>=1.35,<2
+streamlit>=1.36,<2
 supabase>=2.4,<3
 pandas>=2,<3
 plotly>=5,<7
