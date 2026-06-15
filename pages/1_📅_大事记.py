@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, get_supabase_admin, log_audit
+from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, upload_to_cloudinary, get_supabase_admin, log_audit
 from utils.auth import admin_sidebar
 from utils.i18n import t
 
@@ -138,13 +138,21 @@ if st.session_state.get("is_admin"):
                 new_tag_plat = st.selectbox("采访平台（仅「采访」时生效）", PLATFORM_OPTIONS)
             new_tag = join_event_tag(new_tag_base, new_tag_plat)
             new_note = st.text_area("内容摘要", height=68)
+            uploaded_imgs = st.file_uploader(
+                "🖼️ 上传图片（可选，可多张；存到 Cloudinary，所有管理员通用）",
+                type=["png", "jpg", "jpeg", "gif", "webp"],
+                accept_multiple_files=True,
+                key="quick_add_imgs",
+                help="直接选图片文件上传，不用再贴 Google Drive 链接",
+            )
             new_image_url = st.text_area(
-                "图片链接（Google Drive，可选，多张用逗号或换行分隔）",
-                placeholder="https://drive.google.com/file/d/...\nhttps://drive.google.com/file/d/...",
+                "或：图片外链（可选，多张用逗号或换行分隔）",
+                placeholder="https://drive.google.com/file/d/...\nhttps://i.imgur.com/...",
                 height=80,
+                help="已有外链（Google Drive、IG 图等）时贴这里，会和上传的图片一起显示",
             )
             if new_image_url and parse_image_urls(new_image_url):
-                st.caption("图片预览：")
+                st.caption("外链预览：")
                 try:
                     render_images(new_image_url, width=200)
                 except Exception:
@@ -156,6 +164,16 @@ if st.session_state.get("is_admin"):
             )
             if st.form_submit_button("✅ 添加", use_container_width=True):
                 if new_title:
+                    # 上传图片到 Cloudinary，和外链一起合并进 image_url
+                    _img_urls = []
+                    for _f in (uploaded_imgs or []):
+                        try:
+                            _img_urls.append(upload_to_cloudinary(_f.name, _f.getvalue()))
+                        except Exception as _ie:
+                            st.warning(f"图片「{_f.name}」上传失败（请确认已配置 Cloudinary 凭据）：{_ie}")
+                    _merged_imgs = "\n".join(
+                        u for u in ([new_image_url] + _img_urls) if u and str(u).strip()
+                    ) or None
                     result = add_event({
                         "date": str(new_date),
                         "person": new_person,
@@ -163,7 +181,7 @@ if st.session_state.get("is_admin"):
                         "source": new_source,
                         "source_url": new_source_url,
                         "note": new_note,
-                        "image_url": new_image_url or None,
+                        "image_url": _merged_imgs,
                         "tag": new_tag,
                     })
                     # 保存后自动跳到该条目并打开关联内容表单
@@ -353,13 +371,30 @@ if not df_page.empty:
                         e_tag_plat = st.selectbox("采访平台（仅「采访」时生效）", PLATFORM_OPTIONS, index=plat_idx)
                     e_tag = join_event_tag(e_tag_base, e_tag_plat)
                     e_note = st.text_area("内容摘要", value=row.get("note", "") or "", height=80)
-                    e_image_url = st.text_area("图片链接（Google Drive，可选，多张用逗号或换行分隔）", value=row.get("image_url", "") or "", height=80)
+                    e_uploaded_imgs = st.file_uploader(
+                        "🖼️ 追加上传图片（可选，可多张；存到 Cloudinary，所有管理员通用）",
+                        type=["png", "jpg", "jpeg", "gif", "webp"],
+                        accept_multiple_files=True,
+                        key=f"edit_imgs_{event_id}",
+                        help="上传的图片会追加到下面已有的图片之后",
+                    )
+                    e_image_url = st.text_area("图片外链（可选，多张用逗号或换行分隔）", value=row.get("image_url", "") or "", height=80)
                     sc1, sc2 = st.columns(2)
                     with sc1:
                         save = st.form_submit_button("💾 保存", use_container_width=True)
                     with sc2:
                         cancel = st.form_submit_button("✕ 取消", use_container_width=True)
                     if save:
+                        # 追加上传的图片合并进 image_url（接在已有外链之后）
+                        _e_img_urls = []
+                        for _f in (e_uploaded_imgs or []):
+                            try:
+                                _e_img_urls.append(upload_to_cloudinary(_f.name, _f.getvalue()))
+                            except Exception as _ie:
+                                st.warning(f"图片「{_f.name}」上传失败（请确认已配置 Cloudinary 凭据）：{_ie}")
+                        _e_merged_imgs = "\n".join(
+                            u for u in ([e_image_url] + _e_img_urls) if u and str(u).strip()
+                        ) or None
                         update_event(event_id, {
                             "date": e_date,
                             "person": e_person,
@@ -367,7 +402,7 @@ if not df_page.empty:
                             "source": e_source,
                             "source_url": e_source_url,
                             "note": e_note,
-                            "image_url": e_image_url or None,
+                            "image_url": _e_merged_imgs,
                             "tag": e_tag,
                         })
                         st.session_state.editing_id = None

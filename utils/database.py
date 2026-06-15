@@ -168,3 +168,21 @@ def upload_to_storage(bucket: str, filename: str, data: bytes, content_type: str
         file_options={"content-type": content_type, "upsert": "true"},
     )
     return sb.storage.from_(bucket).get_public_url(path)
+
+# ── Cloudinary 图片上传 ──────────────────────────────────
+def upload_to_cloudinary(filename: str, data: bytes, folder: str = "events") -> str:
+    """上传图片到 Cloudinary，返回公开 URL。
+    凭据存 secrets.toml 的 [cloudinary]（cloud_name/api_key/api_secret），所有管理员共用，
+    不依赖任何人的私人网盘 —— 谁登录都能传。免费额度约 25GB，远大于 Supabase Storage。
+    """
+    import cloudinary
+    import cloudinary.uploader
+    cfg = st.secrets["cloudinary"]
+    cloudinary.config(
+        cloud_name=cfg["cloud_name"],
+        api_key=cfg["api_key"],
+        api_secret=cfg["api_secret"],
+        secure=True,
+    )
+    res = cloudinary.uploader.upload(data, folder=folder, resource_type="image")
+    return res["secure_url"]
