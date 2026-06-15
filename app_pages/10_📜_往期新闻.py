@@ -443,3 +443,23 @@ if st.session_state.get("is_admin"):
 
         if st.button("🔍 开始导入", use_container_width=True, type="primary"):
             _run_gdelt_import(import_person, import_start, import_end)
+
+# ── 管理员：清空往期新闻数据 ───────────────────────────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("🗑️ 清空往期新闻数据", expanded=False):
+        st.caption("删除所有 `category='historical'` 的记录（**不影响当期新闻**），用于重导前清掉旧数据。此操作不可撤销。")
+        c_person = st.selectbox(
+            "清空范围", ["全部历史新闻", "Gabriel Attal", "Stéphane Séjourné", "S&A"], key="wipe_person")
+        confirm = st.checkbox("我确认要删除（不可恢复）", key="wipe_confirm")
+        if st.button("🗑️ 执行清空", use_container_width=True, disabled=not confirm):
+            try:
+                q = get_supabase_admin().table("news").delete().eq("category", "historical")
+                if c_person != "全部历史新闻":
+                    q = q.eq("person", c_person)
+                deleted = q.execute().data or []
+                log_audit("delete", "news", None, f"清空往期新闻：{c_person}，共 {len(deleted)} 条")
+                st.cache_data.clear()
+                st.success(f"✅ 已删除 {len(deleted)} 条往期新闻（{c_person}）")
+                st.rerun()
+            except Exception as e:
+                st.error(f"清空失败：{e}")
