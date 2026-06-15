@@ -41,6 +41,9 @@ admin_sidebar()
 TAG_OPTIONS = [
     "📰 新闻报道",
     "📅 大事记",
+    "🗓️ 日常行程",
+    "⭐ 重要行程/事件",
+    "📣 重大宣布",
     "📸 IG 快拍",
     "📷 IG 帖子",
     "🎵 TikTok",
@@ -56,6 +59,9 @@ TAG_OPTIONS = [
 TAG_OPTIONS_EN = [
     "📰 News coverage",
     "📅 Timeline entry",
+    "🗓️ Routine schedule",
+    "⭐ Key event",
+    "📣 Major announcement",
     "📸 IG Story",
     "📷 IG Post",
     "🎵 TikTok",
@@ -74,6 +80,9 @@ _TAG_EN_TO_ZH = dict(zip(TAG_OPTIONS_EN, TAG_OPTIONS))
 TAG_COLOR = {
     "📰 新闻报道": "#4A90D9",
     "📅 大事记":   "#8B6FD4",
+    "🗓️ 日常行程": "#6B8FB5",
+    "⭐ 重要行程/事件": "#E8A33D",
+    "📣 重大宣布": "#D9534F",
     "📸 IG 快拍":  "#E1306C",
     "📷 IG 帖子":  "#E1306C",
     "🎵 TikTok":   "#69C9D0",
