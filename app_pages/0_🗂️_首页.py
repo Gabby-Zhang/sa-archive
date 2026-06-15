@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.auth import admin_sidebar, is_super_admin
-from utils.database import get_supabase
+from utils.database import get_supabase, get_supabase_admin, upload_to_cloudinary, log_audit
 from utils.i18n import t, tlabel
 import html as _html
 
@@ -19,6 +19,14 @@ st.markdown("""
     padding: 1.5rem;
     margin: 0.5rem;
     text-align: center;
+}
+.profile-photo {
+    width: 130px;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid #4A90D955;
+    margin-bottom: 0.9rem;
 }
 .profile-card h2 { color: #4A90D9; margin-bottom: 0.5rem; }
 .profile-card .role { color: var(--t2); font-size: 0.9rem; margin-bottom: 1rem; }
@@ -108,6 +116,31 @@ def _get_links(person: str):
             .order("sort_order").execute().data or []
     except Exception:
         return []
+
+# ── 人物简介照片（存 profile_items 的 section="portrait"，一人一张）──
+@st.cache_data(ttl=300, show_spinner=False)
+def _get_portrait(person: str):
+    try:
+        rows = get_supabase().table("profile_items").select("value") \
+            .eq("person", person).eq("section", "portrait") \
+            .limit(1).execute().data or []
+        return (rows[0].get("value") or None) if rows else None
+    except Exception:
+        return None
+
+def _save_portrait(person: str, url: str):
+    db = get_supabase_admin()
+    existing = db.table("profile_items").select("id") \
+        .eq("person", person).eq("section", "portrait").limit(1).execute().data or []
+    if existing:
+        iid = existing[0]["id"]
+        db.table("profile_items").update({"value": url}).eq("id", iid).execute()
+        log_audit("update", "profile_items", iid, "portrait")
+    else:
+        db.table("profile_items").insert({
+            "person": person, "section": "portrait", "key": "photo", "value": url,
+        }).execute()
+        log_audit("insert", "profile_items", None, "portrait")
 
 # ── 首页标题 ─────────────────────────────────────────────
 _title = "S&amp;A 档案馆" if st.session_state.get("lang","zh") == "zh" else "S&amp;A Archive"
@@ -344,9 +377,38 @@ def _db_links(rows, color_cls):
 ss_links = _get_links("Stéphane Séjourné")
 ga_links = _get_links("Gabriel Attal")
 
+def _photo_html(url):
+    """人物简介卡顶部的圆形头像；没传照片时返回空串（不占位）。"""
+    if not url:
+        return ""
+    return (f'<img class="profile-photo" src="{_html.escape(_gdrive_img(url))}" '
+            f'loading="lazy" onerror="this.style.display=\'none\'">')
+
+def _portrait_uploader(person: str, key: str):
+    """管理员上传/更换人物简介照片（Cloudinary，所有管理员共用）。"""
+    if not st.session_state.get("is_admin"):
+        return
+    with st.expander("🖼️ 上传/更换简介照片", expanded=False):
+        up = st.file_uploader("选择图片", type=["png", "jpg", "jpeg", "webp"],
+                              key=f"portrait_up_{key}")
+        if up and st.button("💾 保存照片", key=f"portrait_save_{key}",
+                            use_container_width=True):
+            try:
+                url = upload_to_cloudinary(up.name, up.getvalue(), folder="portraits")
+                _save_portrait(person, url)
+                st.cache_data.clear()
+                st.success("已更新简介照片！")
+                st.rerun()
+            except Exception as e:
+                st.error(f"上传失败：{e}")
+
+ss_photo = _get_portrait("Stéphane Séjourné")
+ga_photo = _get_portrait("Gabriel Attal")
+
 with col1:
     st.markdown(f"""
     <div class="profile-card">
+        {_photo_html(ss_photo)}
         <h2>Stéphane Séjourné <a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
         <div class="role">{t("ss_role")}</div>
         <div class="bio">{t("ss_bio")}</div>
@@ -359,10 +421,12 @@ with col1:
         f'</div>',
         unsafe_allow_html=True
     )
+    _portrait_uploader("Stéphane Séjourné", "ss")
 
 with col2:
     st.markdown(f"""
     <div class="profile-card">
+        {_photo_html(ga_photo)}
         <h2>Gabriel Attal <a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
         <div class="role">{t("ga_role")}</div>
         <div class="bio">{t("ga_bio")}</div>
@@ -385,6 +449,7 @@ with col2:
         f'</div>',
         unsafe_allow_html=True
     )
+    _portrait_uploader("Gabriel Attal", "ga")
 
 st.divider()
 
