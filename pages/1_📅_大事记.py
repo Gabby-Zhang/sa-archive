@@ -5,7 +5,7 @@ from utils.database import get_events, add_event, update_event, delete_event, up
 from utils.auth import admin_sidebar
 from utils.i18n import t
 
-from utils.ui import gdrive_to_img_url
+from utils.ui import gdrive_to_img_url, video_thumb_html
 
 import re
 
@@ -86,6 +86,34 @@ TAG_COLOR = {
     "⚪ 其他":      "#666666",
 }
 
+# ── 事件「类型标签」专用：Bilibili 不再是顶层类型，而是「采访」下的平台子集 ──
+# （event_links 的类型仍用完整 TAG_OPTIONS，那里 Bilibili 作为平台是合理的）
+EVENT_TAG_OPTIONS    = [tg for tg in TAG_OPTIONS    if tg != "📺 Bilibili"]
+EVENT_TAG_OPTIONS_EN = [tg for tg in TAG_OPTIONS_EN if tg != "📺 Bilibili"]
+
+PLATFORM_NONE    = "（不指定）"
+PLATFORM_OPTIONS = [PLATFORM_NONE, "📺 Bilibili", "▶️ YouTube", "🎬 线下", "⚪ 其他"]
+
+
+def split_event_tag(tag):
+    """把存库的 tag 拆成 (主类型, 平台)。兼容旧的独立「📺 Bilibili」（归入采访）。"""
+    tag = (tag or "").strip()
+    if not tag or tag.lower() == "nan":
+        return ("", PLATFORM_NONE)
+    if tag == "📺 Bilibili":            # 旧数据：独立的 Bilibili → 采访 · Bilibili
+        return ("🎙️ 采访", "📺 Bilibili")
+    if " · " in tag:
+        base, plat = tag.split(" · ", 1)
+        return (base.strip(), plat.strip())
+    return (tag, PLATFORM_NONE)
+
+
+def join_event_tag(primary, platform):
+    """把主类型 + 平台拼回存库格式；只有「采访」才带平台。"""
+    if primary == "🎙️ 采访" and platform and platform != PLATFORM_NONE:
+        return f"🎙️ 采访 · {platform}"
+    return primary
+
 st.title(t("timeline_title"))
 st.caption(t("timeline_caption"))
 
@@ -103,7 +131,12 @@ if st.session_state.get("is_admin"):
                 new_source = st.text_input("消息来源")
                 new_source_url = st.text_input("来源链接（可选）")
             new_title = st.text_input("事件/新闻标题 *")
-            new_tag = st.selectbox("类型标签", TAG_OPTIONS)
+            tc1, tc2 = st.columns(2)
+            with tc1:
+                new_tag_base = st.selectbox("类型标签", EVENT_TAG_OPTIONS)
+            with tc2:
+                new_tag_plat = st.selectbox("采访平台（仅「采访」时生效）", PLATFORM_OPTIONS)
+            new_tag = join_event_tag(new_tag_base, new_tag_plat)
             new_note = st.text_area("内容摘要", height=68)
             new_image_url = st.text_area(
                 "图片链接（Google Drive，可选，多张用逗号或换行分隔）",
@@ -172,7 +205,7 @@ with col2:
     year_filter = st.selectbox(t("year_label"), year_options, key="year_filter_select")
 with col3:
     _is_en = st.session_state.get("lang", "zh") == "en"
-    _tag_opts = TAG_OPTIONS_EN if _is_en else TAG_OPTIONS
+    _tag_opts = EVENT_TAG_OPTIONS_EN if _is_en else EVENT_TAG_OPTIONS
     tag_filter_display = st.selectbox(t("type_label"), [t("all")] + _tag_opts)
     # 若英文模式，把选中值映射回中文（DB 存的是中文）
     tag_filter = _TAG_EN_TO_ZH.get(tag_filter_display, tag_filter_display)
@@ -197,7 +230,8 @@ if not df.empty and year_filter not in ("全部", "All"):
     df = df[df["year"] == year_filter]
 
 if not df.empty and tag_filter not in ("全部", "All"):
-    df = df[df["tag"] == tag_filter]
+    # 按主类型匹配：选「采访」也能筛到「采访 · Bilibili」这类带平台的条目
+    df = df[df["tag"].apply(lambda x: split_event_tag(x)[0]) == tag_filter]
 
 st.caption(f"共找到 {len(df)} 条记录")
 
@@ -308,9 +342,15 @@ if not df_page.empty:
                         _src_url = "" if str(_src_url).strip().lower() == "nan" else _src_url
                         e_source_url = st.text_input("来源链接", value=_src_url)
                     e_title = st.text_input("事件/新闻标题", value=row.get("title", ""))
-                    cur_tag = row.get("tag", TAG_OPTIONS[0]) or TAG_OPTIONS[0]
-                    tag_idx = TAG_OPTIONS.index(cur_tag) if cur_tag in TAG_OPTIONS else 0
-                    e_tag = st.selectbox("类型标签", TAG_OPTIONS, index=tag_idx)
+                    cur_base, cur_plat = split_event_tag(row.get("tag", ""))
+                    base_idx = EVENT_TAG_OPTIONS.index(cur_base) if cur_base in EVENT_TAG_OPTIONS else 0
+                    plat_idx = PLATFORM_OPTIONS.index(cur_plat) if cur_plat in PLATFORM_OPTIONS else 0
+                    etc1, etc2 = st.columns(2)
+                    with etc1:
+                        e_tag_base = st.selectbox("类型标签", EVENT_TAG_OPTIONS, index=base_idx)
+                    with etc2:
+                        e_tag_plat = st.selectbox("采访平台（仅「采访」时生效）", PLATFORM_OPTIONS, index=plat_idx)
+                    e_tag = join_event_tag(e_tag_base, e_tag_plat)
                     e_note = st.text_area("内容摘要", value=row.get("note", "") or "", height=80)
                     e_image_url = st.text_area("图片链接（Google Drive，可选，多张用逗号或换行分隔）", value=row.get("image_url", "") or "", height=80)
                     sc1, sc2 = st.columns(2)
@@ -365,6 +405,9 @@ if not df_page.empty:
                                 _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
                                 st.cache_data.clear()
                                 st.rerun()
+                        _lk_thumb = video_thumb_html(lk_url, width=240)
+                        if _lk_thumb:
+                            st.markdown(_lk_thumb, unsafe_allow_html=True)
 
             # 在编辑模式下也可以添加相关内容
             if st.button("📎 添加相关内容", key=f"add_lk_in_edit_{event_id}",
@@ -416,7 +459,8 @@ if not df_page.empty:
             note_html = f'<div style="color:var(--t2);font-size:0.85rem;margin-top:0.4rem">{_note}</div>' if _note else ""
 
             tag_val   = row.get("tag", "") or ""
-            tag_color = TAG_COLOR.get(tag_val, "#555")
+            # 配色按主类型取（「采访 · Bilibili」用采访的颜色）
+            tag_color = TAG_COLOR.get(split_event_tag(tag_val)[0], TAG_COLOR.get(tag_val, "#555"))
             tag_html  = (f'<span style="background:{tag_color};color:white;padding:0.05rem 0.45rem;'
                          f'border-radius:3px;font-size:0.7rem;font-weight:bold;margin-left:0.6rem">'
                          f'{tag_val}</span>') if tag_val else ""
@@ -439,6 +483,11 @@ if not df_page.empty:
 
             render_images(row.get("image_url", ""), width=280)
 
+            # 来源链接本身是 YouTube/B 站视频时，显示可点击略缩图
+            _src_thumb = video_thumb_html(row.get("source_url", "") or "", width=320)
+            if _src_thumb:
+                st.markdown(_src_thumb, unsafe_allow_html=True)
+
             # ── 相关内容折叠展示 ──────────────────────────────
             event_links = all_links.get(str(event_id), [])
             if event_links:
@@ -460,6 +509,9 @@ if not df_page.empty:
                             f'</div>',
                             unsafe_allow_html=True
                         )
+                        _lk_thumb = video_thumb_html(lk_url, width=240)
+                        if _lk_thumb:
+                            st.markdown(_lk_thumb, unsafe_allow_html=True)
                         if st.session_state.get("is_admin"):
                             if st.button("🗑️", key=f"del_lk_{lk['id']}"):
                                 _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
@@ -650,7 +702,12 @@ with st.expander("➕ 手动添加新条目"):
             new_source = st.text_input("消息来源（媒体名）")
             new_source_url = st.text_input("来源链接（可选）")
         new_title = st.text_input("事件/新闻标题 *")
-        new_tag_b = st.selectbox("类型标签", TAG_OPTIONS, key="bottom_tag")
+        btc1, btc2 = st.columns(2)
+        with btc1:
+            new_tag_b_base = st.selectbox("类型标签", EVENT_TAG_OPTIONS, key="bottom_tag")
+        with btc2:
+            new_tag_b_plat = st.selectbox("采访平台（仅「采访」时生效）", PLATFORM_OPTIONS, key="bottom_plat")
+        new_tag_b = join_event_tag(new_tag_b_base, new_tag_b_plat)
         new_note = st.text_area("内容摘要", height=80)
         new_image_url_b = st.text_area("图片链接（Google Drive，可选，多张用逗号或换行分隔）", placeholder="https://drive.google.com/file/d/...\nhttps://drive.google.com/file/d/...", key="bottom_img_url", height=80)
         submitted = st.form_submit_button("添加")
