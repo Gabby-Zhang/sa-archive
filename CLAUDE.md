@@ -37,6 +37,7 @@ pip install -r requirements.txt
 - 一条大事记自带 `tag`(类型标签),并可挂多条 `event_links`(相关内容:新闻、IG、推文、视频等),后者存在 `event_links` 表,启用了 RLS,**必须用 service key(`get_supabase_admin`)才能读写**
 - 视频略缩图:`source_url` 本身是视频、或 `event_links` 里的链接是视频时,自动调 `video_thumb_html` 出可点击略缩图(卡片正文 + 相关内容两处)
 - 类型标签是**两级**结构:Bilibili 不是顶层类型,而是「🎙️ 采访」的平台子集(B站永远不是第一手源,但常托管采访)。存库格式 `🎙️ 采访 · 📺 Bilibili`,用 `split_event_tag` / `join_event_tag` 拆拼。事件表单顶层选项用 `EVENT_TAG_OPTIONS`(不含 Bilibili)+ 并排的 `PLATFORM_OPTIONS`;**筛选和配色都按主类型归并**(选「采访」能筛到带平台的条目),并兼容旧的独立 `📺 Bilibili` 数据(展示照旧,编辑时自动转成新格式)
+- 标签清单定义在 `TAG_OPTIONS` / `TAG_OPTIONS_EN`(中英一一对应)和 `TAG_COLOR`(徽章配色)三处,加新标签要同步改这三处;`EVENT_TAG_OPTIONS` 由 `TAG_OPTIONS` 自动派生(只剔除 Bilibili),所以新标签会自动出现在添加·编辑表单和类型筛选里。行程/事件类标签:`🗓️ 日常行程`(行程日历同步默认)、`⭐ 重要行程/事件`、`📣 重大宣布`(职位升迁、重大事件等)
 - 注意 `event_links` 的类型选择器仍用完整 `TAG_OPTIONS`(保留顶层 Bilibili —— 那里作为「平台」是合理的),别和事件类型混为一谈
 - `st.form` 内控件不能联动(选完才提交),所以「采访平台」下拉始终显示、提示「仅采访时生效」,选别的类型时平台值会被忽略
 - 图片存 `image_url`(可多张,换行/逗号分隔,`parse_image_urls` 拆、`render_images` 显示)。两种来源并存:**① 直传 Cloudinary**(添加/编辑表单的图片 `file_uploader` → `upload_to_cloudinary` → 公开 URL,凭据走 secrets.toml 的 `[cloudinary]`,所有管理员共享、不依赖私人网盘,免费额度远大于 Supabase Storage);**② 图片外链文本框**(兜底,贴已有 gdrive/IG 链接)。上传的 URL 自动追加到外链之后合并存入 `image_url`,老的 gdrive 链接经 `gdrive_to_img_url` 照常显示。**线上 Cloudinary 凭据要在 Streamlit Cloud 的 Secrets 单独填一份才生效**
@@ -51,7 +52,7 @@ pip install -r requirements.txt
 ## 行程日历页(`pages/11_📆_行程日历.py`)约定
 
 - 左栏 SS 行程来自 GitHub ICS 文件(实时解析,不入库),右栏 GA 行程来自 `schedule` 表;两者数据形状不同(SS 用 `date`,GA 用 `event_date`)
-- **行程一键收入大事记**:管理员模式下,已发生(`past`/`ongoing`)的行程卡片右侧有「⬆️ 收入大事记」按钮,点开弹窗(`_import_to_timeline`)预填原文。行程原文多为法/英,**靠管理员手动译成中文再存**(刻意不接翻译 API),保存走 `add_event` 写入 `events`
+- **行程一键收入大事记**:管理员模式下,已发生(`past`/`ongoing`)的行程卡片右侧有「⬆️ 收入大事记」按钮(`st.columns` 加 `vertical_alignment="center"` 让按钮与多行卡片垂直居中),点开弹窗(`_import_to_timeline`)预填原文。行程原文多为法/英,**靠管理员手动译成中文再存**(刻意不接翻译 API),保存走 `add_event` 写入 `events`。类型标签默认 `🗓️ 日常行程`(`_IMPORT_TAG_OPTIONS` 列首即默认),可手动改成 `⭐ 重要行程/事件`、`📣 重大宣布` 等
 - 跳过 AN 议会预测条目:`description` 含 `[AN_AUTO]` 的(只是按周几规律推测、非确定行程)不显示收录按钮
 - 保存前按 `source_url` 查重并黄字提示(不强制拦截);两人同框时可在弹窗里把 person 改成 `S&A`
 
