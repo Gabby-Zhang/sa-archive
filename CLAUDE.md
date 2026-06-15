@@ -54,6 +54,16 @@ pip install -r requirements.txt
 - 筛选栏支持:人物、**按日期检索**(`day_filter`,留空=不限,选中只看当天发布)、显示条数、标题关键词。日期检索经 `get_news(day=...)` 实现,按 `published_at` 当天 `[当天 00:00, 次日 00:00)` 范围过滤(兼容带时间戳存储);筛选条件(含日期)都并入分页重置 key,变更自动回第 1 页
 - `get_news` 的 `keyword` 只匹配标题(`title` 的 `ilike`),不搜摘要/来源
 
+## 往期新闻页(`pages/10_📜_往期新闻.py`)约定
+
+- 数据来自 **GDELT**(免费全球新闻存档,与新闻页的 RSS 抓取无关),以 `category='historical'` 存进同一张 `news` 表;页面只读 `category='historical'` 的记录,不和当期新闻混。管理员模式下展开「📥 导入 GDELT 历史新闻」选人物+日期范围按月导入,`id` 取 url 的 md5、幂等可重跑补齐
+- **GDELT 用法的三条铁律**(踩过的坑,别再犯):
+  - **限流极严:请求间隔必须 ≥5 秒**,违规直接 429。导入循环用闭包 `gdelt_get` 统一节流到 5.5s/请求;一旦被限流,惩罚会持续好几分钟。代价是跨多月导入耗时几分钟(有进度条)
+  - **过滤算子要内联进 query**,写成 `query=...+sourcecountry:FR` / `sourcelang:english`;当成 `&sourcecountry=`/`&sourcelang=` URL 参数传会被 GDELT **静默无视**,拉回全球噪音而非法国媒体
+  - 每月分两轮抓:① `sourcecountry:FR` 信任 GDELT 国别标签直收法媒,**不再按域名二次过滤**(否则误杀 connexionfrance.com/thelocal.fr 等 .com 法媒);② `sourcelang:english` 仅保留 `MAJOR_ENGLISH_DOMAINS` 白名单大媒体
+- 429/失败次数会汇总后 `st.warning` 提示用户(别再像旧代码那样 `if not resp.ok: continue` 静默吞掉),失败时同范围重跑即可补齐
+- 列表按 `_norm_title`(标题前 8 词排序)聚合多来源同一报道,主条目取来源质量最高的(.fr > 英语白名单 > 其它)
+
 ## 行程日历页(`pages/11_📆_行程日历.py`)约定
 
 - 左栏 SS 行程来自 GitHub ICS 文件(实时解析,不入库),右栏 GA 行程来自 `schedule` 表;两者数据形状不同(SS 用 `date`,GA 用 `event_date`)
