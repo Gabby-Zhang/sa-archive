@@ -36,13 +36,26 @@ def _admin_accounts():
     return accounts
 
 
-def _match_admin(pwd):
-    """按密码匹配管理员账号；非空密码且命中才返回 (名字, 角色)，否则 None。"""
+def _match_admin(name, pwd):
+    """校验管理员登录。
+
+    - 填了登录名：只校验该账号（名字 + 密码都对才放行），更安全、不会撞密码。
+    - 没填登录名：回退到「只按密码全表匹配」的旧习惯，兼容老用法。
+
+    命中返回 (名字, 角色)，否则 None。
+    """
     if not pwd:
         return None
-    for name, info in _admin_accounts().items():
-        if info["password"] and pwd == info["password"]:
+    accounts = _admin_accounts()
+    name = (name or "").strip()
+    if name:
+        info = accounts.get(name)
+        if info and info["password"] and pwd == info["password"]:
             return name, info["role"]
+        return None
+    for n, info in accounts.items():
+        if info["password"] and pwd == info["password"]:
+            return n, info["role"]
     return None
 
 
@@ -65,9 +78,11 @@ def admin_sidebar():
                 if st.session_state._login_attempts >= _MAX_ATTEMPTS:
                     st.error("尝试次数过多，请刷新页面后再试")
                     return
+                uname = st.text_input("登录名", key="admin_name_sidebar",
+                                      placeholder="如 chuichui / gabby")
                 pwd = st.text_input("密码", type="password", key="admin_pwd_sidebar")
                 if st.button("登录", key="admin_login_btn"):
-                    matched = _match_admin(pwd)
+                    matched = _match_admin(uname, pwd)
                     # 必须命中某个账号才放行：secret 未配置时拒绝一切登录，而不是空密码放行
                     if matched:
                         name, role = matched
