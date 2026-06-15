@@ -406,14 +406,14 @@ ss_photo = _get_portrait("Stéphane Séjourné")
 ga_photo = _get_portrait("Gabriel Attal")
 
 with col1:
-    st.markdown(f"""
-    <div class="profile-card">
-        {_photo_html(ss_photo)}
-        <h2>Stéphane Séjourné <a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
-        <div class="role">{t("ss_role")}</div>
-        <div class="bio">{t("ss_bio")}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="profile-card">'
+        f'{_photo_html(ss_photo)}'
+        f'<h2>Stéphane Séjourné <a href="https://en.wikipedia.org/wiki/St%C3%A9phane_S%C3%A9journ%C3%A9" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>'
+        f'<div class="role">{t("ss_role")}</div>'
+        f'<div class="bio">{t("ss_bio")}</div>'
+        f'</div>',
+        unsafe_allow_html=True)
     st.markdown(
         f'<div class="links-card">'
         f'{_social_row(_SS_SOCIAL)}'
@@ -424,14 +424,14 @@ with col1:
     _portrait_uploader("Stéphane Séjourné", "ss")
 
 with col2:
-    st.markdown(f"""
-    <div class="profile-card">
-        {_photo_html(ga_photo)}
-        <h2>Gabriel Attal <a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>
-        <div class="role">{t("ga_role")}</div>
-        <div class="bio">{t("ga_bio")}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="profile-card">'
+        f'{_photo_html(ga_photo)}'
+        f'<h2>Gabriel Attal <a href="https://en.wikipedia.org/wiki/Gabriel_Attal" target="_blank" style="font-size:1rem;text-decoration:none">🌐</a></h2>'
+        f'<div class="role">{t("ga_role")}</div>'
+        f'<div class="bio">{t("ga_bio")}</div>'
+        f'</div>',
+        unsafe_allow_html=True)
     _ga_campaign = (
         '<div class="campaign-sub">'
         f'<div class="campaign-label">{t("campaign_label")}</div>'
