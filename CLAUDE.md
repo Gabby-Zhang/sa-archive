@@ -49,6 +49,11 @@ pip install -r requirements.txt
 - `events` 的增删改已在 `database.py` 里自动记日志,**别在页面里重复记**;其它表(`schedule`/`event_links`/`images` 等)的写操作目前在各页面手动调 `log_audit`
 - 「🧾 操作记录」页(`pages/13_🧾_操作记录.py`)展示最近记录,**仅最终管理员(`is_super_admin`)可见**,页内用 `st.stop()` 拦住非最终管理员
 
+## 新闻页(`pages/3_📰_新闻.py`)约定
+
+- 筛选栏支持:人物、**按日期检索**(`day_filter`,留空=不限,选中只看当天发布)、显示条数、标题关键词。日期检索经 `get_news(day=...)` 实现,按 `published_at` 当天 `[当天 00:00, 次日 00:00)` 范围过滤(兼容带时间戳存储);筛选条件(含日期)都并入分页重置 key,变更自动回第 1 页
+- `get_news` 的 `keyword` 只匹配标题(`title` 的 `ilike`),不搜摘要/来源
+
 ## 行程日历页(`pages/11_📆_行程日历.py`)约定
 
 - 左栏 SS 行程来自 GitHub ICS 文件(实时解析,不入库),右栏 GA 行程来自 `schedule` 表;两者数据形状不同(SS 用 `date`,GA 用 `event_date`)
