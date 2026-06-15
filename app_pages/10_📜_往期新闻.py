@@ -194,6 +194,55 @@ def _run_gdelt_import(person: str, start: date, end: date):
     st.rerun()
 
 
+def _run_google_import(person: str, start: date, end: date):
+    """按月用 Google News（after:/before: 日期算子）回填历史新闻，插入 news 表（category=historical）。
+
+    与每日新闻同一套 Google 抓取逻辑，hl=fr&gl=FR → 主要出法语报道，限流远比 GDELT 宽松。
+    id 取 url 的 md5、幂等可重跑补齐。
+    """
+    from utils.news_fetcher import collect_historical_google
+    db = get_supabase()
+    total_added = 0
+    failed = 0
+
+    # 按月切片
+    months = []
+    cur = start.replace(day=1)
+    while cur <= end:
+        next_month = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
+        months.append((cur, min(next_month - timedelta(days=1), end)))
+        cur = next_month
+
+    progress = st.progress(0, text="准备中…")
+    for idx, (m_start, m_end) in enumerate(months):
+        progress.progress((idx + 1) / len(months),
+                          text=f"Google 查询 {m_start.strftime('%Y-%m')}…")
+        after  = m_start.strftime("%Y-%m-%d")
+        before = (m_end + timedelta(days=1)).strftime("%Y-%m-%d")   # before 排他，+1 天覆盖整月
+        try:
+            rows = collect_historical_google(person, after, before)
+        except Exception as e:
+            failed += 1
+            st.warning(f"查询失败（{person} / {m_start.strftime('%Y-%m')}）：{e}")
+            continue
+        if rows:
+            try:
+                db.table("news").upsert(rows, on_conflict="id").execute()
+                log_audit("insert", "news", None, f"Google 历史导入 {len(rows)} 条（{person} {after}）")
+                total_added += len(rows)
+            except Exception as e:
+                failed += 1
+                st.warning(f"入库失败（{m_start.strftime('%Y-%m')}）：{e}")
+        time.sleep(1)   # Google 限流宽松，礼貌性间隔
+
+    progress.empty()
+    st.cache_data.clear()
+    st.success(f"✅ Google 导入完成！共处理 {total_added} 条记录（已自动去重）")
+    if failed:
+        st.warning(f"⚠️ 期间 {failed} 个月份失败，可相同范围重跑补齐（已入库的会自动去重）。")
+    st.rerun()
+
+
 # ── 筛选栏 ───────────────────────────────────────────────────────
 col1, col2, col3, col4 = st.columns([2, 2, 2, 3])
 with col1:
@@ -356,9 +405,28 @@ if not news:
 
 st.divider()
 
-# ── 管理员：GDELT 导入 ───────────────────────────────────────────
+# ── 管理员：Google News 导入（首选，主要出法语）────────────────────
 if st.session_state.get("is_admin"):
-    with st.expander("📥 导入 GDELT 历史新闻", expanded=False):
+    with st.expander("📥 从 Google News 导入历史新闻（法语，推荐）", expanded=False):
+        st.caption("""
+        与每日新闻同一套 **Google News** 抓取（`hl=fr&gl=FR`）→ **主要返回法语报道**，限流远比 GDELT 宽松。
+        按月用日期算子（`after:`/`before:`）查询，自动去重、幂等可重跑补齐，不影响当期新闻页。
+        每月上限约 100 条，热点月可能抓不全，重跑或缩小范围即可补。
+        """)
+        g1, g2, g3 = st.columns(3)
+        with g1:
+            g_person = st.selectbox("人物", ["Gabriel Attal", "Stéphane Séjourné", "S&A"], key="goog_person")
+        with g2:
+            g_start = st.date_input("开始日期", value=date(2024, 1, 1), key="goog_start")
+        with g3:
+            g_end = st.date_input("结束日期", value=date(2024, 12, 31), key="goog_end")
+
+        if st.button("🔍 用 Google 导入", use_container_width=True, type="primary"):
+            _run_google_import(g_person, g_start, g_end)
+
+# ── 管理员：GDELT 导入（备选）─────────────────────────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("📥 导入 GDELT 历史新闻（备选）", expanded=False):
         st.caption("""
         **GDELT** 是免费的全球新闻存档，收录法国各大媒体报道。
         选择人物和日期范围，按月分两轮查询（法国本土 + 英语主流），自动去重，不影响现有新闻页面。

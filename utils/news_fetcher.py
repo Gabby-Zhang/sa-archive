@@ -20,11 +20,12 @@ _UA_HEADERS = {
 }
 
 
-def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
+def _decode_gnews_url(gnews_url: str, timeout: int = 6, resolve_http: bool = True) -> str:
     """
     将 Google News RSS 文章链接解析为真实文章 URL。
     先尝试 Base64 解码（快，不需网络），失败则跟随 HTTP 跳转。
     两者均失败时原样返回。
+    resolve_http=False 时只做 Base64（批量回填场景，避免逐条 HTTP 拖慢）。
     """
     # ── 1. Base64 尝试（新格式多为 protobuf，可能失败）──────
     try:
@@ -45,6 +46,9 @@ def _decode_gnews_url(gnews_url: str, timeout: int = 6) -> str:
                 break
     except Exception:
         pass
+
+    if not resolve_http:
+        return gnews_url
 
     # ── 2. HTTP 跳转（Streamlit Cloud 在美国可访问 Google）──
     try:
@@ -230,6 +234,69 @@ def collect_news() -> list:
 
     results.extend(fetch_attal_officiel())
     return results
+
+
+def collect_historical_google(person: str, after: str, before: str) -> list:
+    """
+    用 Google News 搜索的 after:/before: 日期算子回填某人某时间窗的历史新闻。
+    带 hl=fr&gl=FR&ceid=FR:fr → 主要返回法语报道，限流远比 GDELT 宽松。
+    供往期新闻页的「Google 导入」用，结果标 category='historical'。
+    after / before 均为 'YYYY-MM-DD'，区间为 [after, before)。
+    """
+    QUERY = {
+        "Gabriel Attal":     "Gabriel Attal",
+        "Stéphane Séjourné": "Stéphane Séjourné",
+        "S&A":               "Attal Séjourné",
+    }
+    q = QUERY.get(person, person)
+    full = f"{q} after:{after} before:{before}"
+    feed_url = (f"https://news.google.com/rss/search?q={requests.utils.quote(full)}"
+                f"&hl=fr&gl=FR&ceid=FR:fr")
+    try:
+        feed = feedparser.parse(feed_url)
+    except Exception:
+        return []
+
+    rows = []
+    seen = set()
+    for entry in feed.entries:
+        raw_url = entry.get("link", "").strip()
+        if not raw_url or raw_url in seen:
+            continue
+        title = entry.get("title", "").strip()
+        detected = _detect_person(title)   # 标题含人名即可判定，未命中则跳过
+        if not detected:
+            continue
+        seen.add(raw_url)
+
+        # 来源：优先取 <source> 的发布商域名（lemonde.fr），回退显示名（Le Monde）
+        source = ""
+        src = entry.get("source")
+        if src:
+            m = re.search(r"https?://(?:www\.)?([^/]+)", src.get("href", "") or "")
+            source = m.group(1) if m else (src.get("title", "") or "")
+        if not source and " - " in title:
+            source = title.split(" - ")[-1].strip()
+
+        clean_title = title.rsplit(" - ", 1)[0].strip() if " - " in title else title
+        try:
+            pub = datetime(*entry.published_parsed[:6]).strftime("%Y-%m-%d")
+        except Exception:
+            pub = after
+
+        # 批量回填只做快速 base64 解码；解不出就保留 google 跳转链接（点开仍可跳转）
+        url = _decode_gnews_url(raw_url, resolve_http=False)
+        rows.append({
+            "id":           hashlib.md5(raw_url.encode()).hexdigest(),
+            "title":        clean_title,
+            "url":          url,
+            "source":       source,
+            "person":       detected,
+            "published_at": pub,
+            "summary":      (entry.get("summary", "") or "")[:500],
+            "category":     "historical",
+        })
+    return rows
 
 
 def fetch_all_news():

@@ -56,8 +56,9 @@ pip install -r requirements.txt
 
 ## 往期新闻页(`pages/10_📜_往期新闻.py`)约定
 
-- 数据来自 **GDELT**(免费全球新闻存档,与新闻页的 RSS 抓取无关),以 `category='historical'` 存进同一张 `news` 表;页面只读 `category='historical'` 的记录,不和当期新闻混。管理员模式下展开「📥 导入 GDELT 历史新闻」选人物+日期范围按月导入,`id` 取 url 的 md5、幂等可重跑补齐
-- **GDELT 用法的三条铁律**(踩过的坑,别再犯):
+- 历史新闻统一以 `category='historical'` 存进同一张 `news` 表;页面只读 `category='historical'` 的记录,不和当期新闻混。两个导入入口都按人物+日期范围**按月**导入,`id` 取 url 的 md5、幂等可重跑补齐
+- **首选:Google News 导入(`collect_historical_google`,主要出法语)**。与每日新闻同一套 Google 抓取,`hl=fr&gl=FR&ceid=FR:fr` + 日期算子 `after:`/`before:`(区间 `[after, before)`,按月查时 before 取下月 1 号覆盖整月)。**限流远比 GDELT 宽松**,每月上限约 100 条。来源优先取 `<source>` 发布商域名(`lemonde.fr`)、回退显示名;批量回填用 `_decode_gnews_url(..., resolve_http=False)` 只做快速 base64 解码(解不出就留 google 跳转链,点开仍可跳)。**这是解决「往期只有英语」的正解**——GDELT 的 `sourcecountry:FR` 按媒体注册国筛、会混进 connexionfrance/thelocal 这类法国本地英文媒体
+- **备选:GDELT 导入**(免费全球新闻存档),保留作补充。**GDELT 用法的三条铁律**(踩过的坑,别再犯):
   - **限流极严:请求间隔必须 ≥5 秒**,违规直接 429。导入循环用闭包 `gdelt_get` 统一节流到 5.5s/请求;一旦被限流,惩罚会持续好几分钟。代价是跨多月导入耗时几分钟(有进度条)
   - **过滤算子要内联进 query**,写成 `query=...+sourcecountry:FR` / `sourcelang:english`;当成 `&sourcecountry=`/`&sourcelang=` URL 参数传会被 GDELT **静默无视**,拉回全球噪音而非法国媒体
   - 每月分两轮抓:① `sourcecountry:FR` 信任 GDELT 国别标签直收法媒,**不再按域名二次过滤**(否则误杀 connexionfrance.com/thelocal.fr 等 .com 法媒);② `sourcelang:english` 仅保留 `MAJOR_ENGLISH_DOMAINS` 白名单大媒体
