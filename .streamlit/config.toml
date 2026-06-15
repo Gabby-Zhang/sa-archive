@@ -8,10 +8,3 @@ font             = "sans serif"
 
 [server]
 headless = true
-
-[client]
-# 关掉 Streamlit 基于 pages/ 文件名自动生成的那份导航菜单，
-# 只保留 app.py 里 st.navigation 手写的顺序与名字。
-# 否则两份菜单并存：自动那份按文件名排序、名字也取文件名（如「交织时间轴」），
-# reboot 后看起来顺序被打乱、名字也错。
-showSidebarNavigation = false
