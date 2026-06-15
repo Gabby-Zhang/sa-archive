@@ -128,6 +128,17 @@ h3 { font-size: 1.05rem !important; }
     font-size: 0.78rem !important;
     min-height: 1.8rem !important;
     line-height: 1.2 !important;
+    /* 内容在按钮里水平+垂直都居中（否则 emoji 图标会顶在上方） */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+/* 标签外层 markdown 容器及 <p> 的默认外边距会把图标顶歪，归零 */
+[data-testid="stButton"] > button > div,
+[data-testid="stButton"] > button [data-testid="stMarkdownContainer"],
+[data-testid="stButton"] > button p {
+    margin: 0 !important;
+    line-height: 1.2 !important;
 }
 </style>
 """, unsafe_allow_html=True)
