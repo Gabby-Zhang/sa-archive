@@ -20,9 +20,11 @@ def _admin_accounts():
     if raw:
         for name, info in raw.items():
             # info 可能是 dict（带 role）或纯字符串（只给了密码，默认普通管理员）
+            # 密码一律转成字符串：TOML 里纯数字密码（如 password = 1626，没加引号）
+            # 会被解析成整数，和登录框传来的字符串永远不相等，导致登不上
             if isinstance(info, dict):
                 accounts[name] = {
-                    "password": info.get("password", ""),
+                    "password": str(info.get("password", "")),
                     "role": info.get("role", "admin"),
                 }
             else:
@@ -30,7 +32,7 @@ def _admin_accounts():
     # 兼容旧配置：ADMIN_PASSWORD 作为超级管理员账号
     legacy = st.secrets.get("ADMIN_PASSWORD", "")
     if legacy:
-        accounts.setdefault("管理员", {"password": legacy, "role": "super"})
+        accounts.setdefault("管理员", {"password": str(legacy), "role": "super"})
     return accounts
 
 
