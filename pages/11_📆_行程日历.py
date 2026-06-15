@@ -3,7 +3,7 @@ import requests
 from datetime import date
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase_admin
+from utils.database import get_supabase_admin, add_event, log_audit
 
 admin_sidebar()
 
@@ -132,6 +132,100 @@ def _section_header(label: str):
     )
 
 
+# ── 收入大事记：把一条行程存进 events 表 ──────────────────────────────────────
+# 大事记是中文档案，行程原文多为法/英；表单预填原文，管理员手动译成中文再保存。
+# 只在「已发生」的行程上出现按钮，并跳过 AN 议会预测条目（[AN_AUTO]）。
+_IMPORT_TAG_OPTIONS = ["📅 大事记", "🎙️ 采访", "📋 官方声明", "📰 新闻报道", "⚪ 其他"]
+_PERSON_OPTIONS     = ["Gabriel Attal", "Stéphane Séjourné", "S&A"]
+
+
+def _event_dup_count(source_url: str) -> int:
+    """events 表里同来源链接的条目数，用于重复提示（无链接时返回 0）。"""
+    if not source_url:
+        return 0
+    try:
+        rows = (get_supabase_admin().table("events").select("id")
+                .eq("source_url", source_url).execute().data) or []
+        return len(rows)
+    except Exception:
+        return 0
+
+
+@st.dialog("⬆️ 收入大事记")
+def _import_to_timeline(entry: dict):
+    """弹窗：把行程条目预填进表单，管理员译成中文后存入大事记。"""
+    st.caption("行程原文多为法语/英语，请把标题译成中文后再保存。")
+    dup = _event_dup_count(entry.get("source_url", ""))
+    if dup:
+        st.warning(f"大事记里已有 {dup} 条相同来源链接的记录，重复保存会产生多条。")
+
+    try:
+        _default_date = date.fromisoformat(str(entry.get("date", ""))[:10])
+    except ValueError:
+        _default_date = date.today()
+    _p    = entry.get("person", "")
+    _pidx = _PERSON_OPTIONS.index(_p) if _p in _PERSON_OPTIONS else 0
+
+    with st.form("import_to_timeline_form"):
+        i_title = st.text_input("标题（译成中文）*", value=entry.get("title", ""))
+        ic1, ic2 = st.columns(2)
+        with ic1:
+            i_date   = st.date_input("日期", value=_default_date)
+            i_person = st.selectbox("人物", _PERSON_OPTIONS, index=_pidx,
+                                    help="两人同框选 S&A")
+        with ic2:
+            i_tag = st.selectbox("类型标签", _IMPORT_TAG_OPTIONS)
+            i_src = st.text_input("来源链接（可选）", value=entry.get("source_url", "") or "")
+        i_loc  = st.text_input("地点（可选）", value=entry.get("location", "") or "")
+        i_note = st.text_area("内容摘要（可选）", height=68)
+        if st.form_submit_button("✅ 保存到大事记", use_container_width=True):
+            if not i_title.strip():
+                st.warning("请先填写中文标题")
+            else:
+                try:
+                    note = i_note.strip()
+                    if i_loc.strip():
+                        note = f"📍 {i_loc.strip()}" + (f"\n{note}" if note else "")
+                    # add_event 内部已写审计日志，这里不再重复记录
+                    add_event({
+                        "date":       str(i_date),
+                        "person":     i_person,
+                        "title":      i_title.strip(),
+                        "source":     "行程同步",
+                        "source_url": i_src or "",
+                        "note":       note,
+                        "tag":        i_tag,
+                    })
+                    st.success("✅ 已收入大事记")
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f"保存失败：{_e}")
+
+
+def _sejourne_row(ev: dict, status: str, key: str):
+    """渲染一条 Séjourné 行程；管理员模式下，已发生的条目附「收入大事记」按钮。"""
+    def _card():
+        _event_card(ev.get("title", ""), ev.get("date", ""),
+                    ev.get("location", ""), status, SEJOURNE_COLOR)
+
+    if st.session_state.get("is_admin") and status in ("past", "ongoing"):
+        _c1, _c2 = st.columns([11, 1])
+        with _c1:
+            _card()
+        with _c2:
+            if st.button("⬆️", key=f"imp_ss_{key}", help="收入大事记",
+                         use_container_width=True):
+                _import_to_timeline({
+                    "title":      ev.get("title", ""),
+                    "date":       ev.get("date", ""),
+                    "location":   ev.get("location", "") or "",
+                    "source_url": "",
+                    "person":     "Stéphane Séjourné",
+                })
+    else:
+        _card()
+
+
 # ── 页面主体：并排两栏 ───────────────────────────────────────────────────────
 col_s, col_a = st.columns(2)
 
@@ -179,17 +273,15 @@ with col_s:
 
         if s_upcoming:
             _section_header(f"▶ {t('sched_upcoming_hdr')} · {len(s_upcoming)}")
-            for ev in s_upcoming:
-                _event_card(ev["title"], ev["date"], ev["location"],
-                            ev["status"], SEJOURNE_COLOR)
+            for _i, ev in enumerate(s_upcoming):
+                _sejourne_row(ev, ev["status"], f"up{_i}")
         else:
             st.info(t("sched_no_upcoming"))
 
         if s_past:
             with st.expander(f"{t('sched_past_hdr')}（{len(s_past)}）", expanded=not s_upcoming):
-                for ev in s_past:
-                    _event_card(ev["title"], ev["date"], ev["location"],
-                                "past", SEJOURNE_COLOR)
+                for _i, ev in enumerate(s_past):
+                    _sejourne_row(ev, "past", f"pa{_i}")
 
 # ════════════════════════════════════════════════════════════════════════════
 # 右栏：Gabriel Attal（手动维护）
@@ -222,7 +314,7 @@ with col_a:
     )
 
     def _attal_row(ev, status: str, key_prefix: str):
-        """渲染一条 Attal 行程卡片；管理员模式附带删除按钮。"""
+        """渲染一条 Attal 行程卡片；管理员模式附带删除按钮，已发生的可收入大事记。"""
         ev_date_str = str(ev.get("event_date", ""))[:10]
 
         def _card():
@@ -231,18 +323,35 @@ with col_a:
                         ATTAL_COLOR, ev.get("source_url", ""),
                         ev.get("description", ""))
 
-        if st.session_state.get("is_admin"):
-            _c1, _c2 = st.columns([11, 1])
-            with _c1:
-                _card()
-            with _c2:
-                if st.button("🗑️", key=f"{key_prefix}_{ev.get('id')}",
-                             help="删除", use_container_width=True):
-                    get_supabase_admin().table("schedule").delete().eq("id", ev["id"]).execute()
-                    st.cache_data.clear()
-                    st.rerun()
-        else:
+        if not st.session_state.get("is_admin"):
             _card()
+            return
+
+        # AN 议会预测条目不入大事记（仅规律推测，非确定行程）
+        is_an_auto = "[AN_AUTO]" in (ev.get("description") or "")
+        importable = status in ("past", "ongoing") and not is_an_auto
+
+        cols = st.columns([10, 1, 1] if importable else [11, 1])
+        with cols[0]:
+            _card()
+        if importable:
+            with cols[1]:
+                if st.button("⬆️", key=f"imp_{key_prefix}_{ev.get('id')}",
+                             help="收入大事记", use_container_width=True):
+                    _import_to_timeline({
+                        "title":      ev.get("title", ""),
+                        "date":       ev_date_str,
+                        "location":   ev.get("location", "") or "",
+                        "source_url": ev.get("source_url", "") or "",
+                        "person":     "Gabriel Attal",
+                    })
+        with cols[-1]:
+            if st.button("🗑️", key=f"{key_prefix}_{ev.get('id')}",
+                         help="删除", use_container_width=True):
+                get_supabase_admin().table("schedule").delete().eq("id", ev["id"]).execute()
+                log_audit("delete", "schedule", ev["id"], ev.get("title"))
+                st.cache_data.clear()
+                st.rerun()
 
     if a_upcoming:
         _section_header(f"▶ {t('sched_upcoming_hdr')} · {len(a_upcoming)}")
@@ -285,6 +394,7 @@ with col_a:
                                 "description": new_desc or "",
                                 "source_url":  new_url or "",
                             }).execute()
+                            log_audit("insert", "schedule", None, new_title)
                             st.cache_data.clear()
                             st.success("✅ 已添加")
                             st.rerun()

@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t, tlabel
-from utils.database import get_supabase, get_supabase_admin
+from utils.database import get_supabase, get_supabase_admin, log_audit
 
 # 偏好标签翻译对照（DB 存中文，英文模式展示英文；含 emoji 变体）
 _PREF_KEY_EN = {
@@ -53,9 +53,11 @@ def load_section(person, section):
 
 def delete_item(iid):
     get_supabase_admin().table("profile_items").delete().eq("id", iid).execute()
+    log_audit("delete", "profile_items", iid)
 
 def update_item(iid, data):
     get_supabase_admin().table("profile_items").update(data).eq("id", iid).execute()
+    log_audit("update", "profile_items", iid, data.get("key"))
 
 # ── 管理员：添加条目 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -76,6 +78,7 @@ if st.session_state.get("is_admin"):
                         "person": p_person, "section": p_section,
                         "key": p_key, "value": p_value, "note": p_note,
                     }).execute()
+                    log_audit("insert", "profile_items", None, p_key)
                     st.success("已添加！")
                     st.rerun()
                 else:

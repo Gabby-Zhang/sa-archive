@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase, get_supabase_admin
+from utils.database import get_supabase, get_supabase_admin, log_audit
 
 admin_sidebar()
 
@@ -249,10 +249,15 @@ def get_images(person=None, tag=None):
         return []
 
 def add_image(data: dict):
-    return get_supabase_admin().table("images").insert(data).execute()
+    res = get_supabase_admin().table("images").insert(data).execute()
+    new_id = (res.data[0].get("id") if res.data else None)
+    log_audit("insert", "images", new_id, data.get("caption") or data.get("title"))
+    return res
 
 def delete_image(img_id: int):
-    return get_supabase_admin().table("images").delete().eq("id", img_id).execute()
+    res = get_supabase_admin().table("images").delete().eq("id", img_id).execute()
+    log_audit("delete", "images", img_id)
+    return res
 
 # ── 筛选栏 ───────────────────────────────────────────────
 _sa_only = st.toggle(t("weave_only_sa"), key="gallery_sa_only",

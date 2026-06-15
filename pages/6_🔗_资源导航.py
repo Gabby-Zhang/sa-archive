@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t, tlabel
-from utils.database import get_supabase, get_supabase_admin
+from utils.database import get_supabase, get_supabase_admin, log_audit
 
 admin_sidebar()
 
@@ -20,6 +20,7 @@ def load_resources(tab):
 
 def delete_resource(rid):
     get_supabase_admin().table("resources").delete().eq("id", rid).execute()
+    log_audit("delete", "resources", rid)
 
 # ── 管理员：添加条目 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -41,6 +42,7 @@ if st.session_state.get("is_admin"):
                         "name": r_name, "url": r_url,
                         "description": r_desc, "icon": r_icon or "🔗",
                     }).execute()
+                    log_audit("insert", "resources", None, r_name)
                     st.success("已添加！")
                     st.rerun()
                 else:

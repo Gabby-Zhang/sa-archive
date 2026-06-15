@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.auth import admin_sidebar
+from utils.auth import admin_sidebar, is_super_admin
 from utils.database import get_supabase
 from utils.i18n import t, tlabel
 import html as _html
@@ -205,9 +205,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.markdown(_sa_html, unsafe_allow_html=True)
 
-# ── 管理员：置顶「上一次同框」展示哪一条 ───────────────────
-if st.session_state.get("is_admin"):
-    with st.expander("⚙️ 设置「上一次同框」置顶（仅管理员可见）", expanded=False):
+# ── 最终管理员：置顶「上一次同框」展示哪一条（敏感设置，普通管理员看不到）──
+if is_super_admin():
+    with st.expander("⚙️ 设置「上一次同框」置顶（仅最终管理员可见）", expanded=False):
         _AUTO = "__auto__"
         _opts = [_AUTO] + [r["id"] for r in _sa]
         _label = {_AUTO: "🔄 自动（取最新 S&A 事件）"}

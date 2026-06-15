@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase, get_supabase_admin
+from utils.database import get_supabase, get_supabase_admin, log_audit
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 from datetime import datetime, date, timedelta
 import hashlib
@@ -145,6 +145,7 @@ def _run_gdelt_import(person: str, start: date, end: date):
 
                 if rows:
                     db.table("news").upsert(rows, on_conflict="id").execute()
+                    log_audit("insert", "news", None, f"GDELT 导入 {len(rows)} 条（{q}）")
                     total_added += len(rows)
 
                 time.sleep(0.5)  # 避免请求过频
@@ -311,6 +312,7 @@ for group in clustered:
             if st.button("🗑️", key=f"del_hist_{item_id}",
                          help="删除此条新闻", use_container_width=True):
                 get_supabase_admin().table("news").delete().eq("id", item_id).execute()
+                log_audit("delete", "news", item_id, item.get("title"))
                 st.cache_data.clear()
                 st.rerun()
 

@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase, get_supabase_admin
+from utils.database import get_supabase, get_supabase_admin, log_audit
 
 admin_sidebar()
 
@@ -32,9 +32,11 @@ def load_team(person):
 
 def delete_member(mid):
     get_supabase_admin().table("team_members").delete().eq("id", mid).execute()
+    log_audit("delete", "team_members", mid)
 
 def update_member(mid, data):
     get_supabase_admin().table("team_members").update(data).eq("id", mid).execute()
+    log_audit("update", "team_members", mid, data.get("name"))
 
 # ── 管理员：添加成员 ─────────────────────────────────────
 if st.session_state.get("is_admin"):
@@ -57,6 +59,7 @@ if st.session_state.get("is_admin"):
                         "title":  new_title,
                         "note":   new_note,
                     }).execute()
+                    log_audit("insert", "team_members", None, new_name)
                     st.success("已添加！")
                     st.rerun()
                 else:

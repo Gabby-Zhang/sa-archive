@@ -4,7 +4,7 @@ from utils.i18n import t
 
 admin_sidebar()
 from datetime import datetime
-from utils.database import get_news, add_news_manual, add_event, delete_news, get_supabase, get_supabase_admin
+from utils.database import get_news, add_news_manual, add_event, delete_news, get_supabase, get_supabase_admin, log_audit
 from utils.news_fetcher import fetch_all_news
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 
@@ -199,6 +199,7 @@ for item in news:
                                     "type":     "📰 新闻报道",
                                     "source":   item.get("source", ""),
                                 }).execute()
+                                log_audit("insert", "event_links", _sel_ev["id"], f"关联新闻：{(item.get('title') or '')[:40]}")
                                 st.session_state.pop(f"linking_{item_id}", None)
                                 st.success(f"✅ 已关联到「{(_sel_ev.get('title','') or '')[:30]}…」")
                                 st.rerun()
@@ -278,6 +279,8 @@ if st.session_state.get("is_admin"):
                         else:
                             failed += 1
                     prog.empty()
+                    if fixed:
+                        log_audit("update", "news", None, f"批量解码 Google News 链接 {fixed} 条")
                     st.cache_data.clear()
                     st.success(f"✅ 成功解码 {fixed} 条，{failed} 条无法解码（保留原链接）")
                     st.rerun()

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, get_supabase_admin
+from utils.database import get_events, add_event, update_event, delete_event, upload_to_storage, get_supabase_admin, log_audit
 from utils.auth import admin_sidebar
 from utils.i18n import t
 
@@ -190,6 +190,7 @@ if st.session_state.get("is_admin"):
                                 "type":     "📄 文件附件",
                                 "source":   new_source or "",
                             }).execute()
+                            log_audit("insert", "event_links", new_id, f"附件：{uploaded_pdf.name}")
                         except Exception as _ue:
                             st.warning(f"PDF 上传失败（请确认 Supabase 已创建 documents bucket）：{_ue}")
                     st.rerun()
@@ -403,6 +404,7 @@ if not df_page.empty:
                             if st.button("🗑️", key=f"del_lk_edit_{lk['id']}",
                                          help="删除此关联", use_container_width=True):
                                 _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
+                                log_audit("delete", "event_links", lk["id"], lk.get("title"))
                                 st.cache_data.clear()
                                 st.rerun()
                         _lk_thumb = video_thumb_html(lk_url, width=240)
@@ -436,6 +438,7 @@ if not df_page.empty:
                                 "type":     lk_type_new,
                                 "source":   lk_source_new,
                             }).execute()
+                            log_audit("insert", "event_links", event_id, lk_title_new or lk_url_new)
                             st.session_state.adding_link_for = None
                             st.cache_data.clear()
                             st.rerun()
@@ -515,6 +518,7 @@ if not df_page.empty:
                         if st.session_state.get("is_admin"):
                             if st.button("🗑️", key=f"del_lk_{lk['id']}"):
                                 _get_admin_db().table("event_links").delete().eq("id", lk["id"]).execute()
+                                log_audit("delete", "event_links", lk["id"], lk.get("title"))
                                 st.rerun()
 
             # ── 管理员：操作按钮（紧凑 emoji 风格）────────────
@@ -557,6 +561,7 @@ if not df_page.empty:
                                 "type":     lk_type_new,
                                 "source":   lk_source_new,
                             }).execute()
+                            log_audit("insert", "event_links", event_id, lk_title_new or lk_url_new)
                             st.session_state.adding_link_for = None
                             st.rerun()
                     with ls2:
@@ -619,6 +624,7 @@ if not df_page.empty:
                                                 "type":     "📰 新闻报道",
                                                 "source":   sug.get("source",""),
                                             }).execute()
+                                            log_audit("insert", "event_links", event_id, f"关联新闻：{(sug.get('title') or '')[:40]}")
                                             st.rerun()
                                         except Exception as _e:
                                             st.error(f"关联失败：{_e}")
@@ -683,6 +689,7 @@ if not df_page.empty:
                                             "type":     "📅 大事记",
                                             "source":   sug_ev.get("person",""),
                                         }).execute()
+                                        log_audit("insert", "event_links", event_id, f"关联大事记：{(sug_ev.get('title') or '')[:40]}")
                                         st.rerun()
                 except Exception:
                     pass
@@ -810,5 +817,6 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
                     get_supabase_admin().table('events').insert(events[i:i+batch]).execute()
                     prog.progress(min((i+batch)/len(events), 1.0), text=f"已导入 {min(i+batch,len(events))}/{len(events)}")
 
+                log_audit("insert", "events", None, f"批量导入 {len(events)} 条大事记")
                 st.success(f"✅ 成功导入 {len(events)} 条大事记！")
                 st.rerun()

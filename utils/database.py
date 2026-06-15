@@ -15,6 +15,33 @@ def get_supabase_admin() -> Client:
     key = st.secrets.get("SUPABASE_SERVICE_KEY", st.secrets["SUPABASE_KEY"])
     return create_client(url, key)
 
+# ── 操作审计日志 ─────────────────────────────────────────
+def log_audit(action: str, table_name: str, record_id=None, detail: str = None):
+    """记录一次管理员写操作。操作人从当前会话取（admin_sidebar 登录时写入）。
+
+    永远不抛异常：日志写失败也绝不能拖垮正常的增删改操作。
+    在每个写库点调用一次，action 用 insert/update/delete。
+    """
+    try:
+        get_supabase_admin().table("audit_log").insert({
+            "admin_name": st.session_state.get("admin_name") or "未知",
+            "admin_role": st.session_state.get("admin_role") or "",
+            "action": action,
+            "table_name": table_name,
+            "record_id": None if record_id is None else str(record_id),
+            "detail": (detail or "")[:200],
+        }).execute()
+    except Exception:
+        pass
+
+def get_audit_log(limit=200):
+    """读取最近的操作记录（供最终管理员的「操作记录」页用）。"""
+    try:
+        return (get_supabase_admin().table("audit_log").select("*")
+                .order("created_at", desc=True).limit(limit).execute().data) or []
+    except Exception:
+        return []
+
 # ── 大事记 ──────────────────────────────────────────────
 def get_events(person=None, keyword=None):
     db = get_supabase()
@@ -27,15 +54,22 @@ def get_events(person=None, keyword=None):
 
 def add_event(data: dict):
     db = get_supabase_admin()
-    return db.table("events").insert(data).execute()
+    res = db.table("events").insert(data).execute()
+    new_id = (res.data[0].get("id") if res.data else None)
+    log_audit("insert", "events", new_id, data.get("title"))
+    return res
 
 def update_event(event_id: int, data: dict):
     db = get_supabase_admin()
-    return db.table("events").update(data).eq("id", event_id).execute()
+    res = db.table("events").update(data).eq("id", event_id).execute()
+    log_audit("update", "events", event_id, data.get("title"))
+    return res
 
 def delete_event(event_id: int):
     db = get_supabase_admin()
-    return db.table("events").delete().eq("id", event_id).execute()
+    res = db.table("events").delete().eq("id", event_id).execute()
+    log_audit("delete", "events", event_id)
+    return res
 
 # ── 首页「上一次同框」置顶 ───────────────────────────────
 # 复用 profile_items 作为站点级键值存储：person="S&A" / section="featured_moment" / key="event_id"。
@@ -63,12 +97,14 @@ def set_featured_sa_event_id(event_id):
     if event_id is None:
         if existing:
             db.table("profile_items").delete().eq("id", existing[0]["id"]).execute()
+        log_audit("update", "profile_items", "featured_moment", "清除「上一次同框」置顶")
         return
     if existing:
         db.table("profile_items").update({"value": str(event_id)}) \
             .eq("id", existing[0]["id"]).execute()
     else:
         db.table("profile_items").insert({**_FEAT_FILTER, "value": str(event_id)}).execute()
+    log_audit("update", "profile_items", "featured_moment", f"置顶「上一次同框」为事件 {event_id}")
 
 # ── 新闻 ────────────────────────────────────────────────
 def get_news(person=None, keyword=None, limit=50, offset=0):
@@ -92,11 +128,16 @@ def upsert_news(items: list):
 
 def add_news_manual(data: dict):
     db = get_supabase_admin()
-    return db.table("news").insert(data).execute()
+    res = db.table("news").insert(data).execute()
+    new_id = (res.data[0].get("id") if res.data else None)
+    log_audit("insert", "news", new_id, data.get("title"))
+    return res
 
 def delete_news(news_id: str):
     db = get_supabase_admin()
-    return db.table("news").delete().eq("id", news_id).execute()
+    res = db.table("news").delete().eq("id", news_id).execute()
+    log_audit("delete", "news", news_id)
+    return res
 
 # ── 文件上传记录 ─────────────────────────────────────────
 def get_files(person=None):
@@ -108,7 +149,10 @@ def get_files(person=None):
 
 def add_file(data: dict):
     db = get_supabase_admin()
-    return db.table("files").insert(data).execute()
+    res = db.table("files").insert(data).execute()
+    new_id = (res.data[0].get("id") if res.data else None)
+    log_audit("insert", "files", new_id, data.get("title") or data.get("filename"))
+    return res
 
 # ── Supabase Storage 上传 ────────────────────────────────
 def upload_to_storage(bucket: str, filename: str, data: bytes, content_type: str) -> str:

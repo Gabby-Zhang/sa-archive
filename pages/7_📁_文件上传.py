@@ -2,7 +2,7 @@ import streamlit as st
 from utils.auth import admin_sidebar
 
 admin_sidebar()
-from utils.database import get_files, add_file, get_supabase, get_supabase_admin, upload_to_storage
+from utils.database import get_files, add_file, get_supabase, get_supabase_admin, upload_to_storage, log_audit
 from utils.i18n import t
 import html as _html
 
@@ -83,6 +83,7 @@ for f in files:
     if st.session_state.get("is_admin"):
         if st.button("🗑️", key=f"del_file_{f.get('id')}", help="删除此文件记录"):
             get_supabase_admin().table("files").delete().eq("id", f.get("id")).execute()
+            log_audit("delete", "files", f.get("id"), f.get("title"))
             st.rerun()
 
 if not files:
