@@ -45,7 +45,14 @@ def _norm_title(title: str) -> str:
 
 # ── GDELT 导入函数（定义在前，调用在后）────────────────────────────
 def _run_gdelt_import(person: str, start: date, end: date):
-    """按月查询 GDELT，插入 news 表（category=historical）"""
+    """按月查询 GDELT，插入 news 表（category=historical）
+
+    关键约束：GDELT DOC API 要求请求间隔 ≥5 秒，违规直接 429。
+    且 sourcelang / sourcecountry 必须作为算子内联进 query（`sourcecountry:FR`），
+    当成 &sourcelang= URL 参数传会被无视、拉回全球噪音而非法国媒体。
+    每个月分两轮查：① sourcecountry:FR 捞法国本土媒体（不再按域名二次过滤，信任 GDELT 国别标签）；
+    ② sourcelang:english 捞英语报道，仅保留 MAJOR_ENGLISH_DOMAINS 白名单。
+    """
     QUERIES = {
         "Gabriel Attal":     ["Gabriel Attal", "Attal Renaissance", "Attal présidentielle"],
         "Stéphane Séjourné": ["Stéphane Séjourné", "Séjourné Commission européenne", "Séjourné Renaissance"],
@@ -54,6 +61,8 @@ def _run_gdelt_import(person: str, start: date, end: date):
     queries = QUERIES.get(person, [person])
     db = get_supabase()
     total_added = 0
+    rate_limited = 0   # 429 次数
+    failed = 0         # 其它失败次数
 
     # 按月切片
     months = []
@@ -63,99 +72,125 @@ def _run_gdelt_import(person: str, start: date, end: date):
         months.append((cur, min(next_month - timedelta(days=1), end)))
         cur = next_month
 
+    # ── GDELT 限流：所有请求统一节流到 ≥5.5s 一次 ──
+    GDELT_MIN_GAP = 5.5
+    _last = [0.0]
+    def gdelt_get(full_query, m_start, m_end):
+        wait = GDELT_MIN_GAP - (time.time() - _last[0])
+        if wait > 0:
+            time.sleep(wait)
+        api_url = (
+            f"https://api.gdeltproject.org/api/v2/doc/doc"
+            f"?query={requests.utils.quote(full_query)}"
+            f"&mode=artlist&maxrecords=250"
+            f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
+            f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
+            f"&format=json"
+        )
+        _last[0] = time.time()
+        return requests.get(api_url, timeout=25)
+
+    # 两轮抓取：法国本土（信任国别标签）+ 英语主流（按白名单过滤）
+    PASSES = [
+        ("sourcecountry:FR", "法语", False),
+        ("sourcelang:english", "英语主流", True),
+    ]
+    total_calls = len(months) * len(queries) * len(PASSES)
+    done = 0
     progress = st.progress(0, text="准备中…")
 
-    for idx, (m_start, m_end) in enumerate(months):
-        progress.progress((idx + 1) / len(months), text=f"查询 {m_start.strftime('%Y-%m')}…")
-
+    for m_start, m_end in months:
         for q in queries:
-            try:
-                # 同时查询法语和英语来源
-                rows = []
-                seen_titles = {}   # 用于本批次去重
+            rows = []
+            seen_titles = {}   # 本查询去重（跨两轮）
 
-                for lang, country in [("French", "France"), ("English", "")]:
-                    country_param = f"&sourcecountry={country}" if country else ""
-                    api_url = (
-                        f"https://api.gdeltproject.org/api/v2/doc/doc"
-                        f"?query={requests.utils.quote(q)}"
-                        f"&mode=artlist&maxrecords=250"
-                        f"&startdatetime={m_start.strftime('%Y%m%d')}000000"
-                        f"&enddatetime={m_end.strftime('%Y%m%d')}235959"
-                        f"&sourcelang={lang}{country_param}"
-                        f"&format=json"
-                    )
-                    resp = requests.get(api_url, timeout=15)
-                    if not resp.ok:
-                        continue
+            for operator, pass_label, domain_filter in PASSES:
+                done += 1
+                progress.progress(done / total_calls,
+                                  text=f"查询 {m_start.strftime('%Y-%m')} · {q} · {pass_label}")
+                try:
+                    resp = gdelt_get(f"{q} {operator}", m_start, m_end)
+                except Exception:
+                    failed += 1
+                    continue
+                if resp.status_code == 429:
+                    rate_limited += 1
+                    continue
+                if not resp.ok:
+                    failed += 1
+                    continue
+                try:
                     articles = resp.json().get("articles", [])
+                except Exception:
+                    failed += 1
+                    continue
 
-                    for a in articles:
-                        art_url = a.get("url", "")
-                        if not art_url:
-                            continue
-                        source = a.get("domain", "").replace("www.", "")
+                for a in articles:
+                    art_url = a.get("url", "")
+                    if not art_url:
+                        continue
+                    source = a.get("domain", "").replace("www.", "")
 
-                        # ── 媒体过滤：只保留法语媒体或英语主流大媒体 ──
-                        if not _is_allowed_source(source):
-                            continue
+                    # 英语轮只保留白名单大媒体；法国本土轮信任 GDELT 国别标签，不再过滤
+                    if domain_filter and not _is_allowed_source(source):
+                        continue
 
-                        art_id = hashlib.md5(art_url.encode()).hexdigest()
-                        title  = a.get("title", "").strip()
-                        if not title:
-                            continue
+                    art_id = hashlib.md5(art_url.encode()).hexdigest()
+                    title  = a.get("title", "").strip()
+                    if not title:
+                        continue
 
-                        # ── 批次内去重：同一条新闻只保留最先出现的那条 ──
-                        norm = _norm_title(title)
-                        if norm in seen_titles:
-                            continue
-                        seen_titles[norm] = True
+                    # ── 批次内去重：同一条新闻只保留最先出现的那条 ──
+                    norm = _norm_title(title)
+                    if norm in seen_titles:
+                        continue
+                    seen_titles[norm] = True
 
-                        seen_date = a.get("seendate", "")
-                        try:
-                            pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
-                        except Exception:
-                            pub_date = m_start.strftime("%Y-%m-%d")
+                    seen_date = a.get("seendate", "")
+                    try:
+                        pub_date = datetime.strptime(seen_date[:8], "%Y%m%d").strftime("%Y-%m-%d")
+                    except Exception:
+                        pub_date = m_start.strftime("%Y-%m-%d")
 
-                        # 判断人物
-                        title_l = title.lower()
-                        has_s = "séjourné" in title_l or "sejourne" in title_l
-                        has_a = "attal" in title_l
-                        if has_s and has_a:
-                            art_person = "S&A"
-                        elif has_s:
-                            art_person = "Stéphane Séjourné"
-                        elif has_a:
-                            art_person = "Gabriel Attal"
-                        else:
-                            art_person = person
+                    # 判断人物
+                    title_l = title.lower()
+                    has_s = "séjourné" in title_l or "sejourne" in title_l
+                    has_a = "attal" in title_l
+                    if has_s and has_a:
+                        art_person = "S&A"
+                    elif has_s:
+                        art_person = "Stéphane Séjourné"
+                    elif has_a:
+                        art_person = "Gabriel Attal"
+                    else:
+                        art_person = person
 
-                        rows.append({
-                            "id":           art_id,
-                            "title":        title,
-                            "url":          art_url,
-                            "source":       source,
-                            "person":       art_person,
-                            "published_at": pub_date,
-                            "summary":      "",
-                            "category":     "historical",
-                        })
+                    rows.append({
+                        "id":           art_id,
+                        "title":        title,
+                        "url":          art_url,
+                        "source":       source,
+                        "person":       art_person,
+                        "published_at": pub_date,
+                        "summary":      "",
+                        "category":     "historical",
+                    })
 
-                    time.sleep(0.3)
-
-                if rows:
+            if rows:
+                try:
                     db.table("news").upsert(rows, on_conflict="id").execute()
                     log_audit("insert", "news", None, f"GDELT 导入 {len(rows)} 条（{q}）")
                     total_added += len(rows)
-
-                time.sleep(0.5)  # 避免请求过频
-
-            except Exception as e:
-                st.warning(f"查询失败 ({q} / {m_start.strftime('%Y-%m')}): {e}")
+                except Exception as e:
+                    failed += 1
+                    st.warning(f"入库失败 ({q} / {m_start.strftime('%Y-%m')}): {e}")
 
     progress.empty()
     st.cache_data.clear()
     st.success(f"✅ 导入完成！共处理 {total_added} 条记录（已自动去重）")
+    if rate_limited or failed:
+        st.warning(f"⚠️ 期间 {rate_limited} 次被 GDELT 限流（429）、{failed} 次其它失败——"
+                   f"这些时间段没抓全，可稍后重跑相同范围补齐（已入库的会自动去重）。")
     st.rerun()
 
 
@@ -326,7 +361,9 @@ if st.session_state.get("is_admin"):
     with st.expander("📥 导入 GDELT 历史新闻", expanded=False):
         st.caption("""
         **GDELT** 是免费的全球新闻存档，收录法国各大媒体报道。
-        选择人物和日期范围，每次按月查询，自动去重，不影响现有新闻页面。
+        选择人物和日期范围，按月分两轮查询（法国本土 + 英语主流），自动去重，不影响现有新闻页面。
+        ⏳ GDELT 限流严格（每请求间隔 ≥5 秒），跨多个月份会耗时几分钟，请保持页面打开等进度条走完；
+        若结尾提示有「限流/失败」，稍后用相同范围重跑即可补齐。
         """)
         c1, c2, c3 = st.columns(3)
         with c1:
