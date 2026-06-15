@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.auth import admin_sidebar
 from utils.i18n import t
-from utils.database import get_supabase, get_supabase_admin, log_audit
+from utils.database import get_supabase, get_supabase_admin, log_audit, add_event
 from utils.media_spectrum import get_media_info, LEAN_EMOJI
 from datetime import datetime, date, timedelta
 import hashlib
@@ -18,6 +18,73 @@ PERSON_COLOR = {
     "Stéphane Séjourné":  "#4A90D9",
     "S&A":                "#FF6B9D",
 }
+
+# ── 收入大事记：把一条往期新闻预填进表单，管理员译成中文后存入 events ──────────────
+# 与新闻页 / 行程日历一致：标题多为法语/英语原文，弹窗预填后由管理员手动译成中文再保存。
+_IMPORT_TAG_OPTIONS = ["📰 新闻报道", "📣 重大宣布", "⭐ 重要行程/事件", "🗓️ 日常行程",
+                       "📅 大事记", "🎙️ 采访", "📋 官方声明", "⚪ 其他"]
+_IMPORT_PERSON_OPTIONS = ["Gabriel Attal", "Stéphane Séjourné", "S&A"]
+
+
+def _event_dup_count(source_url: str) -> int:
+    """events 表里同来源链接的条目数，用于重复提示（无链接时返回 0）。"""
+    if not source_url:
+        return 0
+    try:
+        rows = (get_supabase_admin().table("events").select("id")
+                .eq("source_url", source_url).execute().data) or []
+        return len(rows)
+    except Exception:
+        return 0
+
+
+@st.dialog("📌 收入大事记")
+def _import_news_to_timeline(entry: dict):
+    """弹窗：把往期新闻条目预填进表单，管理员译成中文后存入大事记。"""
+    st.caption("新闻标题多为法语/英语，请把标题译成中文后再保存。")
+    dup = _event_dup_count(entry.get("source_url", ""))
+    if dup:
+        st.warning(f"大事记里已有 {dup} 条相同来源链接的记录，重复保存会产生多条。")
+
+    try:
+        _default_date = date.fromisoformat(str(entry.get("date", ""))[:10])
+    except ValueError:
+        _default_date = date.today()
+    _p    = entry.get("person", "")
+    _pidx = _IMPORT_PERSON_OPTIONS.index(_p) if _p in _IMPORT_PERSON_OPTIONS else 0
+
+    with st.form("import_hist_to_timeline_form"):
+        i_title = st.text_input("标题（译成中文）*", value=entry.get("title", ""))
+        ic1, ic2 = st.columns(2)
+        with ic1:
+            i_date   = st.date_input("日期", value=_default_date)
+            i_person = st.selectbox("人物", _IMPORT_PERSON_OPTIONS, index=_pidx,
+                                    help="两人同框选 S&A")
+        with ic2:
+            i_tag = st.selectbox("类型标签", _IMPORT_TAG_OPTIONS)
+            i_src = st.text_input("来源链接（可选）", value=entry.get("source_url", "") or "")
+        i_source = st.text_input("来源媒体（可选）", value=entry.get("source", "") or "")
+        i_note   = st.text_area("内容摘要（可选）", value=entry.get("note", "") or "", height=68)
+        if st.form_submit_button("✅ 保存到大事记", use_container_width=True):
+            if not i_title.strip():
+                st.warning("请先填写中文标题")
+            else:
+                try:
+                    # add_event 内部已写审计日志，这里不再重复记录
+                    add_event({
+                        "date":       str(i_date),
+                        "person":     i_person,
+                        "title":      i_title.strip(),
+                        "source":     i_source.strip(),
+                        "source_url": i_src or "",
+                        "note":       i_note.strip(),
+                        "tag":        i_tag,
+                    })
+                    st.cache_data.clear()
+                    st.success("✅ 已收入大事记")
+                    st.rerun()
+                except Exception as _e:
+                    st.error(f"保存失败：{_e}")
 
 # ── 媒体过滤规则 ──────────────────────────────────────────────────
 # 法语媒体：所有 .fr 域名自动通过
@@ -391,14 +458,91 @@ for group in clustered:
 
     if st.session_state.get("is_admin"):
         item_id = item.get("id", "")
-        _, _bd = st.columns([11, 1])
-        with _bd:
-            if st.button("🗑️", key=f"del_hist_{item_id}",
-                         help="删除此条新闻", use_container_width=True):
-                get_supabase_admin().table("news").delete().eq("id", item_id).execute()
-                log_audit("delete", "news", item_id, item.get("title"))
-                st.cache_data.clear()
-                st.rerun()
+
+        # ── 关联到已有大事记的搜索 UI ────────────────────────
+        if st.session_state.get(f"linking_{item_id}"):
+            st.markdown(
+                '<div style="background:var(--cb2);border:1px solid var(--bd);'
+                'border-radius:6px;padding:0.6rem 1rem;margin:0.3rem 0">'
+                '<span style="color:#8B6FD4;font-size:0.8rem;font-weight:bold">'
+                '📅 选择要关联的大事记条目</span></div>',
+                unsafe_allow_html=True
+            )
+            search_q = st.text_input(
+                "搜索大事记标题关键词",
+                key=f"ev_search_{item_id}",
+                placeholder="输入关键词搜索…",
+            )
+            try:
+                _db = get_supabase()
+                _q  = _db.table("events").select("id,title,date,person")
+                if search_q:
+                    _q = _q.ilike("title", f"%{search_q}%")
+                _ev_rows = _q.order("date", desc=True).limit(20).execute().data
+            except Exception:
+                _ev_rows = []
+
+            if _ev_rows:
+                _ev_map = {
+                    f"{str(e.get('date',''))[:10]}  ·  {e.get('person','')}  ·  {(e.get('title','') or '')[:45]}": e
+                    for e in _ev_rows
+                }
+                _sel_label = st.selectbox("选择条目", list(_ev_map.keys()), key=f"ev_sel_{item_id}")
+                _sel_ev    = _ev_map.get(_sel_label)
+                lc1, lc2 = st.columns(2)
+                with lc1:
+                    if st.button("✅ 确认关联", key=f"do_link_{item_id}", use_container_width=True):
+                        if _sel_ev:
+                            try:
+                                get_supabase_admin().table("event_links").insert({
+                                    "event_id": _sel_ev["id"],
+                                    "title":    item.get("title", ""),
+                                    "url":      url,
+                                    "type":     "📰 新闻报道",
+                                    "source":   item.get("source", ""),
+                                }).execute()
+                                log_audit("insert", "event_links", _sel_ev["id"], f"关联往期新闻：{(item.get('title') or '')[:40]}")
+                                st.session_state.pop(f"linking_{item_id}", None)
+                                st.success(f"✅ 已关联到「{(_sel_ev.get('title','') or '')[:30]}…」")
+                                st.rerun()
+                            except Exception as _e:
+                                st.error(f"关联失败：{_e}")
+                with lc2:
+                    if st.button("✕ 取消", key=f"cancel_link_{item_id}", use_container_width=True):
+                        st.session_state.pop(f"linking_{item_id}", None)
+                        st.rerun()
+            else:
+                st.info("未找到匹配的大事记")
+                if st.button("✕ 取消", key=f"cancel_link2_{item_id}"):
+                    st.session_state.pop(f"linking_{item_id}", None)
+                    st.rerun()
+
+        else:
+            # ── 正常按钮行（纯 emoji，避免中文字号不一致）──────
+            _, bca, bcb, bcc = st.columns([7, 1, 1, 1])
+            with bca:
+                if st.button("📌", key=f"pin_hist_{item_id}",
+                             help="收入大事记（可改标题/翻译）", use_container_width=True):
+                    _import_news_to_timeline({
+                        "title":      item.get("title", ""),
+                        "date":       pub_date,
+                        "person":     item.get("person", ""),
+                        "source":     item.get("source", ""),
+                        "source_url": url,
+                        "note":       item.get("summary", "") or "",
+                    })
+            with bcb:
+                if st.button("🔗", key=f"link_hist_{item_id}",
+                             help="关联已有大事记", use_container_width=True):
+                    st.session_state[f"linking_{item_id}"] = True
+                    st.rerun()
+            with bcc:
+                if st.button("🗑️", key=f"del_hist_{item_id}",
+                             help="删除此条新闻", use_container_width=True):
+                    get_supabase_admin().table("news").delete().eq("id", item_id).execute()
+                    log_audit("delete", "news", item_id, item.get("title"))
+                    st.cache_data.clear()
+                    st.rerun()
 
 if not news:
     st.info("暂无历史新闻。管理员登录后可在下方导入 GDELT 历史数据。")
