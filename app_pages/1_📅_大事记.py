@@ -254,7 +254,8 @@ except Exception as e:
 # 年份筛选
 _all = (t("all"),)
 if not df.empty and year_filter not in ("全部", "All"):
-    df["year"] = pd.to_datetime(df["date"], errors="coerce").dt.year.astype(str)
+    # 用 Int64 可空整数再转字符串，避免有 NaT 时整列退化成浮点（"2025.0" ≠ "2025" 导致筛空）
+    df["year"] = pd.to_datetime(df["date"], errors="coerce").dt.year.astype("Int64").astype(str)
     df = df[df["year"] == year_filter]
 
 if not df.empty and tag_filter not in ("全部", "All"):
