@@ -22,6 +22,7 @@ _S = {
     "nav_media":        {"zh": "媒体光谱",                "en": "Media Spectrum"},
     "nav_gallery":      {"zh": "图库",                    "en": "Gallery"},
     "nav_files":        {"zh": "文件存档",                "en": "File Archive"},
+    "nav_audit":        {"zh": "操作记录",                "en": "Audit Log"},
 
     # ── Common ────────────────────────────────────────────
     "all":              {"zh": "全部",                    "en": "All"},

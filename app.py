@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.i18n import t
+from utils.auth import is_super_admin
 
 st.set_page_config(
     page_title="S&A 档案馆",
@@ -265,21 +266,30 @@ with st.sidebar:
         st.rerun()
     st.divider()
 
-pg = st.navigation([
-    st.Page("pages/0_🗂️_首页.py",     title=t("nav_home"),      icon="🗂️"),
-    st.Page("pages/12_💞_交织时间轴.py", title=t("nav_weave"),    icon="💞"),
-    st.Page("pages/1_📅_大事记.py",    title=t("nav_timeline"),  icon="📖"),
-    st.Page("pages/3_📰_新闻.py",      title=t("nav_news"),      icon="📰"),
-    st.Page("pages/11_📆_行程日历.py", title=t("nav_schedule"),  icon="📆"),
-    st.Page("pages/2_👤_人物档案.py",  title=t("nav_profiles"),  icon="👤"),
-    st.Page("pages/10_📜_往期新闻.py", title=t("nav_archives"),  icon="📜"),
-    st.Page("pages/6_🔗_资源导航.py",  title=t("nav_resources"), icon="🔗"),
-    st.Page("pages/8_🏛️_团队成员.py", title=t("nav_team"),      icon="🏛️"),
-    st.Page("pages/5_🗳️_选举参考.py", title=t("nav_election"),  icon="🗳️"),
-    st.Page("pages/4_📊_媒体光谱.py",  title=t("nav_media"),     icon="📊"),
-    st.Page("pages/9_🖼️_图库.py",     title=t("nav_gallery"),   icon="🖼️"),
-    st.Page("pages/7_📁_文件上传.py",  title=t("nav_files"),     icon="📁"),
-])
+# 页面目录用 app_pages/（不叫 pages/），避免 Streamlit 再自动生成一份按文件名
+# 排序的导航菜单与这里手写的顺序冲突。顺序完全由下面这个列表决定。
+_pages = [
+    st.Page("app_pages/0_🗂️_首页.py",     title=t("nav_home"),      icon="🗂️"),
+    st.Page("app_pages/12_💞_交织时间轴.py", title=t("nav_weave"),    icon="💞"),
+    st.Page("app_pages/1_📅_大事记.py",    title=t("nav_timeline"),  icon="📖"),
+    st.Page("app_pages/3_📰_新闻.py",      title=t("nav_news"),      icon="📰"),
+    st.Page("app_pages/11_📆_行程日历.py", title=t("nav_schedule"),  icon="📆"),
+    st.Page("app_pages/2_👤_人物档案.py",  title=t("nav_profiles"),  icon="👤"),
+    st.Page("app_pages/10_📜_往期新闻.py", title=t("nav_archives"),  icon="📜"),
+    st.Page("app_pages/6_🔗_资源导航.py",  title=t("nav_resources"), icon="🔗"),
+    st.Page("app_pages/8_🏛️_团队成员.py", title=t("nav_team"),      icon="🏛️"),
+    st.Page("app_pages/5_🗳️_选举参考.py", title=t("nav_election"),  icon="🗳️"),
+    st.Page("app_pages/4_📊_媒体光谱.py",  title=t("nav_media"),     icon="📊"),
+    st.Page("app_pages/9_🖼️_图库.py",     title=t("nav_gallery"),   icon="🖼️"),
+    st.Page("app_pages/7_📁_文件上传.py",  title=t("nav_files"),     icon="📁"),
+]
+# 操作记录页仅最终管理员可见（登录状态存在 session_state，登录后会 rerun 重建导航）
+if is_super_admin():
+    _pages.append(
+        st.Page("app_pages/13_🧾_操作记录.py", title=t("nav_audit"), icon="🧾")
+    )
+
+pg = st.navigation(_pages)
 
 if not st.session_state.light_mode:
     st.markdown(_DARK_CSS, unsafe_allow_html=True)
