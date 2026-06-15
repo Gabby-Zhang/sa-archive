@@ -39,6 +39,7 @@ pip install -r requirements.txt
 - 类型标签是**两级**结构:Bilibili 不是顶层类型,而是「🎙️ 采访」的平台子集(B站永远不是第一手源,但常托管采访)。存库格式 `🎙️ 采访 · 📺 Bilibili`,用 `split_event_tag` / `join_event_tag` 拆拼。事件表单顶层选项用 `EVENT_TAG_OPTIONS`(不含 Bilibili)+ 并排的 `PLATFORM_OPTIONS`;**筛选和配色都按主类型归并**(选「采访」能筛到带平台的条目),并兼容旧的独立 `📺 Bilibili` 数据(展示照旧,编辑时自动转成新格式)
 - 注意 `event_links` 的类型选择器仍用完整 `TAG_OPTIONS`(保留顶层 Bilibili —— 那里作为「平台」是合理的),别和事件类型混为一谈
 - `st.form` 内控件不能联动(选完才提交),所以「采访平台」下拉始终显示、提示「仅采访时生效」,选别的类型时平台值会被忽略
+- 图片存 `image_url`(可多张,换行/逗号分隔,`parse_image_urls` 拆、`render_images` 显示)。两种来源并存:**① 直传 Cloudinary**(添加/编辑表单的图片 `file_uploader` → `upload_to_cloudinary` → 公开 URL,凭据走 secrets.toml 的 `[cloudinary]`,所有管理员共享、不依赖私人网盘,免费额度远大于 Supabase Storage);**② 图片外链文本框**(兜底,贴已有 gdrive/IG 链接)。上传的 URL 自动追加到外链之后合并存入 `image_url`,老的 gdrive 链接经 `gdrive_to_img_url` 照常显示。**线上 Cloudinary 凭据要在 Streamlit Cloud 的 Secrets 单独填一份才生效**
 
 ## 操作日志(审计)
 
