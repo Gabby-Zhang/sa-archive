@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import streamlit as st
 
 _MAX_ATTEMPTS = 5  # 单会话最多尝试次数，超过后本会话锁定
@@ -19,10 +21,13 @@ def _admin_accounts():
     raw = st.secrets.get("admins", None)
     if raw:
         for name, info in raw.items():
-            # info 可能是 dict（带 role）或纯字符串（只给了密码，默认普通管理员）
+            # info 可能是映射（带 role）或纯字符串（只给了密码，默认普通管理员）。
+            # 注意：st.secrets 的嵌套表是 Streamlit 的 AttrDict，不是 dict 子类，
+            # 必须用 Mapping 判断，否则 isinstance(info, dict) 为 False，会把整张表
+            # str() 成文本当密码，导致 [admins.*] 账号永远登不上。
             # 密码一律转成字符串：TOML 里纯数字密码（如 password = 1626，没加引号）
-            # 会被解析成整数，和登录框传来的字符串永远不相等，导致登不上
-            if isinstance(info, dict):
+            # 会被解析成整数，和登录框传来的字符串永远不相等，导致登不上。
+            if isinstance(info, Mapping):
                 accounts[name] = {
                     "password": str(info.get("password", "")),
                     "role": info.get("role", "admin"),
