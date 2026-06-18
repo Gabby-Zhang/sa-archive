@@ -184,8 +184,17 @@ for item in news:
         url = url.split("removepaywall.com/", 1)[-1]
     archive_ph_url  = f"https://archive.ph/{url}" if url else ""
     archive_rpw_url = f"https://www.removepaywall.com/{url}" if url else ""
-    safe_title   = _html.escape(item.get("title",  "") or "")
-    safe_source  = _html.escape(item.get("source", "") or "")
+    # 专访常用引言当标题、既无人名也无刊名，列表里一眼认不出 —— 此时在标题前挂来源
+    _raw_title = item.get("title", "") or ""
+    _raw_src   = item.get("source", "") or ""
+    _tl = _raw_title.lower()
+    if (_raw_src and _raw_src.lower() not in _tl
+            and "attal" not in _tl and "séjourné" not in _tl and "sejourne" not in _tl):
+        _disp_title = f"{_raw_src.split('.')[0]}：{_raw_title}"
+    else:
+        _disp_title = _raw_title
+    safe_title   = _html.escape(_disp_title)
+    safe_source  = _html.escape(_raw_src)
     safe_person  = _html.escape(item.get("person", "") or "")
     safe_url     = _html.escape(url)
     safe_arch_ph  = _html.escape(archive_ph_url)

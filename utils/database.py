@@ -114,7 +114,8 @@ def get_news(person=None, keyword=None, limit=50, offset=0, day=None):
     if person and person not in ("全部", "All"):
         query = query.eq("person", person)
     if keyword:
-        query = query.ilike("title", f"%{keyword}%")
+        # 标题或来源任一命中（专访常用引言当标题、不含媒体/人名，搜来源才找得到）
+        query = query.or_(f"title.ilike.%{keyword}%,source.ilike.%{keyword}%")
     if day:
         # published_at 是带时间的时间戳，按当天 [day 00:00, 次日 00:00) 过滤
         from datetime import date as _date, timedelta as _td
