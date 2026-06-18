@@ -389,6 +389,12 @@ if not df_page.empty:
                         help="上传的图片会追加到下面已有的图片之后",
                     )
                     e_image_url = st.text_area("图片外链（可选，多张用逗号或换行分隔）", value=row.get("image_url", "") or "", height=80)
+                    e_uploaded_pdf = st.file_uploader(
+                        "📄 追加 PDF 附件（可选，将自动存档并关联到本条目）",
+                        type=["pdf"],
+                        key=f"edit_pdf_{event_id}",
+                        help="上传完整新闻原文或相关文件（我们自己下载的 PDF）",
+                    )
                     sc1, sc2 = st.columns(2)
                     with sc1:
                         save = st.form_submit_button("💾 保存", use_container_width=True)
@@ -415,6 +421,26 @@ if not df_page.empty:
                             "image_url": _e_merged_imgs,
                             "tag": e_tag,
                         })
+                        # 若上传了 PDF，存入 Storage 并创建 event_links 关联
+                        if e_uploaded_pdf:
+                            try:
+                                pdf_url = upload_to_storage(
+                                    "documents",
+                                    e_uploaded_pdf.name,
+                                    e_uploaded_pdf.getvalue(),
+                                    "application/pdf",
+                                )
+                                get_supabase_admin().table("event_links").insert({
+                                    "event_id": event_id,
+                                    "title":    e_uploaded_pdf.name,
+                                    "url":      pdf_url,
+                                    "type":     "📄 文件附件",
+                                    "source":   e_source or "",
+                                }).execute()
+                                log_audit("insert", "event_links", event_id, f"附件：{e_uploaded_pdf.name}")
+                            except Exception as _ue:
+                                st.warning(f"PDF 上传失败（请确认 Supabase 已创建 documents bucket）：{_ue}")
+                        st.cache_data.clear()
                         st.session_state.editing_id = None
                         st.rerun()
                     if cancel:
