@@ -52,7 +52,8 @@ pip install -r requirements.txt
 ## 新闻页(`pages/3_📰_新闻.py`)约定
 
 - 筛选栏支持:人物、**按日期检索**(`day_filter`,留空=不限,选中只看当天发布)、显示条数、标题关键词。日期检索经 `get_news(day=...)` 实现,按 `published_at` 当天 `[当天 00:00, 次日 00:00)` 范围过滤(兼容带时间戳存储);筛选条件(含日期)都并入分页重置 key,变更自动回第 1 页
-- `get_news` 的 `keyword` 只匹配标题(`title` 的 `ilike`),不搜摘要/来源
+- `get_news` 的 `keyword` 用 `or_(title.ilike,source.ilike)` 同时匹配**标题或来源**(不搜摘要)。专访常拿引言当标题、不含媒体/人名,只搜标题会漏,搜来源(如 `society`/`parismatch`)才定位得到
+- **引言式标题挂来源**:新闻列表渲染时,若标题**既不含人名(attal/séjourné)也不含刊名**,自动在标题前挂来源(显示成 `Society：「Je ne fais pas…」`),否则一眼认不出是谁的专访。只改显示、不动库里存的原始 `title`,对已入库数据立即生效
 - **新闻来源 = `utils/news_fetcher.py` 的 `MEDIA_FEEDS`(写死的 RSS 列表)+ 三条 Google News 按人名搜索 + attalpresident.fr**。网页/定时任务都走 `collect_news()`,**没在源列表里的媒体抓不到**——「某篇没进来」先查它的 RSS 在不在 `MEDIA_FEEDS`
 - **覆盖单人专访,不只两人合体**:`_detect_person` 单独出现 "attal" 就判 `Gabriel Attal`、单独 "séjourné/sejourne" 判 `Stéphane Séjourné`、同现判 `S&A`;**标题或摘要不含任一人名的条目直接丢弃**。所以源里混进的无关报道会被过滤,放心加宽源
 - 源除了主流报纸/电视/广播,还专门有一个**「杂志 / people」分区**(Society、Paris Match、VSD、Public、Closer、L'Obs People、Télérama、Les Inrocks、Vanity Fair、GQ 等)——人物专访、关系类内容多出在这里,靠人名过滤后入库
