@@ -26,6 +26,10 @@ pip install -r requirements.txt
   - `screenshot_to_db.py` — 行程截图解析结果入库(幂等)
   - `photo_to_gallery.py` — 照片入图库
   - 其余:抓新闻、备份、纪念日通知等
+- `scheduled-tasks/` — 本机 Claude Code 定时任务的**权威副本**(指令 + 解析逻辑),纳入版本控制做备份。harness 实际从 `~/.claude/scheduled-tasks/<任务名>/` 读取,那边的文件是**软链接指回本目录**,所以改这里两边同步:
+  - `paris-playbook-daily/` — 每天 07:07 读 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→走 `scripts/playbook_to_db.py` 入库
+    - `SKILL.md` — agent 指令
+    - `extract_playbook.py` — 邮件正文提取器。**默认精简模式**只输出两人为主语的行程句(标注 `[当天]`/`[周六]`/`[周日]` + 合并带时间的延续句)和提到两人的正文段,输出 ~3KB;`--full` 兜底打印完整 AGENDA+正文。精简是刻意的:旧版把 35KB+ 原文丢给 agent,曾让某天运行在插入前烧光预算、整天没入库
 
 ## 数据库(Supabase)
 
