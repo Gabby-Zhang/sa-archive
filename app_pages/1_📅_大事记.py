@@ -882,6 +882,28 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
                         'note': remark[:300],
                     })
 
+                # 幂等去重：用「日期+人物+标题」当指纹，跳过库里已有的行，
+                # 这样可以把更新后的整张表重复上传，只入库新增内容
+                def _fp(d, p, t):
+                    return (str(d or '').strip(), str(p or '').strip(), str(t or '').strip())
+                existing = get_supabase_admin().table('events').select('date,person,title').execute().data or []
+                seen = {_fp(e.get('date'), e.get('person'), e.get('title')) for e in existing}
+                new_events, dup = [], 0
+                for ev in events:
+                    key = _fp(ev['date'], ev['person'], ev['title'])
+                    if key in seen:
+                        dup += 1
+                        continue
+                    seen.add(key)  # 同一份表内部也去重
+                    new_events.append(ev)
+                events = new_events
+
+                if dup:
+                    st.info(f"已跳过 {dup} 条库里已存在的重复事件")
+                if not events:
+                    st.success("✅ 没有新增内容，库已是最新")
+                    st.stop()
+
                 prog = st.progress(0, text="导入中…")
                 batch = 50
                 for i in range(0, len(events), batch):
