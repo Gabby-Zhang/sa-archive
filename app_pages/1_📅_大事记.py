@@ -811,134 +811,164 @@ with st.expander("➕ 手动添加新条目"):
             else:
                 st.warning("请填写事件标题")
 
-# ── 导入 Excel（SA档案馆专用）────────────────────────────
-with st.expander("📥 从腾讯文档 Excel 一键导入"):
-    st.caption("文件名随意（不校验）；只看表格结构：首个工作表里某行 A 列写「Year」当表头，"
-               "其下每行 A=年份 · B=日期 · C=人物(SS/GA/两人) · D=事件标题 · E=来源 · F=备注")
-    uploaded = st.file_uploader("选择 Excel 文件", type=["xlsx", "xls"])
+# ── 从 Excel 批量导入大事记（预览式：按表头名认列 + 传完先核对再入库）──────
+with st.expander("📥 从 Excel 批量导入大事记"):
+    st.caption("文件名随意。表里要有一行**表头**，含「人物」「标题」等列名（中英、顺序都不限）；"
+               "其下每行一个事件。上传后会**出预览、可直接改**，确认无误才入库。")
+    st.caption("可用列名：年份/Year · 日期/Date · 人物/Person(SS、GA、两人) · "
+               "标题/事件/Title · 来源/Source · 备注/Note。识别不到列名时回退按 A~F 顺序读。")
+    uploaded = st.file_uploader("选择 Excel 文件（.xlsx）", type=["xlsx"])
     if uploaded:
-        st.info("检测到文件，点击下方按钮开始导入")
-        if st.button("🚀 开始导入大事记"):
-            import zipfile, xml.etree.ElementTree as ET
-            from datetime import date as _date, timedelta
+        import pandas as pd, re as _re
+        from datetime import date as _date, datetime as _dt, timedelta
 
-            def _shared_strings(z):
-                root = ET.fromstring(z.read('xl/sharedStrings.xml'))
-                ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-                return [''.join(t.text or '' for t in si.iter(f'{{{ns}}}t'))
-                        for si in root.findall(f'{{{ns}}}si')]
+        # 人物列写法归一（大小写不敏感）
+        person_map = {'ss':'Stéphane Séjourné','ga':'Gabriel Attal',
+                      '两人':'两人','ss&ga':'两人','ga&ss':'两人','s&a':'S&A','sa':'S&A'}
+        # 列名别名表：把表头单元格映射到内部字段
+        HEADER_ALIASES = {
+            'year':   ['year','年份','年'],
+            'date':   ['date','日期'],
+            'person': ['person','人物','人'],
+            'title':  ['title','event','事件','标题','事件标题','内容','事项'],
+            'source': ['source','来源','链接','link','出处','url'],
+            'note':   ['note','remark','备注','说明','注'],
+        }
 
-            def _excel_date(n):
+        def _cell(v):
+            if v is None:
+                return ''
+            try:
+                if pd.isna(v):
+                    return ''
+            except (TypeError, ValueError):
+                pass
+            return str(v).strip()
+
+        def _to_date(v, year_fb):
+            # 真日期单元格直接取 ISO；纯数字按 Excel 序列号换算；其它原样
+            if isinstance(v, (pd.Timestamp, _dt, _date)):
+                return (v.date() if isinstance(v, (pd.Timestamp, _dt)) else v).isoformat()
+            s = _cell(v)
+            if not s or s == '\\':
+                return year_fb
+            if _re.fullmatch(r'\d+(?:\.\d+)?', s):
                 try:
-                    return (_date(1899,12,30) + timedelta(days=int(float(n)))).isoformat()
+                    return (_date(1899, 12, 30) + timedelta(days=int(float(s)))).isoformat()
                 except Exception:
-                    return None
+                    return s
+            return s
 
-            def _read_sheet(z, fname, shared):
-                root = ET.fromstring(z.read(f'xl/worksheets/{fname}'))
-                ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-                rows = []
-                for row_el in root.findall(f'.//{{{ns}}}row'):
-                    rd = {}
-                    for cell in row_el.findall(f'{{{ns}}}c'):
-                        ref = cell.get('r','')
-                        col = ''.join(c for c in ref if c.isalpha())
-                        t = cell.get('t','')
-                        v_el = cell.find(f'{{{ns}}}v')
-                        rd[col] = (shared[int(v_el.text)] if t=='s' else v_el.text) if v_el is not None and v_el.text else ''
-                    if any(rd.values()):
-                        rows.append(rd)
-                return rows
+        # 1) 读第一个工作表（不管它叫什么）——任何异常都记审计 + 给人看的报错
+        try:
+            raw = pd.read_excel(uploaded, header=None, sheet_name=0)
+        except Exception as e:
+            log_audit("import_fail", "events", None,
+                      f"Excel 读取失败：{type(e).__name__}: {str(e)[:200]}")
+            st.error(f"❌ 文件读不开：{e}\n\n请确认是标准 .xlsx，用 Excel「另存为」后重试。")
+            st.stop()
+        grid = raw.values.tolist()
 
-            person_map = {'SS':'Stéphane Séjourné','GA':'Gabriel Attal','两人':'两人','SS&GA':'两人','GA&SS':'两人'}
+        # 2) 找表头行：按列名匹配出 field→列号；认不出列名时回退到旧的 A~F 位置式
+        colmap, header_idx = {}, None
+        for i, row in enumerate(grid):
+            cells = [_cell(c).lower() for c in row]
+            m = {}
+            for field, aliases in HEADER_ALIASES.items():
+                for j, c in enumerate(cells):
+                    if c in aliases:
+                        m[field] = j
+                        break
+            if 'person' in m and 'title' in m:        # 至少认出人物+标题才算表头
+                colmap, header_idx = m, i
+                break
+            if 'year' in cells:                        # 兼容旧表：A 列写 Year 的位置式表头
+                colmap = {'year': 0, 'date': 1, 'person': 2, 'title': 3, 'source': 4, 'note': 5}
+                header_idx = i
+                break
 
-            with st.spinner("正在解析…"):
-                # 解析阶段整体兜底：任何异常都记审计 + 给人看的报错，绝不静默
-                try:
-                    with zipfile.ZipFile(uploaded) as z:
-                        names = z.namelist()
-                        if 'xl/worksheets/sheet1.xml' not in names:
-                            raise ValueError(
-                                "找不到第一个工作表(sheet1.xml)——这通常不是标准 .xlsx，"
-                                "或导出时工作表结构异常。请用 Excel / 腾讯文档「另存为 .xlsx」后重试。"
-                            )
-                        shared = _shared_strings(z) if 'xl/sharedStrings.xml' in names else []
-                        rows = _read_sheet(z, 'sheet1.xml', shared)
-                except Exception as e:
-                    log_audit("import_fail", "events", None,
-                              f"Excel 解析失败：{type(e).__name__}: {str(e)[:200]}")
-                    st.error(f"❌ 文件解析失败：{e}")
-                    st.stop()
+        if header_idx is None:
+            log_audit("import_fail", "events", None, "导入失败：找不到表头行（缺人物/标题列名）")
+            st.error("❌ 没找到表头行。表里需要一行写明列名，至少含「人物」和「标题」"
+                     "（或英文 Person / Title）。")
+            st.stop()
 
-                events, header_passed = [], False
-                for row in rows:
-                    year = row.get('A','').strip()
-                    if year == 'Year':
-                        header_passed = True
-                        continue
-                    if not header_passed:
-                        continue
-                    char = row.get('C','').strip()
-                    if not char:
-                        continue
-                    date_raw = row.get('B','').strip()
-                    date_str = _excel_date(date_raw) if date_raw and date_raw != '\\' else year
-                    event = row.get('D','').strip()
-                    source = row.get('E','').strip()
-                    remark = row.get('F','').strip()
-                    if not event:
-                        continue
-                    events.append({
-                        'date': date_str or year,
-                        'person': person_map.get(char, char),
-                        'title': event[:500],
-                        'source': source[:300],
-                        'note': remark[:300],
-                    })
+        # 3) 逐行抽取
+        def _get(row, field):
+            j = colmap.get(field)
+            return _cell(row[j]) if j is not None and j < len(row) else ''
 
-                # 一行都没认出来：要么没找到表头行，要么列错位。明确报错、记审计，
-                # 别再像旧代码那样弹绿色「成功导入 0 条」让人以为成功了
-                if not events:
-                    if not header_passed:
-                        reason = "没找到表头行——A 列必须有一格内容正好是「Year」，它下面才是数据"
-                    else:
-                        reason = "找到了表头，但下面没有可用数据行——检查 C 列(人物)和 D 列(事件标题)是否填了"
-                    log_audit("import_fail", "events", None, f"导入识别 0 条：{reason}")
-                    st.error(
-                        f"❌ 没识别出任何事件：{reason}。\n\n"
-                        "正确格式：第一个工作表里，某一行 A 列写「Year」当表头；"
-                        "其下每行 **A=年份, B=日期, C=人物(SS/GA/两人), D=事件标题, E=来源, F=备注**。"
-                    )
-                    st.stop()
+        events = []
+        for row in grid[header_idx + 1:]:
+            person = _get(row, 'person')
+            title = _get(row, 'title')
+            if not person or not title:
+                continue
+            year = _get(row, 'year')
+            dj = colmap.get('date')
+            date_val = row[dj] if (dj is not None and dj < len(row)) else None
+            events.append({
+                'date':   _to_date(date_val, year),
+                'person': person_map.get(person.lower(), person),
+                'title':  title[:500],
+                'source': _get(row, 'source')[:300],
+                'note':   _get(row, 'note')[:300],
+            })
 
-                # 幂等去重：用「日期+人物+标题」当指纹，跳过库里已有的行，
-                # 这样可以把更新后的整张表重复上传，只入库新增内容
-                def _fp(d, p, t):
-                    return (str(d or '').strip(), str(p or '').strip(), str(t or '').strip())
-                existing = get_supabase_admin().table('events').select('date,person,title').execute().data or []
-                seen = {_fp(e.get('date'), e.get('person'), e.get('title')) for e in existing}
-                new_events, dup = [], 0
-                for ev in events:
-                    key = _fp(ev['date'], ev['person'], ev['title'])
-                    if key in seen:
-                        dup += 1
-                        continue
-                    seen.add(key)  # 同一份表内部也去重
-                    new_events.append(ev)
-                events = new_events
+        if not events:
+            log_audit("import_fail", "events", None, "导入识别 0 条：表头下无有效数据行（人物/标题为空）")
+            st.error("❌ 认出了表头，但下面没有有效行——每行需同时有「人物」和「标题」。")
+            st.stop()
 
-                if dup:
-                    st.info(f"已跳过 {dup} 条库里已存在的重复事件")
-                if not events:
-                    st.success(f"✅ 没有新增内容，库已是最新（表里 {dup} 条都已存在）")
-                    st.stop()
+        # 4) 预览 + 可编辑，确认才入库
+        st.success(f"已识别 {len(events)} 条，请核对（可直接改、删行），确认无误再导入：")
+        df = pd.DataFrame(events, columns=['date', 'person', 'title', 'source', 'note'])
+        edited = st.data_editor(
+            df, use_container_width=True, num_rows="dynamic", hide_index=True,
+            column_config={
+                'date':   st.column_config.TextColumn('日期'),
+                'person': st.column_config.TextColumn('人物'),
+                'title':  st.column_config.TextColumn('标题', width='large'),
+                'source': st.column_config.TextColumn('来源'),
+                'note':   st.column_config.TextColumn('备注'),
+            },
+            key="import_preview",
+        )
 
-                prog = st.progress(0, text="导入中…")
-                batch = 50
-                for i in range(0, len(events), batch):
-                    get_supabase_admin().table('events').insert(events[i:i+batch]).execute()
-                    prog.progress(min((i+batch)/len(events), 1.0), text=f"已导入 {min(i+batch,len(events))}/{len(events)}")
+        if st.button("✅ 确认导入", type="primary"):
+            final = [
+                {'date': _cell(r['date']), 'person': _cell(r['person']),
+                 'title': _cell(r['title'])[:500], 'source': _cell(r['source'])[:300],
+                 'note': _cell(r['note'])[:300]}
+                for _, r in edited.iterrows()
+                if _cell(r['person']) and _cell(r['title'])
+            ]
 
-                log_audit("insert", "events", None, f"批量导入 {len(events)} 条大事记")
-                st.success(f"✅ 成功导入 {len(events)} 条大事记！")
-                st.rerun()
+            # 幂等去重：日期+人物+标题指纹，跳过库里已有；同一份表内部也去重
+            def _fp(d, p, t):
+                return (str(d or '').strip(), str(p or '').strip(), str(t or '').strip())
+            existing = get_supabase_admin().table('events').select('date,person,title').execute().data or []
+            seen = {_fp(e.get('date'), e.get('person'), e.get('title')) for e in existing}
+            new_events, dup = [], 0
+            for ev in final:
+                k = _fp(ev['date'], ev['person'], ev['title'])
+                if k in seen:
+                    dup += 1
+                    continue
+                seen.add(k)
+                new_events.append(ev)
+
+            if dup:
+                st.info(f"已跳过 {dup} 条库里已存在的重复事件")
+            if not new_events:
+                st.success(f"✅ 没有新增内容，库已是最新（{dup} 条都已存在）")
+                st.stop()
+
+            prog = st.progress(0, text="导入中…")
+            for i in range(0, len(new_events), 50):
+                get_supabase_admin().table('events').insert(new_events[i:i + 50]).execute()
+                prog.progress(min((i + 50) / len(new_events), 1.0),
+                              text=f"已导入 {min(i + 50, len(new_events))}/{len(new_events)}")
+            log_audit("insert", "events", None, f"批量导入 {len(new_events)} 条大事记")
+            st.success(f"✅ 成功导入 {len(new_events)} 条大事记！")
+            st.rerun()
