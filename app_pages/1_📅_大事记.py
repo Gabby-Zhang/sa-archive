@@ -978,6 +978,8 @@ if st.session_state.get("is_admin"):
     with st.expander("🗑️ 批量删除大事记"):
         st.caption("先按条件筛选缩小范围，勾选要删的行，确认后批量删除。"
                    "每条删除都会记入操作日志，**但无法在线撤销**，请务必核对。")
+        st.info("💡 万一误删：每周自动备份(GitHub Actions 导出的 JSON)可恢复，"
+                "保留 90 天。删多了别慌，把范围告诉管理员从最近备份找回即可。")
         _all_ev = get_events()  # 含 id
         if not _all_ev:
             st.info("暂无数据。")
