@@ -813,7 +813,8 @@ with st.expander("➕ 手动添加新条目"):
 
 # ── 导入 Excel（SA档案馆专用）────────────────────────────
 with st.expander("📥 从腾讯文档 Excel 一键导入"):
-    st.caption("上传你从腾讯文档导出的【SA档案馆.xlsx】，自动识别格式，无需手动配置列名")
+    st.caption("文件名随意（不校验）；只看表格结构：首个工作表里某行 A 列写「Year」当表头，"
+               "其下每行 A=年份 · B=日期 · C=人物(SS/GA/两人) · D=事件标题 · E=来源 · F=备注")
     uploaded = st.file_uploader("选择 Excel 文件", type=["xlsx", "xls"])
     if uploaded:
         st.info("检测到文件，点击下方按钮开始导入")
@@ -852,9 +853,22 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
             person_map = {'SS':'Stéphane Séjourné','GA':'Gabriel Attal','两人':'两人','SS&GA':'两人','GA&SS':'两人'}
 
             with st.spinner("正在解析…"):
-                with zipfile.ZipFile(uploaded) as z:
-                    shared = _shared_strings(z)
-                    rows = _read_sheet(z, 'sheet1.xml', shared)
+                # 解析阶段整体兜底：任何异常都记审计 + 给人看的报错，绝不静默
+                try:
+                    with zipfile.ZipFile(uploaded) as z:
+                        names = z.namelist()
+                        if 'xl/worksheets/sheet1.xml' not in names:
+                            raise ValueError(
+                                "找不到第一个工作表(sheet1.xml)——这通常不是标准 .xlsx，"
+                                "或导出时工作表结构异常。请用 Excel / 腾讯文档「另存为 .xlsx」后重试。"
+                            )
+                        shared = _shared_strings(z) if 'xl/sharedStrings.xml' in names else []
+                        rows = _read_sheet(z, 'sheet1.xml', shared)
+                except Exception as e:
+                    log_audit("import_fail", "events", None,
+                              f"Excel 解析失败：{type(e).__name__}: {str(e)[:200]}")
+                    st.error(f"❌ 文件解析失败：{e}")
+                    st.stop()
 
                 events, header_passed = [], False
                 for row in rows:
@@ -882,6 +896,21 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
                         'note': remark[:300],
                     })
 
+                # 一行都没认出来：要么没找到表头行，要么列错位。明确报错、记审计，
+                # 别再像旧代码那样弹绿色「成功导入 0 条」让人以为成功了
+                if not events:
+                    if not header_passed:
+                        reason = "没找到表头行——A 列必须有一格内容正好是「Year」，它下面才是数据"
+                    else:
+                        reason = "找到了表头，但下面没有可用数据行——检查 C 列(人物)和 D 列(事件标题)是否填了"
+                    log_audit("import_fail", "events", None, f"导入识别 0 条：{reason}")
+                    st.error(
+                        f"❌ 没识别出任何事件：{reason}。\n\n"
+                        "正确格式：第一个工作表里，某一行 A 列写「Year」当表头；"
+                        "其下每行 **A=年份, B=日期, C=人物(SS/GA/两人), D=事件标题, E=来源, F=备注**。"
+                    )
+                    st.stop()
+
                 # 幂等去重：用「日期+人物+标题」当指纹，跳过库里已有的行，
                 # 这样可以把更新后的整张表重复上传，只入库新增内容
                 def _fp(d, p, t):
@@ -901,7 +930,7 @@ with st.expander("📥 从腾讯文档 Excel 一键导入"):
                 if dup:
                     st.info(f"已跳过 {dup} 条库里已存在的重复事件")
                 if not events:
-                    st.success("✅ 没有新增内容，库已是最新")
+                    st.success(f"✅ 没有新增内容，库已是最新（表里 {dup} 条都已存在）")
                     st.stop()
 
                 prog = st.progress(0, text="导入中…")
