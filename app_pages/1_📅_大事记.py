@@ -972,3 +972,61 @@ with st.expander("📥 从 Excel 批量导入大事记"):
             log_audit("insert", "events", None, f"批量导入 {len(new_events)} 条大事记")
             st.success(f"✅ 成功导入 {len(new_events)} 条大事记！")
             st.rerun()
+
+# ── 批量删除大事记（管理员，筛选→勾选→二次确认）──────────────────
+if st.session_state.get("is_admin"):
+    with st.expander("🗑️ 批量删除大事记"):
+        st.caption("先按条件筛选缩小范围，勾选要删的行，确认后批量删除。"
+                   "每条删除都会记入操作日志，**但无法在线撤销**，请务必核对。")
+        _all_ev = get_events()  # 含 id
+        if not _all_ev:
+            st.info("暂无数据。")
+        else:
+            import pandas as pd
+            fc1, fc2 = st.columns([1, 2])
+            with fc1:
+                _persons = ["全部"] + sorted({e.get("person", "") for e in _all_ev if e.get("person")})
+                _f_person = st.selectbox("人物", _persons, key="del_person")
+            with fc2:
+                _f_kw = st.text_input("标题关键词（可空）", key="del_kw")
+            _rows = [
+                e for e in _all_ev
+                if (_f_person == "全部" or e.get("person") == _f_person)
+                and (not _f_kw or _f_kw.lower() in (e.get("title", "") or "").lower())
+            ]
+            st.caption(f"筛选到 {len(_rows)} 条")
+            if _rows:
+                _df = pd.DataFrame([{
+                    "_sel": False,
+                    "id": e.get("id"),
+                    "date": e.get("date"),
+                    "person": e.get("person"),
+                    "title": e.get("title"),
+                } for e in _rows])
+                _edited = st.data_editor(
+                    _df, use_container_width=True, hide_index=True,
+                    disabled=["id", "date", "person", "title"],
+                    column_config={
+                        "_sel":   st.column_config.CheckboxColumn("删除?", default=False),
+                        "id":     st.column_config.NumberColumn("ID", width="small"),
+                        "date":   st.column_config.TextColumn("日期"),
+                        "person": st.column_config.TextColumn("人物"),
+                        "title":  st.column_config.TextColumn("标题", width="large"),
+                    },
+                    key="del_editor",
+                )
+                _sel_ids = [int(r["id"]) for _, r in _edited.iterrows()
+                            if r["_sel"] and pd.notna(r["id"])]
+                st.write(f"已选中 **{len(_sel_ids)}** 条")
+                if _sel_ids:
+                    if len(_sel_ids) >= 20:
+                        st.warning(f"⚠️ 你正要删除 {len(_sel_ids)} 条，数量较多，请再次核对无误。")
+                    _confirm = st.checkbox(
+                        f"我确认删除选中的 {len(_sel_ids)} 条（不可在线撤销）", key="del_confirm")
+                    if st.button("🗑️ 删除选中", type="primary", disabled=not _confirm):
+                        _prog = st.progress(0, text="删除中…")
+                        for _i, _eid in enumerate(_sel_ids, 1):
+                            delete_event(_eid)
+                            _prog.progress(_i / len(_sel_ids), text=f"已删除 {_i}/{len(_sel_ids)}")
+                        st.success(f"✅ 已删除 {len(_sel_ids)} 条")
+                        st.rerun()
