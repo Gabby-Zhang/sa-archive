@@ -46,11 +46,27 @@ pip install -r requirements.txt
 - `st.form` 内控件不能联动(选完才提交),所以「采访平台」下拉始终显示、提示「仅采访时生效」,选别的类型时平台值会被忽略
 - 图片存 `image_url`(可多张,换行/逗号分隔,`parse_image_urls` 拆、`render_images` 显示)。两种来源并存:**① 直传 Cloudinary**(添加/编辑表单的图片 `file_uploader` → `upload_to_cloudinary` → 公开 URL,凭据走 secrets.toml 的 `[cloudinary]`,所有管理员共享、不依赖私人网盘,免费额度远大于 Supabase Storage);**② 图片外链文本框**(兜底,贴已有 gdrive/IG 链接)。上传的 URL 自动追加到外链之后合并存入 `image_url`,老的 gdrive 链接经 `gdrive_to_img_url` 照常显示。**线上 Cloudinary 凭据要在 Streamlit Cloud 的 Secrets 单独填一份才生效**
 
+### Excel 批量导入(页面底部「📥 从 Excel 批量导入大事记」)
+
+- **预览式**:上传 → 自动解析出可编辑表 → 管理员核对/直接改/删行 → 点「✅ 确认导入」才写库。不再像旧版那样传完盲猜对不对
+- **用 pandas 读第一个工作表**(`pd.read_excel(..., sheet_name=0)`,不管工作表叫什么,比旧版手写 zipfile+XML 稳),`requirements.txt` 已有 `pandas`/`openpyxl`。**只收 `.xlsx`**(openpyxl 不认 `.xls`)
+- **按表头名认列,不认列的位置**:扫描每行找表头,`HEADER_ALIASES` 把单元格(中英别名:年份/Year、日期/Date、人物/Person、标题/事件/Title、来源/Source、备注/Note)映射到字段;**至少认出「人物」+「标题」才算表头**。认不出列名时**回退到旧的位置式** `A=年份 B=日期 C=人物 D=标题 E=来源 F=备注`(且兼容 A 列写 `Year` 的老表),所以历史表照样能传
+- 人物列经 `person_map` 归一(大小写不敏感):`ss`→Stéphane Séjourné、`ga`→Gabriel Attal、`两人`/`ss&ga`→两人、`s&a`/`sa`→S&A。日期 `_to_date`:真日期格直接取 ISO、纯数字按 Excel 序列号(`1899-12-30` 基准)换算、其它原样,空则回退年份列
+- **幂等去重**:`(date, person, title)` 指纹,跳过库里已存在的 + 同份表内部重复,所以**整张更新后的表可重复上传,只补新增**
+- **失败必报错并记审计**:读不开文件、找不到表头、识别 0 条,都弹红字说明原因并写一条 `log_audit("import_fail", "events", None, ...)`;**绝不再静默弹「成功导入 0 条」**(旧版那样让人以为成功、查不出错,曾让管理员连试 5 次)
+
+### 批量删除(页面底部「🗑️ 批量删除大事记」,仅 `is_admin` 可见)
+
+- 危险操作,做成 **筛选 → 勾选 → 二次确认** 三步:按人物/标题关键词筛选缩小范围 → `st.data_editor` 里勾选要删的行(只「删除?」勾选列可动,其余只读防误改) → **必须勾「我确认删除选中的 N 条」复选框,删除按钮才解锁**;选中 ≥20 条额外弹黄字警告
+- 逐条走 `delete_event(id)`(已自动记 `delete` 审计),带进度条。**故意不做「全选」**,不让一键清空太顺手
+- 删事件不连带删 `event_links`(和单条删除行为一致)。**在线无法撤销**,误删只能靠每周 GitHub Actions 的 JSON 备份(`scripts/backup_tables.py`,留 90 天)恢复——面板顶部已写这条提示
+
 ## 操作日志(审计)
 
 - 所有管理员写库操作都要落到 `audit_log` 表:`log_audit(action, table_name, record_id, detail)`,`action` 用 `insert`/`update`/`delete`。操作人(`admin_name`/`admin_role`)从会话取(登录时由 `admin_sidebar` 写入)
 - `log_audit` **永不抛异常**,日志写失败也不能拖垮正常增删改;新增写库点时记得补一次调用
 - `events` 的增删改已在 `database.py` 里自动记日志,**别在页面里重复记**;其它表(`schedule`/`event_links`/`images` 等)的写操作目前在各页面手动调 `log_audit`
+- `action` 除了 `insert`/`update`/`delete`,大事记 Excel 导入失败时还会写 `import_fail`(读不开文件/找不到表头/识别 0 条),`detail` 里有原因——排查「某管理员导入没成功」时直接查这个
 - 「🧾 操作记录」页(`pages/13_🧾_操作记录.py`)展示最近记录,**仅最终管理员(`is_super_admin`)可见**,页内用 `st.stop()` 拦住非最终管理员
 
 ## 新闻页(`pages/3_📰_新闻.py`)约定
