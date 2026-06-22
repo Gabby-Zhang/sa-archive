@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import date
+from datetime import date, timedelta
 from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase_admin, add_event, log_audit
@@ -113,12 +113,22 @@ def _event_card(title: str, ev_date: str, location: str,
         except ValueError:
             pass
 
-    # AN 自动同步标签
+    # 自动同步/来源标签（按 description 里的标记渲染）
     an_badge = ""
     if description and "[AN_AUTO]" in description:
         an_badge = (f'<span style="color:#888;font-size:0.62rem;'
                     f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
                     f'margin-left:0.4rem">🏛️ AN</span>')
+    elif description and "[EU_AUTO]" in description:
+        # 欧盟委员会例会（按惯例推测，非官方确认）
+        an_badge = (f'<span style="color:{SEJOURNE_COLOR};font-size:0.62rem;'
+                    f'border:1px solid {SEJOURNE_COLOR};border-radius:3px;padding:0.02rem 0.3rem;'
+                    f'margin-left:0.4rem">🇪🇺 例会·推测</span>')
+    elif description and "[EU_AV]" in description:
+        # 来自欧盟影像库的会议线索
+        an_badge = (f'<span style="color:#888;font-size:0.62rem;'
+                    f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
+                    f'margin-left:0.4rem">📷 影像库</span>')
 
     loc_html  = (f'<div style="color:var(--t3);font-size:0.73rem;margin-top:0.15rem">'
                  f'📍 {location}</div>') if location else ""
@@ -215,12 +225,24 @@ def _import_to_timeline(entry: dict):
 
 
 def _sejourne_row(ev: dict, status: str, key: str):
-    """渲染一条 Séjourné 行程；管理员模式下，已发生的条目附「收入大事记」按钮。"""
+    """渲染一条 Séjourné 行程；管理员模式下，真实的已发生条目附「收入大事记」按钮。
+
+    ev 可携带 description（用于 [EU_AUTO]/[EU_AV] 徽章）、source_url（🔗 链接）。
+    [EU_AUTO] 是按惯例推测的例会，非确定行程，不出收录按钮。
+    """
+    desc = ev.get("description", "")
+    src  = ev.get("source_url", "")
+
     def _card():
         _event_card(ev.get("title", ""), ev.get("date", ""),
-                    ev.get("location", ""), status, SEJOURNE_COLOR)
+                    ev.get("location", ""), status, SEJOURNE_COLOR,
+                    source_url=src, description=desc)
 
-    if st.session_state.get("is_admin") and status in ("past", "ongoing"):
+    is_predicted = "[EU_AUTO]" in desc
+    importable = (st.session_state.get("is_admin")
+                  and status in ("past", "ongoing") and not is_predicted)
+
+    if importable:
         _c1, _c2 = st.columns([11, 1], vertical_alignment="center")
         with _c1:
             _card()
@@ -231,61 +253,51 @@ def _sejourne_row(ev: dict, status: str, key: str):
                     "title":      ev.get("title", ""),
                     "date":       ev.get("date", ""),
                     "location":   ev.get("location", "") or "",
-                    "source_url": "",
+                    "source_url": src,
                     "person":     "Stéphane Séjourné",
                 })
     else:
         _card()
 
 
-_AV_TYPE_EMOJI = {"VIDEO": "🎥", "PHOTO": "📷", "REPORTAGE": "📷"}
+# ── 欧盟委员会例会推测（类比 GA 的 [AN_AUTO]）─────────────────────────────────
+# 委员会例会惯例：平时周三在布鲁塞尔；遇欧洲议会斯特拉斯堡全会周则改周二在斯堡。
+# 据此为未来若干周推测一条例会，标 [EU_AUTO] 徽章「🇪🇺 例会·推测」，不入库、不出收录按钮。
+# 斯特拉斯堡全会周（取周一）来自 EP 2026 官方会期表；逢 8 月夏休不开会。
+_STRASBOURG_WEEK_MONDAYS_2026 = {
+    date(2026, 1, 19), date(2026, 2, 9),  date(2026, 3, 9),  date(2026, 4, 27),
+    date(2026, 5, 18), date(2026, 6, 15), date(2026, 7, 6),  date(2026, 9, 14),
+    date(2026, 10, 5), date(2026, 10, 19), date(2026, 11, 23), date(2026, 12, 14),
+}
 
 
-def _av_card(item: dict):
-    """渲染一条欧盟影像库条目（带略缩图、链接），样式与 past 行程卡片一致。"""
-    emoji = _AV_TYPE_EMOJI.get(item.get("type", ""), "📷")
-    title = item.get("title", "")
-    thumb = item.get("thumbnail", "")
-    url   = item.get("url", "")
-    thumb_html = (
-        f'<a href="{url}" target="_blank">'
-        f'<img src="{thumb}" style="width:64px;height:48px;object-fit:cover;'
-        f'border-radius:5px;flex-shrink:0" loading="lazy"></a>'
-    ) if thumb else ""
-    link_html = (f' <a href="{url}" target="_blank" '
-                 f'style="color:#4A90D9;font-size:0.75rem">🔗</a>') if url else ""
-    st.markdown(
-        f'<div style="background:var(--cb2);border-left:3px solid {SEJOURNE_COLOR};'
-        f'border-radius:0 8px 8px 0;padding:0.5rem 0.7rem;margin:0.3rem 0;'
-        f'display:flex;gap:0.6rem;align-items:center">'
-        f'{thumb_html}'
-        f'<div style="min-width:0">'
-        f'<div style="color:var(--t3);font-size:0.72rem;font-weight:600">'
-        f'{emoji} {item.get("date", "")}</div>'
-        f'<div style="color:var(--t1);font-size:0.85rem;margin-top:0.1rem;'
-        f'line-height:1.3">{title}{link_html}</div>'
-        f'</div></div>',
-        unsafe_allow_html=True)
+def predict_college_meetings(busy_dates: set, weeks_ahead: int = 6) -> list:
+    """推测未来 weeks_ahead 周的委员会例会日期。
 
-
-def _av_row(item: dict, key: str):
-    """欧盟影像库一条；管理员模式附「收入大事记」按钮（预填来源链接）。"""
-    if st.session_state.get("is_admin"):
-        _c1, _c2 = st.columns([11, 1], vertical_alignment="center")
-        with _c1:
-            _av_card(item)
-        with _c2:
-            if st.button("⬆️", key=f"imp_av_{key}", help="收入大事记",
-                         use_container_width=True):
-                _import_to_timeline({
-                    "title":      item.get("title", ""),
-                    "date":       item.get("date", ""),
-                    "location":   "",
-                    "source_url": item.get("url", ""),
-                    "person":     "Stéphane Séjourné",
-                })
-    else:
-        _av_card(item)
+    busy_dates：已有真实行程的日期 ISO 集合——命中则跳过（避免与确定行程重复）。
+    返回 ev 字典列表（带 [EU_AUTO] 标记）。
+    """
+    today = date.today()
+    out = []
+    monday = today - timedelta(days=today.weekday())   # 本周一
+    for w in range(weeks_ahead + 1):
+        wk_mon = monday + timedelta(weeks=w)
+        if wk_mon in _STRASBOURG_WEEK_MONDAYS_2026:
+            meet, loc = wk_mon + timedelta(days=1), "Strasbourg（斯特拉斯堡）"   # 周二
+        else:
+            meet, loc = wk_mon + timedelta(days=2), "Bruxelles（布鲁塞尔）"      # 周三
+        if meet < today or meet.month == 8:            # 过去的、或 8 月夏休跳过
+            continue
+        if meet.isoformat() in busy_dates:             # 当天已有真实行程，不重复
+            continue
+        out.append({
+            "title":       "🔵 欧盟委员会每周例会（按惯例推测）",
+            "date":        meet.isoformat(),
+            "location":    loc,
+            "description": "[EU_AUTO]",
+            "source_url":  "https://commission.europa.eu/about/organisation/college-commissioners_en",
+        })
+    return out
 
 
 # ── 页面主体：并排两栏 ───────────────────────────────────────────────────────
@@ -301,6 +313,7 @@ with col_s:
         unsafe_allow_html=True
     )
     st.caption("📡 " + t("sched_ss_src"))
+    st.caption(t("sched_ss_legend"))
 
     if st.button("🔄", key="refresh_s", help=t("sched_refresh")):
         st.cache_data.clear()
@@ -312,6 +325,26 @@ with col_s:
         except Exception as _e:
             st.error(f"读取失败：{_e}")
             s_events = []
+
+    # 官方日历已有的日期，作为后续两个补充源的去重基准
+    _ics_dates = {str(e.get("date", ""))[:10] for e in s_events}
+
+    # 补充源 ①：欧盟影像库——日历未列出当天行程时，把影像条目当作会议线索加进来
+    # （已加入日历的同一天就跳过，避免重复——“看一下是否已有重复，没有才加”）
+    for _it in get_sejourne_av():
+        if _it["date"] in _ics_dates:
+            continue
+        _ics_dates.add(_it["date"])
+        s_events.append({
+            "title":       _it["title"],
+            "date":        _it["date"],
+            "location":    "",
+            "source_url":  _it["url"],
+            "description": "[EU_AV]",
+        })
+
+    # 补充源 ②：按惯例推测的委员会每周例会（[EU_AUTO]），同样避开已有真实行程的日期
+    s_events.extend(predict_college_meetings(_ics_dates))
 
     # 实时计算 status（不依赖缓存时的日期判断）
     _today = date.today()
@@ -344,14 +377,6 @@ with col_s:
             with st.expander(f"{t('sched_past_hdr')}（{len(s_past)}）", expanded=not s_upcoming):
                 for _i, ev in enumerate(s_past):
                     _sejourne_row(ev, "past", f"pa{_i}")
-
-    # ── 欧盟影像库：日历未必收录的会议线索 ──────────────────────────────
-    av_items = get_sejourne_av()
-    if av_items:
-        with st.expander(f"📷 {t('sched_av_hdr')}（{len(av_items)}）", expanded=False):
-            st.caption(t("sched_av_hint"))
-            for _i, _it in enumerate(av_items):
-                _av_row(_it, f"av{_i}")
 
 # ════════════════════════════════════════════════════════════════════════════
 # 右栏：Gabriel Attal（手动维护）

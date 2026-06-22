@@ -138,12 +138,8 @@ _S = {
     "sched_no_entries": {"zh": "暂无行程记录",            "en": "No schedule entries"},
     "sched_lcp":        {"zh": "LCP 回放 – 议会电视台 Attal 出镜合集",
                          "en": "LCP replays – Attal on parliament TV"},
-    "sched_av_hdr":     {"zh": "欧盟影像库 · 会议线索",
-                         "en": "EU Audiovisual · meeting clues"},
-    "sched_av_hint":    {"zh": "欧盟影像服务收录的照片/视频，常含官方日历未列出的会议",
-                         "en": "Photos/videos from the EU AV Service, often meetings not on the official calendar"},
-    "sched_av_none":    {"zh": "影像库暂无相关条目",
-                         "en": "No EU AV items found"},
+    "sched_ss_legend":  {"zh": "🇪🇺 例会·推测 = 按惯例推算的委员会例会（非官方确认）· 📷 影像库 = 据欧盟影像服务补录的会议线索",
+                         "en": "🇪🇺 = inferred weekly College meeting (unofficial) · 📷 = meeting clue from the EU AV Service"},
 
     # ── 人物档案 ─────────────────────────────────────────
     "profiles_title":   {"zh": "👤 人物档案",             "en": "👤 Profiles"},

@@ -104,9 +104,11 @@ pip install -r requirements.txt
 
 - 左栏 SS 行程来自 GitHub ICS 文件(实时解析,不入库),右栏 GA 行程来自 `schedule` 表;两者数据形状不同(SS 用 `date`,GA 用 `event_date`)
 - **行程一键收入大事记**:管理员模式下,已发生(`past`/`ongoing`)的行程卡片右侧有「⬆️ 收入大事记」按钮(`st.columns` 加 `vertical_alignment="center"` 让按钮与多行卡片垂直居中),点开弹窗(`_import_to_timeline`)预填原文。行程原文多为法/英,**靠管理员手动译成中文再存**(刻意不接翻译 API),保存走 `add_event` 写入 `events`。类型标签默认 `🗓️ 日常行程`(`_IMPORT_TAG_OPTIONS` 列首即默认),可手动改成 `⭐ 重要行程/事件`、`📣 重大宣布` 等
-- 跳过 AN 议会预测条目:`description` 含 `[AN_AUTO]` 的(只是按周几规律推测、非确定行程)不显示收录按钮
+- 跳过预测条目(不显示收录按钮):`description` 含 `[AN_AUTO]`(GA 议会 QAG 规律推测)或 `[EU_AUTO]`(SS 委员会例会推测)的,都只是按周几规律推算、非确定行程
 - 保存前按 `source_url` 查重并黄字提示(不强制拦截);两人同框时可在弹窗里把 person 改成 `S&A`
-- **SS 左栏底部「📷 欧盟影像库」折叠区**:补充来源,抓欧盟影像服务(audiovisual.ec.europa.eu)里提到 Séjourné 的照片/视频——常含官方日历(ICS)漏掉的会议。逻辑在 `utils/eu_av.py`(`fetch_sejourne_av`),直接查 EU AV 内部 Solr API、客户端按人名(`séjourn`/`sejourn`)过滤标题+摘要,**只读不入库**(和 ICS 一样实时),页面端 `@st.cache_data(ttl=1800)` 缓存半小时、「🔄」刷新按钮一并清。每条带略缩图+原图链接,管理员可「⬆️ 收入大事记」(预填来源链接、person=SS,标题仍需手译)。API 细节(无关键词过滤、缩略图前缀拼法)见 `~/Documents/photo-monitor` 的 `sejourn_photo_monitor.py` 与其 CLAUDE.md——那是同一 API 的上游监控脚本
+- **SS 左栏有两个补充源,都按日期对 ICS 去重后合进同一份 `s_events` 列表渲染(不是单独折叠区)**,卡片靠 `description` 里的标记出徽章:
+  - **`[EU_AV]` 欧盟影像库**:抓欧盟影像服务(audiovisual.ec.europa.eu)里提到 Séjourné 的照片/视频——常含官方日历(ICS)漏掉的会议。逻辑在 `utils/eu_av.py`(`fetch_sejourne_av`),直接查 EU AV 内部 Solr API、客户端按人名(`séjourn`/`sejourn`)过滤标题+摘要,**只读不入库**,页面端 `@st.cache_data(ttl=1800)` 缓存半小时、「🔄」刷新按钮一并清。**加入日历前先看当天 ICS 有没有条目,有就跳过(避免重复)**;`source_url` 存原图链接,管理员可「⬆️ 收入大事记」(标题仍需手译)。API 细节(无关键词过滤、缩略图前缀拼法)见 `~/Documents/photo-monitor` 的 `sejourn_photo_monitor.py` 与其 CLAUDE.md——同一 API 的上游监控脚本
+  - **`[EU_AUTO]` 委员会例会推测**:类比 GA 的 `[AN_AUTO]`,`predict_college_meetings` 为未来约 6 周推算欧盟委员会每周例会。**惯例:平时周三在布鲁塞尔;遇欧洲议会斯特拉斯堡全会周改周二在斯堡**——斯堡全会周(取周一)硬编码在 `_STRASBOURG_WEEK_MONDAYS_2026`(EP 官方 2026 会期表,**换年要更新这个集合**,缺数据则一律按周三),8 月夏休跳过,当天已有真实/影像库行程也跳过。徽章「🇪🇺 例会·推测」,不入库、不出收录按钮
 
 ## 约定
 
