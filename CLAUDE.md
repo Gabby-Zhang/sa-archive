@@ -23,13 +23,22 @@ pip install -r requirements.txt
   - `anniversaries.py` / `media_spectrum.py` / `news_fetcher.py` — 对应页面的业务逻辑
 - `scripts/` — 数据写入脚本,**不被网页调用**,由本机 Claude 定时任务和 cron 触发:
   - `playbook_to_db.py` — Politico 邮件抽取结果入库(幂等,自动去重)
-  - `screenshot_to_db.py` — 行程截图解析结果入库(幂等)
+  - `screenshot_to_db.py` — 行程截图解析结果入库(幂等)。**入口是 launchd 任务**(见下「截图入库 launchd」),不在 `scheduled-tasks/`
   - `photo_to_gallery.py` — 照片入图库
   - 其余:抓新闻、备份、纪念日通知等
 - `scheduled-tasks/` — 本机 Claude Code 定时任务的**权威副本**(指令 + 解析逻辑),纳入版本控制做备份。harness 实际从 `~/.claude/scheduled-tasks/<任务名>/` 读取,那边的文件是**软链接指回本目录**,所以改这里两边同步:
   - `paris-playbook-daily/` — 每天 07:07 读 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→走 `scripts/playbook_to_db.py` 入库
     - `SKILL.md` — agent 指令
     - `extract_playbook.py` — 邮件正文提取器。**默认精简模式**只输出两人为主语的行程句(标注 `[当天]`/`[周六]`/`[周日]` + 合并带时间的延续句)和提到两人的正文段,输出 ~3KB;`--full` 兜底打印完整 AGENDA+正文。精简是刻意的:旧版把 35KB+ 原文丢给 agent,曾让某天运行在插入前烧光预算、整天没入库
+
+### 截图入库 launchd(`attal-screenshot-watch`,**不在 scheduled-tasks/**)
+
+「iCloud『Attal行程截图』文件夹 → 解析入 `schedule`/`images`」走 **launchd**(不是 app 内置定时任务,因为后者 Mac 睡眠会错过且不补跑)。这套住在 `~/.claude/local-automation/attal-screenshot-watch/`:`run.sh`(launchd 包装器:查文件夹有没有图→有才 headless 跑 claude)+ `.env`(`CLAUDE_CODE_OAUTH_TOKEN`,headless 不继承桌面 app 登录态)+ `run.log`;plist 在 `~/Library/LaunchAgents/com.sa-archive.screenshot-watch.plist`(每天 8/12/16/20:15)。解析指令 `~/.claude/scheduled-tasks/attal-screenshot-watch/SKILL.md`(分类→`scripts/screenshot_to_db.py`/`photo_to_gallery.py`→删文件)。
+
+- **必须的 macOS 权限坑(踩过):监控文件夹在 iCloud Drive(`~/Library/Mobile Documents`)是 TCC 保护区,launchd 拉起的 `/bin/bash` 默认没『完全磁盘访问』权限,`ls` 该目录直接 `Operation not permitted`。** 表现极隐蔽:`run.sh` 的 `nullglob` 把「没权限看见」误当成「无图」静默跳过,日志只刷「无图」、永不报错——曾连烂 26 次、一个多月没人发现「今天存的截图没入库」。交互式 Terminal 能看到是因为 Terminal 有 FDA,误导排查。
+  - **修法:系统设置→隐私与安全性→完全磁盘访问,加入 `/bin/bash`(文件选择器按 ⌘⇧G 输 `/bin/bash`)和 `Claude.app`**。这步只能手动点,TCC 不能用命令授予
+  - `run.sh` 已加固:开头显式 `ls "$WATCH"` 探一次,访问不了就大声报错 + `exit 1`,不再伪装成「无图」
+- 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.screenshot-watch`,看 `run.log`。**应急绕过 launchd**:可在有 FDA 的交互式会话里直接 Read 图→拼 `{"schedule":[...]}` JSON→`python3 scripts/screenshot_to_db.py` 入库→删图(2026-06-21 就是这么把积压的两条救回来的)
 
 ## 数据库(Supabase)
 
