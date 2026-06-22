@@ -4,6 +4,7 @@ from datetime import date
 from utils.auth import admin_sidebar
 from utils.i18n import t
 from utils.database import get_supabase_admin, add_event, log_audit
+from utils.eu_av import fetch_sejourne_av
 
 admin_sidebar()
 
@@ -65,6 +66,15 @@ def get_attal_schedule() -> list:
             .order("event_date", desc=False)
             .execute().data)
     return rows or []
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_sejourne_av() -> list:
+    """欧盟影像库里提到 Séjourné 的影像条目，缓存 30 分钟。失败返回空列表。"""
+    try:
+        return fetch_sejourne_av(limit=30)
+    except Exception:
+        return []
 
 
 # ── 卡片渲染 ─────────────────────────────────────────────────────────────────
@@ -228,6 +238,56 @@ def _sejourne_row(ev: dict, status: str, key: str):
         _card()
 
 
+_AV_TYPE_EMOJI = {"VIDEO": "🎥", "PHOTO": "📷", "REPORTAGE": "📷"}
+
+
+def _av_card(item: dict):
+    """渲染一条欧盟影像库条目（带略缩图、链接），样式与 past 行程卡片一致。"""
+    emoji = _AV_TYPE_EMOJI.get(item.get("type", ""), "📷")
+    title = item.get("title", "")
+    thumb = item.get("thumbnail", "")
+    url   = item.get("url", "")
+    thumb_html = (
+        f'<a href="{url}" target="_blank">'
+        f'<img src="{thumb}" style="width:64px;height:48px;object-fit:cover;'
+        f'border-radius:5px;flex-shrink:0" loading="lazy"></a>'
+    ) if thumb else ""
+    link_html = (f' <a href="{url}" target="_blank" '
+                 f'style="color:#4A90D9;font-size:0.75rem">🔗</a>') if url else ""
+    st.markdown(
+        f'<div style="background:var(--cb2);border-left:3px solid {SEJOURNE_COLOR};'
+        f'border-radius:0 8px 8px 0;padding:0.5rem 0.7rem;margin:0.3rem 0;'
+        f'display:flex;gap:0.6rem;align-items:center">'
+        f'{thumb_html}'
+        f'<div style="min-width:0">'
+        f'<div style="color:var(--t3);font-size:0.72rem;font-weight:600">'
+        f'{emoji} {item.get("date", "")}</div>'
+        f'<div style="color:var(--t1);font-size:0.85rem;margin-top:0.1rem;'
+        f'line-height:1.3">{title}{link_html}</div>'
+        f'</div></div>',
+        unsafe_allow_html=True)
+
+
+def _av_row(item: dict, key: str):
+    """欧盟影像库一条；管理员模式附「收入大事记」按钮（预填来源链接）。"""
+    if st.session_state.get("is_admin"):
+        _c1, _c2 = st.columns([11, 1], vertical_alignment="center")
+        with _c1:
+            _av_card(item)
+        with _c2:
+            if st.button("⬆️", key=f"imp_av_{key}", help="收入大事记",
+                         use_container_width=True):
+                _import_to_timeline({
+                    "title":      item.get("title", ""),
+                    "date":       item.get("date", ""),
+                    "location":   "",
+                    "source_url": item.get("url", ""),
+                    "person":     "Stéphane Séjourné",
+                })
+    else:
+        _av_card(item)
+
+
 # ── 页面主体：并排两栏 ───────────────────────────────────────────────────────
 col_s, col_a = st.columns(2)
 
@@ -284,6 +344,14 @@ with col_s:
             with st.expander(f"{t('sched_past_hdr')}（{len(s_past)}）", expanded=not s_upcoming):
                 for _i, ev in enumerate(s_past):
                     _sejourne_row(ev, "past", f"pa{_i}")
+
+    # ── 欧盟影像库：日历未必收录的会议线索 ──────────────────────────────
+    av_items = get_sejourne_av()
+    if av_items:
+        with st.expander(f"📷 {t('sched_av_hdr')}（{len(av_items)}）", expanded=False):
+            st.caption(t("sched_av_hint"))
+            for _i, _it in enumerate(av_items):
+                _av_row(_it, f"av{_i}")
 
 # ════════════════════════════════════════════════════════════════════════════
 # 右栏：Gabriel Attal（手动维护）
