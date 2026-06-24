@@ -40,6 +40,17 @@ pip install -r requirements.txt
   - `run.sh` 已加固:开头显式 `ls "$WATCH"` 探一次,访问不了就大声报错 + `exit 1`,不再伪装成「无图」
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.screenshot-watch`,看 `run.log`。**应急绕过 launchd**:可在有 FDA 的交互式会话里直接 Read 图→拼 `{"schedule":[...]}` JSON→`python3 scripts/screenshot_to_db.py` 入库→删图(2026-06-21 就是这么把积压的两条救回来的)
 
+### Paris Playbook 入库 launchd(`com.sa-archive.paris-playbook`,2026-06-24 从 app 内置任务迁来)
+
+每日抓 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→入 `schedule`/`news`。**原是 Claude app 内置定时任务(`paris-playbook-daily`,已停用),靠桌面 app 当时开着才触发,Mac 早上多半睡眠/没开 app,导致每天 07:07 静默漏跑——半个月只成功三四次,且漏跑不报错。** 迁到 launchd 后扛睡眠、关 app 也跑。
+
+- 住在 `~/.claude/local-automation/paris-playbook-daily/`:`run.sh` + `.env` + `run.log`;plist 在 `~/Library/LaunchAgents/com.sa-archive.paris-playbook.plist`(每天 07:15 抓当天刊 + 12:15 补抓近 2 天,覆盖周末漏跑/早上没醒)
+- **和截图任务的关键区别:本任务要读 Gmail,而 headless `claude -p` 不继承桌面 app 的 Gmail 连接器(CLI 里没有任何 MCP server)。** 所以流程是三段:① `scripts/fetch_playbook_email.py` 用 **IMAP** 直连 Gmail 抓信→JSON;② `scheduled-tasks/paris-playbook-daily/extract_playbook.py` 抽成干净文本;③ headless claude 按 `SKILL_launchd.md` 读文本构 JSON→`scripts/playbook_to_db.py` 入库(幂等)
+- **鉴权两把:** `.env` 里 `CLAUDE_CODE_OAUTH_TOKEN`(headless claude,复用截图任务那把)+ `GMAIL_USER`/`GMAIL_APP_PASSWORD`(**Gmail 应用专用密码**,需先开两步验证,去 myaccount.google.com/apppasswords 生成 16 位;Gmail 普通密码无法 IMAP 登录)。`.env` chmod 600、不进 git
+- `run.sh` 已加固:Gmail 密码没填 / IMAP 登录失败 / 抓信失败都**大声报错 + exit 1**,不静默跳过(吸取截图任务那次「静默漏 26 回」的教训)。无新邮件才正常 exit 0
+- repo 里只纳管逻辑(`SKILL_launchd.md`、`extract_playbook.py`、`scripts/fetch_playbook_email.py`),infra(run.sh/.env/plist)只在 `~/.claude`,与截图任务一致
+- 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.paris-playbook`,看 `run.log`。**应急手动补跑**:在有 Gmail 连接器的交互式会话里仍可走旧 `SKILL.md`(Gmail MCP 版,保留作兜底)
+
 ## 数据库(Supabase)
 
 主要表:`news`(新闻)、`schedule`(行程)、`events`(大事记)、`images`(图库)、`files`(上传文件)、`audit_log`(操作日志)。

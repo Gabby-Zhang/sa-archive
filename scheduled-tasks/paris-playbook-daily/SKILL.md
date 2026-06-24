@@ -3,6 +3,12 @@ name: paris-playbook-daily
 description: Daily: read Politico Paris Playbook emails → extract Attal/Séjourné schedule & news → insert into Supabase
 ---
 
+> ⚠️ **已停用 / 仅作 Gmail-MCP 手动兜底。** 这套(Claude app 内置定时任务 + Gmail 连接器)
+> 长期靠桌面 app 当时开着才触发,Mac 早上多半睡眠/没开 app,导致每天 07:07 静默漏跑、
+> 半个月只成功三四次。**已迁到 launchd**(系统级、扛睡眠、关 app 也跑),走 IMAP 取信而非
+> Gmail 连接器:见同目录 `SKILL_launchd.md` + `~/.claude/local-automation/paris-playbook-daily/run.sh`。
+> 本文件保留:① 当你在有 Gmail 连接器的交互式会话里想手动补跑某天时仍可用;② 记录原始流程。
+
 You are a data extraction agent for a French political archive (sa-archive) tracking Gabriel Attal and Stéphane Séjourné.
 
 **Objective:** Process recent Politico Paris Playbook emails from Gmail and insert relevant schedule entries and news items into Supabase.
