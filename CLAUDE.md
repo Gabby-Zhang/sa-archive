@@ -44,11 +44,12 @@ pip install -r requirements.txt
 
 每日抓 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→入 `schedule`/`news`。**原是 Claude app 内置定时任务(`paris-playbook-daily`,已停用),靠桌面 app 当时开着才触发,Mac 早上多半睡眠/没开 app,导致每天 07:07 静默漏跑——半个月只成功三四次,且漏跑不报错。** 迁到 launchd 后扛睡眠、关 app 也跑。
 
-- 住在 `~/.claude/local-automation/paris-playbook-daily/`:`run.sh` + `.env` + `run.log`;plist 在 `~/Library/LaunchAgents/com.sa-archive.paris-playbook.plist`(每天 07:15 抓当天刊 + 12:15 补抓近 2 天,覆盖周末漏跑/早上没醒)
+- 住在 `~/.claude/local-automation/paris-playbook-daily/`:`run.sh` + `.env` + `run.log`;plist 在 `~/Library/LaunchAgents/com.sa-archive.paris-playbook.plist`(每天 **06:30** 抓当天刊 + 12:15 补抓近 2 天,覆盖周末漏跑/早上没醒)。**06:30 是 2026-06-27 从 07:15 提前的**:Playbook 邮件约 6 点到,而下游 ssga-news-monitor 的早班简报 ~07:50(BST)就发出,Agenda 要赶在那之前入库,所以留半小时 + 重试缓冲。改了 plist 后必须 `launchctl unload && load` 重载才生效
 - **和截图任务的关键区别:本任务要读 Gmail,而 headless `claude -p` 不继承桌面 app 的 Gmail 连接器(CLI 里没有任何 MCP server)。** 所以流程是三段:① `scripts/fetch_playbook_email.py` 用 **IMAP** 直连 Gmail 抓信→JSON;② `scheduled-tasks/paris-playbook-daily/extract_playbook.py` 抽成干净文本;③ headless claude 按 `SKILL_launchd.md` 读文本构 JSON→`scripts/playbook_to_db.py` 入库(幂等)
 - **鉴权两把:** `.env` 里 `CLAUDE_CODE_OAUTH_TOKEN`(headless claude,复用截图任务那把)+ `GMAIL_USER`/`GMAIL_APP_PASSWORD`(**Gmail 应用专用密码**,需先开两步验证,去 myaccount.google.com/apppasswords 生成 16 位**全小写**;Gmail 普通密码无法 IMAP 登录,普通密码/含大写或≠16 位会被 `[AUTHENTICATIONFAILED] Invalid credentials` 拒)。同一把密码 IMAP 收信 + SMTP 发告警共用。`.env` chmod 600、不进 git
 - `run.sh` 已加固:所有失败分支统一走 `fail()` —— **大声报错 + exit 1,且 SMTP 发一封告警邮件到自己邮箱**(`scripts/send_alert.py`,标题「⚠️ Paris Playbook 入库报错」,正文带最近 25 行 run.log)。覆盖:缺 token/密码、IMAP 抓信失败、抽取失败、找不到 claude、入库步骤异常退出。**「无新邮件」是正常情况,正常 exit 0、不告警**。不静默跳过(吸取截图任务那次「静默漏 26 回」的教训)
   - **headless claude 那步(Step 3)做了重试**:claude CLI 调 Anthropic API 偶发瞬时网络错(`socket connection closed` / `ECONNRESET`),一跑就 exit 1 会误发告警。现在最多跑 3 次、失败间隔递增(10s/20s),全失败才走 `fail()`。入库脚本幂等(指纹去重),重试不会重复写库。2026-06-25 起加,此前 12:15 补抓那跑常因这类瞬时错误误报告警(07:15 当天数据其实已入库)
+  - **`$CLAUDE` 路径每次重试重新解析,不缓存(2026-06-27 修)**:`run.sh` 用 `ls -dt .../claude-code/*/.../claude | head -1` 找最新版二进制。原来只在循环外解析一次,**若 Claude.app 在两次重试之间自动升级(版本目录名变,如 2.1.177→2.1.187),缓存的旧路径就失效,后续重试全 `exit 127`(No such file or directory)而非真正重试**——2026-06-26 早班就这么连挂 3 次误报告警。现在路径解析挪进重试循环内,每次重新找最新版
   - 告警是同源凭据局限:若 Gmail 密码失效,IMAP 与 SMTP 都用同一把 → 收不到告警邮件,但 `run.log` 会记 `send_alert: 发信失败`。要彻底兜底需加 macOS 桌面通知做第二通道(暂未加)
 - repo 里只纳管逻辑(`SKILL_launchd.md`、`extract_playbook.py`、`scripts/fetch_playbook_email.py`、`scripts/send_alert.py`),infra(run.sh/.env/plist)只在 `~/.claude`,与截图任务一致
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.paris-playbook`,看 `run.log`。**应急手动补跑**:在有 Gmail 连接器的交互式会话里仍可走旧 `SKILL.md`(Gmail MCP 版,保留作兜底)
