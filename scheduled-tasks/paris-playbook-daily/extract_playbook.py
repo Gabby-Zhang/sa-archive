@@ -149,23 +149,46 @@ def filter_media(text: str) -> str:
     sec = slice_media(text)
     if not sec:
         return ""
+    # MÉDIAS 段里每档以「<可选时间>. <站名> : 嘉宾1, 头衔1, 嘉宾2, 头衔2 …」排布,
+    # 同一时间多个台用「…」分隔。冒号只出现在站名后,故先扫出所有「站名 :」标记的
+    # 位置,再把每个 Attal/Séjourné 归到它前面最近的那档——这样即便两人是某档的
+    # 第 2/3 位嘉宾(前面还有别的政客)也能正确取到台名(2026-07-09 修:多嘉宾同台会漏)。
+    stations = []  # (冒号结束位置, 站名)
+    for cm in re.finditer(r"\s:\s", sec):
+        before = sec[:cm.start()]
+        # 站名 = 冒号前、上一个句号/省略号之后的那段,去掉前导时间
+        name = re.split(r"[.…]", before)[-1]
+        name = re.sub(r"^\s*\d+h\d+\s*", "", name).strip()
+        stations.append((cm.end(), name))
+    times = [(t.start(), t.group()) for t in re.finditer(r"\d+h\d+", sec)]
+
+    def nearest(seq, pos):
+        val = ""
+        for p, v in seq:
+            if p <= pos:
+                val = v
+            else:
+                break
+        return val
+
     out = []
-    # 匹配「<人名><角色到 . 或 … 为止>」;站名/时间往前回溯取
-    for m in re.finditer(_MEDIA_NAMES + r"([^.…]*)", sec):
+    for m in re.finditer(_MEDIA_NAMES, sec):
         person = re.sub(r"sejourne", "Séjourné",
                         m.group(1), flags=re.I).replace("Stephane", "Stéphane")
-        role = m.group(2).strip(" ,;:")
-        pre = sec[:m.start()]
-        # 站名 = 冒号前紧挨的 token(不含句号/时间;句号会断开前面的 "7h40.")
-        sm = re.search(r"([A-Za-zÉ0-9][\w/ ]*?)\s*:\s*$", pre)
-        station = sm.group(1).strip() if sm else ""
-        station = re.sub(r"^\d+h\d+\.?\s*", "", station).strip()
+        station = nearest(stations, m.start())
         if not station:
             continue
-        # 时间 = pre 里最后一个 \d+h\d+
-        tm = re.findall(r"\d+h\d+", pre)
-        at = f" à {tm[-1]}" if tm else ""
-        line = f"[当天] {person} est l'invité de {station}{at}"
+        # 头衔 = 人名后紧跟的第一个逗号分句(到下一个逗号/句号/省略号止);
+        # 再砍掉尾巴的「et <另一位嘉宾>」,避免把同台别人的名字并进来
+        tail = re.split(r"[.…]", sec[m.end():], 1)[0]
+        role = ""
+        mr = re.match(r"\s*,\s*([^,]+)", tail)
+        if mr:
+            role = re.split(r"\s+et\s+[A-ZÉ]", mr.group(1).strip())[0].strip()
+        at_ = nearest(times, m.start())
+        line = f"[当天] {person} est l'invité de {station}"
+        if at_:
+            line += f" à {at_}"
         if role:
             line += f" ({role})"
         out.append(line + ".")
