@@ -126,6 +126,52 @@ def filter_agenda(agenda: str) -> str:
     return "\n".join(out)
 
 
+# MÉDIAS 段:只认全大写表头 MÉDIAS(邮件里栏目头一定大写)。别用 lower().find,
+# 会误命中正文里 titlecase 的 "Médias de Rhénanie-du-Nord-Westphalie" 这类地名。
+_MEDIA_HEADER = re.compile(r"MÉDIAS\b")
+# 露出条目里的人名(冒号后 = 上节目的嘉宾)
+_MEDIA_NAMES = r"(Gabriel Attal|Stéphane Séjourné|Stéphane Sejourné|Stephane Sejourne)"
+
+
+def slice_media(text: str) -> str:
+    """切出「MÉDIAS」表头之后的电台/电视露出段(约 3000 字兜底)。"""
+    m = _MEDIA_HEADER.search(text)
+    if not m:
+        return ""
+    return text[m.end():m.end() + 3000]
+
+
+def filter_media(text: str) -> str:
+    """从 MÉDIAS 段抽出以 Attal/Séjourné 为主语的电台/电视露出,改写成
+    以人名开头的法语行程句(下游 SKILL 按「句首主语」判定 person、译成英文)。
+    原格式:'7h40. RTL : Gabriel Attal, secrétaire général du parti Renaissance …'
+    输出:  '[当天] Gabriel Attal est l'invité de RTL à 7h40 (secrétaire général …).'"""
+    sec = slice_media(text)
+    if not sec:
+        return ""
+    out = []
+    # 匹配「<人名><角色到 . 或 … 为止>」;站名/时间往前回溯取
+    for m in re.finditer(_MEDIA_NAMES + r"([^.…]*)", sec):
+        person = re.sub(r"sejourne", "Séjourné",
+                        m.group(1), flags=re.I).replace("Stephane", "Stéphane")
+        role = m.group(2).strip(" ,;:")
+        pre = sec[:m.start()]
+        # 站名 = 冒号前紧挨的 token(不含句号/时间;句号会断开前面的 "7h40.")
+        sm = re.search(r"([A-Za-zÉ0-9][\w/ ]*?)\s*:\s*$", pre)
+        station = sm.group(1).strip() if sm else ""
+        station = re.sub(r"^\d+h\d+\.?\s*", "", station).strip()
+        if not station:
+            continue
+        # 时间 = pre 里最后一个 \d+h\d+
+        tm = re.findall(r"\d+h\d+", pre)
+        at = f" à {tm[-1]}" if tm else ""
+        line = f"[当天] {person} est l'invité de {station}{at}"
+        if role:
+            line += f" ({role})"
+        out.append(line + ".")
+    return "\n".join(out)
+
+
 def filter_news(body: str) -> str:
     """正文里提到两人的句子 + 前后各一句上下文,供抽新闻。输出保持很小。"""
     if not body:
@@ -188,8 +234,13 @@ def main():
         else:
             # 默认:只给 agent 它真正要的,几百字节,不会触发 Output too large
             fa = filter_agenda(agenda)
-            print("--- AGENDA · ATTAL/SÉJOURNÉ(以两人为主语的行程句,[]内为归属日)---")
-            print(fa if fa else "(今日 AGENDA 无 Attal/Séjourné 行程 → schedule = [])")
+            # MÉDIAS 段的电台/电视露出也算行程(2026-07-09 加):Playbook 把两人
+            # 当天上哪个台放在 MÉDIAS 栏,过去被 slice_agenda 在「MÉDIAS」处切掉、
+            # 整段漏掉(如 07-09 "7h40 RTL : Gabriel Attal" 就这么没进 Agenda)。
+            fm = filter_media(text)
+            combined = "\n".join(x for x in (fa, fm) if x)
+            print("--- AGENDA · ATTAL/SÉJOURNÉ(以两人为主语的行程句 + 当天电台/电视露出,[]内为归属日)---")
+            print(combined if combined else "(今日 AGENDA/MÉDIAS 无 Attal/Séjourné → schedule = [])")
             fn = filter_news(body)
             print("\n--- NEWS 相关段(正文里提到两人的句子+上下文,供抽新闻)---")
             print(fn if fn else "(正文未提及两人 → 该邮件 news 可为 [])")

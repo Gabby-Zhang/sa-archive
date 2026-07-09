@@ -43,6 +43,10 @@ AGENDA 区块里每一行都是真行程(已过滤成以两人为主语的句子
   - `[周日]` → 发信日之后的下一个周日
 - `person`: "Gabriel Attal" 或 "Stéphane Séjourné"
 
+其中形如「… est l'invité de RTL à 7h40」的行是**当天电台/电视露出**(来自 MÉDIAS 栏),
+同样当行程收:`title` 保留法语原文(含台名如 RTL/France 2)、`time` 取句中时间、
+`person` 取句首人名、`event_date` 用 `[当天]`。
+
 ### B) 新闻(news)— 来自 NEWS 区块
 从 NEWS 区块抽 2–5 条**确实以两人之一为核心**的政治新闻。每条:
 - `title`: 精炼法语标题(≤50 词)
