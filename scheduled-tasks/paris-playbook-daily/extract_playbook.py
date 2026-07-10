@@ -77,9 +77,18 @@ def _mentions(s: str) -> bool:
     return "attal" in low or "séjourné" in low or "sejourn" in low
 
 
+# 两人的「人名」匹配(大写开头,天然避开小写动词 séjourner/séjournant——
+# CLAUDE.md 早就警告过裸搜 séjourné 会吃进动词)。Attal 无歧义。
+_PERSON = re.compile(r"\bAttal\b|\bS[ée]journ[ée]s?\b")
+
+
 def filter_agenda(agenda: str) -> str:
-    """只保留以 Gabriel Attal / Stéphane Séjourné 为主语(句首)的行程句,
-    并按 AGENDA 里的「Samedi :」「Dimanche :」分节标注归属日。"""
+    """AGENDA 段里凡真提到 Gabriel Attal / Stéphane Séjourné 的句子一律保留,
+    按「Samedi :」「Dimanche :」标注归属日。两类都收(是不是"正经行程"交给人判断):
+      1) 句首主语句(「Gabriel Attal se rend à …」)——并把紧跟的代词延续句合并进来;
+      2) 宾语位/顺带提及(「Serge Papin s'entretient avec Stéphane Séjourné …」、
+         「… en présence de … Attal」)——过去只留 1)、把 2) 全丢了,导致
+         2026-06-26 那条"部长会见 Séjourné"整条漏掉。现在 2) 也留。"""
     if not agenda:
         return ""
     low = agenda.lower()
@@ -110,19 +119,25 @@ def filter_agenda(agenda: str) -> str:
     _CONT = ("il ", "elle ", "a ", "à ", "puis ", "il s", "elle s")
 
     out = []
+    consumed = set()  # 已被主语句作为延续句吸收的句子,别再当"顺带提及"重复收
     for i, (pos, sent) in enumerate(sents):
-        if not is_subject(sent):
+        if i in consumed:
             continue
-        parts = [sent]
-        # 把紧跟的延续句并进来(如「Il s'adresse à la presse à 11h15.」带上时间)
-        for _, nxt in sents[i + 1:]:
-            if is_subject(nxt):
-                break
-            if nxt.lower().startswith(_CONT):
-                parts.append(nxt)
-            else:
-                break
-        out.append(f"[{day_of(pos)}] {' '.join(parts)}")
+        if is_subject(sent):
+            parts = [sent]
+            for k in range(i + 1, len(sents)):
+                nxt = sents[k][1]
+                if is_subject(nxt):
+                    break
+                if nxt.lower().startswith(_CONT):
+                    parts.append(nxt)
+                    consumed.add(k)
+                else:
+                    break
+            out.append(f"[{day_of(pos)}] {' '.join(parts)}")
+        elif _PERSON.search(sent):
+            # 两人不是句子主语,但真出现了(宾语/在场名单)→ 也留,交给人判断
+            out.append(f"[{day_of(pos)}] {sent}")
     return "\n".join(out)
 
 
@@ -133,12 +148,22 @@ _MEDIA_HEADER = re.compile(r"MÉDIAS\b")
 _MEDIA_NAMES = r"(Gabriel Attal|Stéphane Séjourné|Stéphane Sejourné|Stephane Sejourne)"
 
 
+# MÉDIAS 电台列表之后,Playbook 依次接:「PLUS TARD.」(稍晚的电视辩论,要保留)、
+# 「À LA UNE :」(各报头版,非广播)、「CARNET / NOS NEWSLETTERS PRO」(自家促销)。
+# 终止边界设在 À LA UNE / CARNET / NEWSLETTERS——既切掉头版和促销噪音,又保住
+# PLUS TARD 辩论(2026-06-29 Attal 上 LCI 辩论就在这段)。
+_MEDIA_END = re.compile(r"À LA UNE|CARNET|NOS NEWSLETTERS|NEWSLETTERS? PRO")
+_MEDIA_JUNK = re.compile(r"[A-ZÉÈÀÊ]{3,}\s+[A-ZÉÈÀÊ&]{2,}")  # 促销小标题特征,非真台名
+
+
 def slice_media(text: str) -> str:
-    """切出「MÉDIAS」表头之后的电台/电视露出段(约 3000 字兜底)。"""
+    """切出「MÉDIAS」表头之后的电台/电视露出段(到头版/促销区止,3000 字兜底)。"""
     m = _MEDIA_HEADER.search(text)
     if not m:
         return ""
-    return text[m.end():m.end() + 3000]
+    sec = text[m.end():m.end() + 3000]
+    end = _MEDIA_END.search(sec)
+    return sec[:end.start()] if end else sec
 
 
 def filter_media(text: str) -> str:
@@ -171,22 +196,42 @@ def filter_media(text: str) -> str:
                 break
         return val
 
+    # 站名冒号位置(用于距离保护:名字离最近的「站名 :」太远,说明不是那档嘉宾)
+    colon_pos = [p for p, _ in stations]
+
     out = []
     for m in re.finditer(_MEDIA_NAMES, sec):
         person = re.sub(r"sejourne", "Séjourné",
                         m.group(1), flags=re.I).replace("Stephane", "Stéphane")
-        station = nearest(stations, m.start())
-        if not station:
+        # 名字所在整句(用于辨认「PLUS TARD … débattent sur <台> à <时>」辩论式)
+        s0 = sec.rfind(".", 0, m.start()) + 1
+        s1 = sec.find(".", m.end())
+        s1 = len(sec) if s1 < 0 else s1
+        sentence, after = sec[s0:s1], sec[m.end():s1]
+
+        if re.search(r"débatt?", sentence, re.I):
+            # 辩论式:频道在「sur <台>」、时间在「à <时>」,人名不在「站名 :」后
+            cm = re.search(r"\bsur ([A-ZÉ][\w/. ]{1,18}?)\s*(?:,|\.|à | à|$)", after)
+            station = cm.group(1).strip(" .") if cm else ""
+            tm = re.search(r"à (\d{1,2}\s?h\d{0,2}|\d{1,2}\s?heures?)", sentence)
+            at_ = re.sub(r"\s+", "", tm.group(1)) if tm else ""
+            verb, role = "participe à un débat sur", ""
+        else:
+            # 常规「<时>. <台> : … <名>, <头衔> …」;距离>220 视作非本档,弃站名
+            cp = max([p for p in colon_pos if p <= m.start()], default=None)
+            station = nearest(stations, m.start()) if cp is not None and m.start() - cp <= 220 else ""
+            at_ = nearest(times, m.start())
+            tail = re.split(r"[.…]", after, 1)[0]
+            role = ""
+            mr = re.match(r"\s*,\s*([^,]+)", tail)
+            if mr:
+                role = re.split(r"\s+et\s+[A-ZÉ]", mr.group(1).strip())[0].strip()
+            verb = "est l'invité de"
+
+        # 站名校验:空 / 过长 / 连续全大写词(促销小标题) = 噪音,丢
+        if not station or len(station) > 24 or _MEDIA_JUNK.search(station):
             continue
-        # 头衔 = 人名后紧跟的第一个逗号分句(到下一个逗号/句号/省略号止);
-        # 再砍掉尾巴的「et <另一位嘉宾>」,避免把同台别人的名字并进来
-        tail = re.split(r"[.…]", sec[m.end():], 1)[0]
-        role = ""
-        mr = re.match(r"\s*,\s*([^,]+)", tail)
-        if mr:
-            role = re.split(r"\s+et\s+[A-ZÉ]", mr.group(1).strip())[0].strip()
-        at_ = nearest(times, m.start())
-        line = f"[当天] {person} est l'invité de {station}"
+        line = f"[当天] {person} {verb} {station}"
         if at_:
             line += f" à {at_}"
         if role:
