@@ -1,0 +1,78 @@
+name: Add news item (manual)
+
+# 手动往 Supabase `news` 表加一条新闻。
+# 用途：偶尔遇到自动抓取漏掉、但值得存档的稿子（如外媒/单一来源报道）时手动补录。
+# id 用 url 的 md5，upsert 幂等——重复触发同一条 url 不会产生重复行。
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "新闻标题"
+        required: true
+      url:
+        description: "链接"
+        required: true
+      person:
+        description: "相关人物"
+        required: true
+        type: choice
+        options:
+          - "S&A"
+          - "Gabriel Attal"
+          - "Stéphane Séjourné"
+      source:
+        description: "来源媒体"
+        required: false
+        default: ""
+      published_at:
+        description: "发布日期 (YYYY-MM-DD)"
+        required: true
+      summary:
+        description: "摘要"
+        required: false
+        default: ""
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install supabase
+      - name: Insert news row
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          IN_TITLE: ${{ inputs.title }}
+          IN_URL: ${{ inputs.url }}
+          IN_PERSON: ${{ inputs.person }}
+          IN_SOURCE: ${{ inputs.source }}
+          IN_PUBLISHED_AT: ${{ inputs.published_at }}
+          IN_SUMMARY: ${{ inputs.summary }}
+        run: |
+          python - <<'PY'
+          import os, hashlib
+          from supabase import create_client
+
+          url = os.environ["IN_URL"].strip()
+          if not url:
+              raise SystemExit("url is required")
+
+          row = {
+              "id":           hashlib.md5(url.encode()).hexdigest(),
+              "title":        os.environ["IN_TITLE"].strip(),
+              "url":          url,
+              "source":       os.environ.get("IN_SOURCE", "").strip(),
+              "person":       os.environ["IN_PERSON"].strip(),
+              "published_at": os.environ["IN_PUBLISHED_AT"].strip(),
+              "summary":      os.environ.get("IN_SUMMARY", "").strip()[:500],
+          }
+
+          key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
+          db = create_client(os.environ["SUPABASE_URL"], key)
+          db.table("news").upsert(row, on_conflict="id").execute()
+          print("✅ upserted:", row["id"], "|", row["person"], "|", row["title"][:70])
+          PY
