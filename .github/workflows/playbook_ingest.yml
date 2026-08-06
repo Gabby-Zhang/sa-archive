@@ -1,0 +1,56 @@
+name: Paris Playbook ingest
+
+# 抓 Politico Paris Playbook 邮件 → 抽 Attal/Séjourné 行程+新闻 → 入库 Supabase `schedule`/`news`。
+# 原来跑在本地 Mac 的 launchd 上,Mac 睡眠时定时全落空(2026-08-04~06 连续断供、Agenda 空)。
+# 搬到 GitHub Actions 后彻底不依赖本地机器,和 ssga-news-monitor 一样在云端跑。
+#
+# 触发:
+#   - workflow_dispatch:主触发,给 cron-job.org 精确定时打(和 news_monitor 同一套路,
+#     GitHub 自带 schedule 常延迟数小时,喂不上早班邮件)。也可手动跑做补抓。
+#   - schedule:仅作松散兜底(cron-job.org 万一挂了),时间给足提前量。
+#
+# 时序:Playbook 邮件约 05:00 UTC 到,ssga news_monitor 早班邮件 06:50 UTC / 晚班 16:50 UTC。
+#   入库必须赶在对应邮件之前,所以定时放在 05:30 / 15:30 UTC 附近。
+
+on:
+  workflow_dispatch:
+    inputs:
+      since_days:
+        description: "回溯抓最近几天的 Playbook 邮件(默认 2,补抓可调大)"
+        required: false
+        default: "2"
+  schedule:
+    - cron: "20 5 * * *"    # 05:20 UTC 兜底(早班邮件 06:50 UTC 之前)
+    - cron: "20 15 * * *"   # 15:20 UTC 兜底(晚班邮件 16:50 UTC 之前)
+
+# 同一时刻只跑一个实例,避免定时+手动撞车重复处理
+concurrency:
+  group: playbook-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: pip install "supabase>=2.4,<3"
+
+      - name: Install claude-code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Fetch → extract → ingest
+        env:
+          GMAIL_USER:              ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD:      ${{ secrets.GMAIL_APP_PASSWORD }}
+          SUPABASE_URL:            ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:            ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          SINCE_DAYS:              ${{ github.event.inputs.since_days || '2' }}
+        run: bash scheduled-tasks/paris-playbook-daily/run_ci.sh
