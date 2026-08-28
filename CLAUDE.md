@@ -40,9 +40,19 @@ pip install -r requirements.txt
   - `run.sh` 已加固:开头显式 `ls "$WATCH"` 探一次,访问不了就大声报错 + `exit 1`,不再伪装成「无图」
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.screenshot-watch`,看 `run.log`。**应急绕过 launchd**:可在有 FDA 的交互式会话里直接 Read 图→拼 `{"schedule":[...]}` JSON→`python3 scripts/screenshot_to_db.py` 入库→删图(2026-06-21 就是这么把积压的两条救回来的)
 
-### Paris Playbook 入库 launchd(`com.sa-archive.paris-playbook`,2026-06-24 从 app 内置任务迁来)
+### Paris Playbook 入库(**2026-08-06 起 = GitHub Actions CI `playbook_ingest.yml`**,原 launchd 已退役)
 
-每日抓 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→入 `schedule`/`news`。**原是 Claude app 内置定时任务(`paris-playbook-daily`,已停用),靠桌面 app 当时开着才触发,Mac 早上多半睡眠/没开 app,导致每天 07:07 静默漏跑——半个月只成功三四次,且漏跑不报错。** 迁到 launchd 后扛睡眠、关 app 也跑。
+每日抓 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→入 `schedule`/`news`。演进史:app 内置任务(`paris-playbook-daily`,睡眠漏跑)→ launchd(`com.sa-archive.paris-playbook`,2026-06-24)→ **GitHub Actions CI(2026-08-06)**。搬到 CI 的原因同截图任务:launchd 靠本机,Mac 睡眠时定时落空(2026-08-04~06 连续断供、Agenda 连日空)。**生产路径现以 CI 为准;下面的 launchd 细节保留作历史 + 本地应急兜底。**
+
+> **CI 版(`.github/workflows/playbook_ingest.yml` + `run_ci.sh` + `SKILL_ci.md`)**
+> - 流程同三段(IMAP 抓信 → `extract_playbook.py` 抽文本 → headless `claude -p` 构 JSON 入库),但路径用仓库相对、凭据走 **Actions secrets**、超时用 GNU `timeout`、`run_ci.sh` 取代 `run.sh`。
+> - **触发:** 主力 cron-job.org 打 `workflow_dispatch`(05:30/15:30 UTC),GH 自带 `schedule`(05:20/15:20 UTC)仅松散兜底。**GH schedule 尽力而为(可能延迟/漏跑),不能当唯一触发。**
+> - **三把凭证都会过期,任一失效整条断供。排查「`schedule` 表连日无新行程」按此逐一验证:**
+>   1. `GMAIL_APP_PASSWORD` — IMAP 读 Playbook 邮件。失效报 `[AUTHENTICATIONFAILED] Invalid credentials`。**被登出(会话过期)不会撤销 app password;只有改 Google 密码 / 关两步验证 / 手动撤销 / 账号安全重置才会。** 去 myaccount.google.com/apppasswords 重生成 16 位。
+>   2. `CLAUDE_CODE_OAUTH_TOKEN` — headless claude 解析入库。失效报 `401 OAuth access token has been revoked`(约一年过期或订阅变动被撤)。本机 `claude setup-token` 重生成。**粘进 GH secret 必须单行无换行**,否则报 `Invalid Authorization header value ... contains a line break`。
+>   3. `SUPABASE_URL` / `SUPABASE_KEY` / `SUPABASE_SERVICE_KEY` — 写 `schedule`/`news` 表。
+> - **手动补抓:** Actions → "Paris Playbook ingest" → Run workflow,`since_days` 调大即回溯。幂等,重跑不重复写。
+> - **2026-08-28 大修:** ① workflow 于 8/6 新增后 GH schedule 一直没注册触发,**22 天零自动运行**、`schedule` 表断供、ssga Agenda 连日空 —— 靠一次 push 重新注册定时(仍需 cron-job.org 补主力);② 三把凭证里 Gmail 密码 + OAuth token 同时失效,逐一轮换后跑通(入库 7 条行程 / 6 条新闻)。**注:Politico 8 月中旬休刊约两周,那段本就无邮件、正常跳过,非故障。**
 
 - 住在 `~/.claude/local-automation/paris-playbook-daily/`:`run.sh` + `.env` + `run.log`;plist 在 `~/Library/LaunchAgents/com.sa-archive.paris-playbook.plist`(每天 **06:30** 抓当天刊 + 12:15 补抓近 2 天,覆盖周末漏跑/早上没醒)。**06:30 是 2026-06-27 从 07:15 提前的**:Playbook 邮件约 6 点到,而下游 ssga-news-monitor 的早班简报 ~07:50(BST)就发出,Agenda 要赶在那之前入库,所以留半小时 + 重试缓冲。改了 plist 后必须 `launchctl unload && load` 重载才生效
 - **和截图任务的关键区别:本任务要读 Gmail,而 headless `claude -p` 不继承桌面 app 的 Gmail 连接器(CLI 里没有任何 MCP server)。** 所以流程是三段:① `scripts/fetch_playbook_email.py` 用 **IMAP** 直连 Gmail 抓信→JSON;② `scheduled-tasks/paris-playbook-daily/extract_playbook.py` 抽成干净文本;③ headless claude 按 `SKILL_launchd.md` 读文本构 JSON→`scripts/playbook_to_db.py` 入库(幂等)
