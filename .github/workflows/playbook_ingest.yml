@@ -19,6 +19,10 @@ on:
         description: "回溯抓最近几天的 Playbook 邮件(默认 2,补抓可调大)"
         required: false
         default: "2"
+  # 2026-08-28 重新注册定时:workflow 于 2026-08-06 新增后,GH 自带 schedule 一直
+  # 没被 GitHub 注册触发(建后再没 push 过,cron 注册被丢),整整 22 天没自动跑、
+  # schedule 表断供、ssga Agenda 连日空。此次改动即为重新注册。注意 GH schedule
+  # 仍是「尽力而为」(可能延迟/漏跑),主力触发应由 cron-job.org 打 workflow_dispatch。
   schedule:
     - cron: "20 5 * * *"    # 05:20 UTC 兜底(早班邮件 06:50 UTC 之前)
     - cron: "20 15 * * *"   # 15:20 UTC 兜底(晚班邮件 16:50 UTC 之前)
