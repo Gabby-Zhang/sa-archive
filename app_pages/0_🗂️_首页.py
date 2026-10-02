@@ -236,10 +236,9 @@ st.markdown("""
 .otd-empty{ font-size:0.8rem; color:var(--t3); }
 </style>
 """, unsafe_allow_html=True)
-st.markdown(_sa_html, unsafe_allow_html=True)
-
 # 「最新动态」：最近一条 S&A 事件，独立于上面手动置顶的「上一次同框」卡片
 # （置顶卡片保留管理员精选的那条，这里自动跟最新一条大事记走，两条不重复时才显示）
+_latest_html = ""
 if _sa and (not _last or _sa[0].get("id") != _last.get("id")):
     _new = _sa[0]
     _new_date = str(_new["date"])[:10]
@@ -250,17 +249,23 @@ if _sa and (not _last or _sa[0].get("id") != _last.get("id")):
         _new_thumb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(_new["image_url"]))}" '
                       f'loading="lazy" onerror="this.style.display=\'none\'">')
     _latest_html = (
-        f'<div class="sa-hero sa-hero-new">'
+        f'<div class="sa-hero">'
         f'<div class="sa-latest"><div class="sa-label">{t("home_latest_update")}</div>'
         f'<div class="sa-title">{_html.escape(_new.get("title") or "")}{_new_link}</div>'
         f'<div class="sa-date">{_new_date}</div></div>'
         f'{_new_thumb}'
         f'</div>'
     )
-    st.markdown('<style>.sa-hero-new{background:linear-gradient(135deg,#4A90D911,#4A90D922);'
-                'border-color:#4A90D944}.sa-hero-new .sa-thumb{border-color:#4A90D955}</style>',
-                unsafe_allow_html=True)
-    st.markdown(_latest_html, unsafe_allow_html=True)
+
+# 两张卡片都存在时左右并排（都是粉色背景）；只有置顶卡片时就单独占一行
+if _latest_html:
+    _sa_col1, _sa_col2 = st.columns(2)
+    with _sa_col1:
+        st.markdown(_sa_html, unsafe_allow_html=True)
+    with _sa_col2:
+        st.markdown(_latest_html, unsafe_allow_html=True)
+else:
+    st.markdown(_sa_html, unsafe_allow_html=True)
 
 # ── 最终管理员：置顶「上一次同框」展示哪一条（敏感设置，普通管理员看不到）──
 if is_super_admin():
