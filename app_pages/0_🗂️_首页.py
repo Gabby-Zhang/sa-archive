@@ -182,32 +182,34 @@ if _featured_id is not None:
 if _last is None and _sa:
     _last = _sa[0]
 
-# 断糖计数 + 上一次同框
-_sa_html = ""
+# 「上一次同框」做成海报风格：置顶照片铺满当背景，文字叠在上面
+_poster_html = ""
 if _last:
     _last_date = str(_last["date"])[:10]
     try:
         _gap = (_today - _date.fromisoformat(_last_date)).days
     except ValueError:
         _gap = None
-    _gap_html = (f'<div class="sa-num">{t("home_today_sa")}</div>' if _gap == 0 else
-                 f'<div class="sa-num">{_gap} <span class="sa-unit">{t("home_days_unit")}</span></div>')
-    _link = f' <a href="{_html.escape(_last.get("source_url") or "")}" target="_blank" style="text-decoration:none">🔗</a>' if _last.get("source_url") else ""
-    _thumb = ""
-    if _last.get("image_url"):
-        _thumb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(_last["image_url"]))}" '
-                  f'loading="lazy" onerror="this.style.display=\'none\'">')
-    _sa_html = (
-        f'<div class="sa-hero">'
-        f'<div class="sa-counter"><div class="sa-label">{t("home_days_since")}</div>{_gap_html}</div>'
-        f'<div class="sa-latest"><div class="sa-label">{t("home_latest_sa")}</div>'
-        f'<div class="sa-title">{_html.escape(_last.get("title") or "")}{_link}</div>'
-        f'<div class="sa-date">{_last_date}</div></div>'
-        f'{_thumb}'
-        f'</div>'
+    _gap_txt = (t("home_today_sa") if _gap == 0 else f'{_gap} {t("home_days_unit")}')
+    _link = (f' <a href="{_html.escape(_last.get("source_url") or "")}" target="_blank" '
+             f'style="color:inherit;text-decoration:none">🔗</a>') if _last.get("source_url") else ""
+    _bg_url = _gdrive_img(_last["image_url"]) if _last.get("image_url") else ""
+    _poster_bg = (
+        f"background-image:linear-gradient(to top, rgba(0,0,0,.8) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.05) 75%), "
+        f"url('{_html.escape(_bg_url)}')"
+    ) if _bg_url else "background-image:linear-gradient(135deg, #FF6B9D55, #FF6B9D33)"
+    _poster_html = (
+        f'<div class="sa-poster" style="{_poster_bg}">'
+        f'<div class="sa-poster-badge">{t("home_days_since")} · {_gap_txt}</div>'
+        f'<div class="sa-poster-content">'
+        f'<div class="sa-poster-title">{t("home_poster_tagline")}</div>'
+        f'<div class="sa-poster-quote">{_html.escape(_last.get("title") or "")}{_link}</div>'
+        f'<div class="sa-poster-date">{_last_date}</div>'
+        f'</div></div>'
     )
 else:
-    _sa_html = f'<div class="sa-hero"><div class="sa-latest">{t("home_no_sa")}</div></div>'
+    _poster_html = (f'<div class="sa-poster sa-poster-empty"><div class="sa-poster-content">'
+                     f'{t("home_no_sa")}</div></div>')
 
 st.markdown("""
 <style>
@@ -230,6 +232,33 @@ st.markdown("""
 }
 .sa-title { color:var(--t1); font-size:0.95rem; line-height:1.4; }
 .sa-date  { color:var(--t3); font-size:0.75rem; margin-top:0.15rem; }
+.sa-poster {
+    position:relative; border-radius:16px; overflow:hidden;
+    min-height:300px; margin:0.3rem 0 0.8rem;
+    background-size:cover; background-position:center;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    box-shadow:0 6px 28px rgba(0,0,0,0.18);
+}
+.sa-poster-badge {
+    position:absolute; top:1rem; right:1rem;
+    background:rgba(255,255,255,.22); backdrop-filter:blur(6px);
+    color:#fff; font-size:0.78rem; padding:0.3rem 0.8rem; border-radius:999px;
+}
+.sa-poster-content { padding:1.6rem 1.8rem; color:#fff; }
+.sa-poster-title {
+    font-size:1.9rem; font-weight:700; letter-spacing:1px;
+    text-shadow:0 2px 14px rgba(0,0,0,.55); margin-bottom:0.4rem;
+}
+.sa-poster-quote { font-size:0.95rem; opacity:.92; line-height:1.5; }
+.sa-poster-date  { font-size:0.75rem; opacity:.75; margin-top:0.4rem; }
+.sa-poster-empty {
+    background-size:cover; min-height:150px; align-items:center;
+}
+.sa-poster-empty .sa-poster-content { color:var(--t1); padding:1rem 1.5rem; }
+@media (max-width: 640px) {
+    .sa-poster { min-height:220px; }
+    .sa-poster-title { font-size:1.4rem; }
+}
 .otd-card {
     background:var(--cb); border:1px solid var(--bd); border-radius:10px;
     padding:0.8rem 1.1rem; margin:0.2rem 0; min-height:5.2rem;
@@ -261,15 +290,10 @@ if _sa and (not _last or _sa[0].get("id") != _last.get("id")):
         f'</div>'
     )
 
-# 两张卡片都存在时左右并排（都是粉色背景）；只有置顶卡片时就单独占一行
+# 置顶的「上一次同框」做成海报铺满宽度；「最新动态」（如果有）紧跟在下方
+st.markdown(_poster_html, unsafe_allow_html=True)
 if _latest_html:
-    _sa_col1, _sa_col2 = st.columns(2)
-    with _sa_col1:
-        st.markdown(_sa_html, unsafe_allow_html=True)
-    with _sa_col2:
-        st.markdown(_latest_html, unsafe_allow_html=True)
-else:
-    st.markdown(_sa_html, unsafe_allow_html=True)
+    st.markdown(_latest_html, unsafe_allow_html=True)
 
 # ── 最终管理员：置顶「上一次同框」展示哪一条（敏感设置，普通管理员看不到）──
 if is_super_admin():
