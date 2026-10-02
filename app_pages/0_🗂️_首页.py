@@ -160,14 +160,23 @@ from utils.ui import gdrive_to_img_url as _gdrive_img
 
 @st.cache_data(ttl=600, show_spinner=False)
 def _events_lite():
-    """轻量拉取大事记（日期/人物/标题/链接），一次查询驱动首页全部 S&A 模块。"""
+    """轻量拉取大事记（日期/人物/标题/链接/标签），一次查询驱动首页全部 S&A 模块。"""
     try:
         return (get_supabase().table("events")
-                .select("id,date,person,title,source_url,image_url")
+                .select("id,date,person,title,source_url,image_url,tag")
                 .order("date", desc=True)
                 .limit(1000).execute().data) or []
     except Exception:
         return []
+
+# 「最新动态」除了两人同框的 S&A 事件，也收单人但重要的大事（⭐/📣/💌），
+# 比如老塞/小阿一个人的大糖——不强求「同框」，但得是管理员标了重要标签的
+_IMPORTANT_SOLO_TAGS = {"⭐ 重要行程/事件", "📣 重大宣布", "💌 重要分享"}
+
+def _is_homepage_worthy(r):
+    if r.get("person") == "S&A":
+        return True
+    return (r.get("tag") or "").split(" · ", 1)[0].strip() in _IMPORTANT_SOLO_TAGS
 
 _rows   = _events_lite()
 _today  = _date.today()
@@ -269,6 +278,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 # 「最新动态」：排除置顶那条之后，最近的 S&A 大事记，固定展示最多 2 条、左右对称
 # （只有 1 条时先单独占一行；等第 2 条大事出现，自然会变成两个方块并排）
+_SHORT_PERSON = {"Stéphane Séjourné": "🔵 Séjourné", "Gabriel Attal": "🟡 Attal"}
+
 def _build_update_card(ev):
     _d = str(ev["date"])[:10]
     _lk = (f' <a href="{_html.escape(ev.get("source_url") or "")}" target="_blank" '
@@ -277,9 +288,11 @@ def _build_update_card(ev):
     if ev.get("image_url"):
         _tb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(ev["image_url"]))}" '
                f'loading="lazy" onerror="this.style.display=\'none\'">')
+    _who = _SHORT_PERSON.get(ev.get("person") or "")
+    _label = f'{t("home_latest_update")} · {_who}' if _who else t("home_latest_update")
     return (
         f'<div class="sa-hero">'
-        f'<div class="sa-latest"><div class="sa-label">{t("home_latest_update")}</div>'
+        f'<div class="sa-latest"><div class="sa-label">{_label}</div>'
         f'<div class="sa-title">{_html.escape(ev.get("title") or "")}{_lk}</div>'
         f'<div class="sa-date">{_d}</div></div>'
         f'{_tb}'
@@ -287,7 +300,8 @@ def _build_update_card(ev):
     )
 
 _pinned_id = _last.get("id") if _last else None
-_update_candidates = [r for r in _sa if r.get("id") != _pinned_id][:2]
+_update_candidates = [r for r in _rows
+                       if r.get("date") and r.get("id") != _pinned_id and _is_homepage_worthy(r)][:2]
 
 # 置顶的「上一次同框」做成海报铺满宽度；「最新动态」（如果有）紧跟在下方
 st.markdown(_poster_html, unsafe_allow_html=True)
