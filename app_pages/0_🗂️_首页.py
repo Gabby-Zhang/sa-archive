@@ -169,14 +169,13 @@ def _events_lite():
     except Exception:
         return []
 
-# 「最新动态」除了两人同框的 S&A 事件，也收单人但重要的大事（⭐/📣/💌），
-# 比如老塞/小阿一个人的大糖——不强求「同框」，但得是管理员标了重要标签的
-_IMPORTANT_SOLO_TAGS = {"⭐ 重要行程/事件", "📣 重大宣布", "💌 重要分享"}
+# 「最新动态」收所有打了重要标签的大事（⭐/📣/💌），不限 person——同框的 S&A
+# 事件和老塞/小阿各自的大糖都能收；但不再因为 person=S&A 就自动合格——未经证实的
+# 绯闻、日常新闻哪怕标的是 S&A 也不该自动上首页，得管理员明确打了重要标签才算数
+_IMPORTANT_HOME_TAGS = {"⭐ 重要行程/事件", "📣 重大宣布", "💌 重要分享"}
 
 def _is_homepage_worthy(r):
-    if r.get("person") == "S&A":
-        return True
-    return (r.get("tag") or "").split(" · ", 1)[0].strip() in _IMPORTANT_SOLO_TAGS
+    return (r.get("tag") or "").split(" · ", 1)[0].strip() in _IMPORTANT_HOME_TAGS
 
 _rows   = _events_lite()
 _today  = _date.today()
