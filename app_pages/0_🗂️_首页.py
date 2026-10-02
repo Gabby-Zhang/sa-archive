@@ -269,31 +269,38 @@ st.markdown("""
 .otd-empty{ font-size:0.8rem; color:var(--t3); }
 </style>
 """, unsafe_allow_html=True)
-# 「最新动态」：最近一条 S&A 事件，独立于上面手动置顶的「上一次同框」卡片
-# （置顶卡片保留管理员精选的那条，这里自动跟最新一条大事记走，两条不重复时才显示）
-_latest_html = ""
-if _sa and (not _last or _sa[0].get("id") != _last.get("id")):
-    _new = _sa[0]
-    _new_date = str(_new["date"])[:10]
-    _new_link = (f' <a href="{_html.escape(_new.get("source_url") or "")}" target="_blank" '
-                 f'style="text-decoration:none">🔗</a>') if _new.get("source_url") else ""
-    _new_thumb = ""
-    if _new.get("image_url"):
-        _new_thumb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(_new["image_url"]))}" '
-                      f'loading="lazy" onerror="this.style.display=\'none\'">')
-    _latest_html = (
+# 「最新动态」：排除置顶那条之后，最近的 S&A 大事记，固定展示最多 2 条、左右对称
+# （只有 1 条时先单独占一行；等第 2 条大事出现，自然会变成两个方块并排）
+def _build_update_card(ev):
+    _d = str(ev["date"])[:10]
+    _lk = (f' <a href="{_html.escape(ev.get("source_url") or "")}" target="_blank" '
+           f'style="text-decoration:none">🔗</a>') if ev.get("source_url") else ""
+    _tb = ""
+    if ev.get("image_url"):
+        _tb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(ev["image_url"]))}" '
+               f'loading="lazy" onerror="this.style.display=\'none\'">')
+    return (
         f'<div class="sa-hero">'
         f'<div class="sa-latest"><div class="sa-label">{t("home_latest_update")}</div>'
-        f'<div class="sa-title">{_html.escape(_new.get("title") or "")}{_new_link}</div>'
-        f'<div class="sa-date">{_new_date}</div></div>'
-        f'{_new_thumb}'
+        f'<div class="sa-title">{_html.escape(ev.get("title") or "")}{_lk}</div>'
+        f'<div class="sa-date">{_d}</div></div>'
+        f'{_tb}'
         f'</div>'
     )
 
+_pinned_id = _last.get("id") if _last else None
+_update_candidates = [r for r in _sa if r.get("id") != _pinned_id][:2]
+
 # 置顶的「上一次同框」做成海报铺满宽度；「最新动态」（如果有）紧跟在下方
 st.markdown(_poster_html, unsafe_allow_html=True)
-if _latest_html:
-    st.markdown(_latest_html, unsafe_allow_html=True)
+if len(_update_candidates) == 2:
+    _uc1, _uc2 = st.columns(2)
+    with _uc1:
+        st.markdown(_build_update_card(_update_candidates[0]), unsafe_allow_html=True)
+    with _uc2:
+        st.markdown(_build_update_card(_update_candidates[1]), unsafe_allow_html=True)
+elif len(_update_candidates) == 1:
+    st.markdown(_build_update_card(_update_candidates[0]), unsafe_allow_html=True)
 
 # ── 最终管理员：置顶「上一次同框」展示哪一条（敏感设置，普通管理员看不到）──
 if is_super_admin():

@@ -68,7 +68,7 @@ _S = {
     "home_today_sa":    {"zh": "就是今天 💗",             "en": "Today 💗"},
     "home_latest_sa":   {"zh": "💗 上一次同框",           "en": "💗 Last S&A moment"},
     "home_poster_tagline":{"zh": "他是我的一生挚爱",       "en": "He is my soulmate"},
-    "home_latest_update":{"zh": "🎉 终于回关！",           "en": "🎉 Finally followed back!"},
+    "home_latest_update":{"zh": "🆕 最新动态",             "en": "🆕 Latest update"},
     "home_no_sa":       {"zh": "暂无同框记录",            "en": "No S&A moments yet"},
     "home_otd":         {"zh": "📅 历史上的今天",         "en": "📅 On this day"},
     "home_otd_empty":   {"zh": "往年的今天暂无记录",      "en": "Nothing on this day in past years"},
