@@ -212,18 +212,22 @@ else:
 st.markdown("""
 <style>
 .sa-hero {
-    display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;
+    display:flex; gap:1rem; align-items:center; flex-wrap:nowrap;
     background:linear-gradient(135deg, #FF6B9D11, #FF6B9D22);
     border:1px solid #FF6B9D44; border-radius:12px;
-    padding:1rem 1.5rem; margin:0.3rem 0 0.8rem;
+    padding:1rem 1.2rem; margin:0.3rem 0 0.8rem;
+    min-height:9.5rem; box-sizing:border-box;
 }
-.sa-counter { text-align:center; min-width:130px; }
+.sa-counter { text-align:center; min-width:90px; flex-shrink:0; }
 .sa-num   { font-size:2.2rem; font-weight:bold; color:#FF6B9D; line-height:1.1; }
 .sa-unit  { font-size:1rem; font-weight:normal; }
 .sa-label { font-size:0.72rem; color:var(--t2); margin-bottom:0.15rem; }
-.sa-latest{ flex:1; min-width:200px; }
-.sa-thumb { width:84px; height:84px; object-fit:cover; border-radius:10px;
+.sa-latest{ flex:1; min-width:0; }
+.sa-thumb { width:68px; height:68px; object-fit:cover; border-radius:10px;
             border:1px solid #FF6B9D55; flex-shrink:0; }
+@media (max-width: 640px) {
+    .sa-hero { flex-wrap:wrap; }
+}
 .sa-title { color:var(--t1); font-size:0.95rem; line-height:1.4; }
 .sa-date  { color:var(--t3); font-size:0.75rem; margin-top:0.15rem; }
 .otd-card {
