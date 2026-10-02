@@ -267,30 +267,6 @@ if _latest_html:
 else:
     st.markdown(_sa_html, unsafe_allow_html=True)
 
-# 「最新动态」：最近一条 S&A 事件，独立于上面手动置顶的「上一次同框」卡片
-# （置顶卡片保留管理员精选的那条，这里自动跟最新一条大事记走，两条不重复时才显示）
-if _sa and (not _last or _sa[0].get("id") != _last.get("id")):
-    _new = _sa[0]
-    _new_date = str(_new["date"])[:10]
-    _new_link = (f' <a href="{_html.escape(_new.get("source_url") or "")}" target="_blank" '
-                 f'style="text-decoration:none">🔗</a>') if _new.get("source_url") else ""
-    _new_thumb = ""
-    if _new.get("image_url"):
-        _new_thumb = (f'<img class="sa-thumb" src="{_html.escape(_gdrive_img(_new["image_url"]))}" '
-                      f'loading="lazy" onerror="this.style.display=\'none\'">')
-    _latest_html = (
-        f'<div class="sa-hero sa-hero-new">'
-        f'<div class="sa-latest"><div class="sa-label">{t("home_latest_update")}</div>'
-        f'<div class="sa-title">{_html.escape(_new.get("title") or "")}{_new_link}</div>'
-        f'<div class="sa-date">{_new_date}</div></div>'
-        f'{_new_thumb}'
-        f'</div>'
-    )
-    st.markdown('<style>.sa-hero-new{background:linear-gradient(135deg,#4A90D911,#4A90D922);'
-                'border-color:#4A90D944}.sa-hero-new .sa-thumb{border-color:#4A90D955}</style>',
-                unsafe_allow_html=True)
-    st.markdown(_latest_html, unsafe_allow_html=True)
-
 # ── 最终管理员：置顶「上一次同框」展示哪一条（敏感设置，普通管理员看不到）──
 if is_super_admin():
     with st.expander("⚙️ 设置「上一次同框」置顶（仅最终管理员可见）", expanded=False):
