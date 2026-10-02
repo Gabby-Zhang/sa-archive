@@ -202,8 +202,8 @@ if _last:
         f'<div class="sa-poster" style="{_poster_bg}">'
         f'<div class="sa-poster-badge">{t("home_days_since")} · {_gap_txt}</div>'
         f'<div class="sa-poster-content">'
-        f'<div class="sa-poster-title">{t("home_poster_tagline")}</div>'
-        f'<div class="sa-poster-quote">{_html.escape(_last.get("title") or "")}{_link}</div>'
+        f'<div class="sa-poster-tagline">{t("home_poster_tagline")}</div>'
+        f'<div class="sa-poster-title">{_html.escape(_last.get("title") or "")}{_link}</div>'
         f'<div class="sa-poster-date">{_last_date}</div>'
         f'</div></div>'
     )
@@ -245,11 +245,14 @@ st.markdown("""
     color:#fff; font-size:0.78rem; padding:0.3rem 0.8rem; border-radius:999px;
 }
 .sa-poster-content { padding:1.6rem 1.8rem; color:#fff; }
-.sa-poster-title {
-    font-size:1.9rem; font-weight:700; letter-spacing:1px;
-    text-shadow:0 2px 14px rgba(0,0,0,.55); margin-bottom:0.4rem;
+.sa-poster-tagline {
+    font-size:0.82rem; font-weight:600; color:#FF9EC1; letter-spacing:0.5px;
+    text-shadow:0 1px 8px rgba(0,0,0,.5); margin-bottom:0.3rem;
 }
-.sa-poster-quote { font-size:0.95rem; opacity:.92; line-height:1.5; }
+.sa-poster-title {
+    font-size:1.6rem; font-weight:700; line-height:1.4;
+    text-shadow:0 2px 14px rgba(0,0,0,.55); margin-bottom:0.3rem;
+}
 .sa-poster-date  { font-size:0.75rem; opacity:.75; margin-top:0.4rem; }
 .sa-poster-empty {
     background-size:cover; min-height:150px; align-items:center;
@@ -257,7 +260,7 @@ st.markdown("""
 .sa-poster-empty .sa-poster-content { color:var(--t1); padding:1rem 1.5rem; }
 @media (max-width: 640px) {
     .sa-poster { min-height:220px; }
-    .sa-poster-title { font-size:1.4rem; }
+    .sa-poster-title { font-size:1.2rem; }
 }
 .otd-card {
     background:var(--cb); border:1px solid var(--bd); border-radius:10px;
