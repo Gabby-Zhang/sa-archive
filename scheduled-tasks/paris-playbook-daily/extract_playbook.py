@@ -221,7 +221,7 @@ def filter_media(text: str) -> str:
             cp = max([p for p in colon_pos if p <= m.start()], default=None)
             station = nearest(stations, m.start()) if cp is not None and m.start() - cp <= 220 else ""
             at_ = nearest(times, m.start())
-            tail = re.split(r"[.…]", after, 1)[0]
+            tail = re.split(r"[.…]", after, maxsplit=1)[0]
             role = ""
             mr = re.match(r"\s*,\s*([^,]+)", tail)
             if mr:
@@ -229,7 +229,9 @@ def filter_media(text: str) -> str:
             verb = "est l'invité de"
 
         # 站名校验:空 / 过长 / 连续全大写词(促销小标题) = 噪音,丢
-        if not station or len(station) > 24 or _MEDIA_JUNK.search(station):
+        # 台名不会带逗号:「Au programme, ce coup-ci :」这类促销小标题也是「xxx :」格式,
+        # 若促销栏落在 MÉDIAS 3000 字窗口内会被误当台名(2026-10-07 测出)
+        if not station or len(station) > 24 or "," in station or _MEDIA_JUNK.search(station):
             continue
         line = f"[当天] {person} {verb} {station}"
         if at_:
@@ -237,6 +239,55 @@ def filter_media(text: str) -> str:
         if role:
             line += f" ({role})"
         out.append(line + ".")
+    return "\n".join(out)
+
+
+# 法语月份 → 月号。用于从正文/促销栏里认出「13 octobre」这类**未来日期**。
+_MONTHS = {"janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5,
+           "juin": 6, "juillet": 7, "août": 8, "aout": 8, "septembre": 9,
+           "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12}
+_DATE_RE = re.compile(r"\b(1er|[0-3]?\d)\s+(" + "|".join(_MONTHS) + r")\b", re.I)
+
+
+def _resolve_date(day: str, month: str, email_date: str):
+    """「13 octobre」→ ISO 日期;年份取发信年,若已过去则顺延到下一年。"""
+    from datetime import date
+    try:
+        sent = date.fromisoformat(email_date[:10])
+        d = date(sent.year, _MONTHS[month.lower()], 1 if day.lower() == "1er" else int(day))
+    except (ValueError, KeyError):
+        return None
+    if d < sent:
+        d = d.replace(year=d.year + 1)
+    return d.isoformat()
+
+
+def filter_future(text: str, agenda: str, email_date: str) -> str:
+    """AGENDA/MÉDIAS 以外的地方(正文、底部 Politico 自家活动促销栏)提到两人**未来**
+    出场的句子。AGENDA 只管当天/周末,而「10 月 13 日竞争力峰会将专访 Séjourné」这种
+    预告写在促销栏、日期还在两句之前的小标题里——过去 filter_agenda 看不到(不在
+    AGENDA 段),filter_news 只取 AGENDA 之前的正文、且只带前后各一句(够不着日期),
+    SKILL 又把它当「顺带提及」丢掉 → 2026-10-07 整条漏掉。
+    做法:提到两人的句子,往前回看 3 句找「<日> <月>」日期,找到且晚于发信日才输出,
+    行首标 [YYYY-MM-DD],连同日期所在句到人名句的上下文一起给 agent 判断。"""
+    if not email_date:
+        return ""
+    rest = text.replace(agenda, " ") if agenda else text
+    sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", rest) if s.strip()]
+    out, seen = [], set()
+    for i, s in enumerate(sents):
+        if not _PERSON.search(s):
+            continue
+        for j in range(i, max(-1, i - 4), -1):
+            dm = _DATE_RE.search(sents[j])
+            if not dm:
+                continue
+            iso = _resolve_date(dm.group(1), dm.group(2), email_date)
+            if iso and iso > email_date[:10] and (iso, i) not in seen:
+                seen.add((iso, i))
+                ctx = " ".join(sents[j:i + 1])
+                out.append(f"[{iso}] {ctx[:700]}")
+            break
     return "\n".join(out)
 
 
@@ -310,6 +361,10 @@ def main():
             print("--- AGENDA · ATTAL/SÉJOURNÉ(以两人为主语的行程句 + 当天电台/电视露出,[]内为归属日)---")
             print(combined if combined else "(今日 AGENDA/MÉDIAS 无 Attal/Séjourné → schedule = [])")
             fn = filter_news(body)
+            ff = filter_future(text, agenda, date)
+            if ff:
+                print("\n--- 未来行程预告 · ATTAL/SÉJOURNÉ(AGENDA 外提到两人+具体日期的段落,[]内为已解析的活动日期)---")
+                print(ff)
             print("\n--- NEWS 相关段(正文里提到两人的句子+上下文,供抽新闻)---")
             print(fn if fn else "(正文未提及两人 → 该邮件 news 可为 [])")
         print("\n")

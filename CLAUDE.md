@@ -30,6 +30,7 @@ pip install -r requirements.txt
   - `paris-playbook-daily/` — 每天 07:07 读 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→走 `scripts/playbook_to_db.py` 入库
     - `SKILL.md` — agent 指令
     - `extract_playbook.py` — 邮件正文提取器。**默认精简模式**只输出两人为主语的行程句(标注 `[当天]`/`[周六]`/`[周日]` + 合并带时间的延续句)和提到两人的正文段,输出 ~3KB;`--full` 兜底打印完整 AGENDA+正文。精简是刻意的:旧版把 35KB+ 原文丢给 agent,曾让某天运行在插入前烧光预算、整天没入库
+    - **「未来行程预告」区块(`filter_future`,2026-10-07 加)**:AGENDA/MÉDIAS 之外(正文、底部 Politico 自家活动促销栏)提到两人且前 3 句内带「<日> <月>」未来日期的段落,行首标解析好的 `[YYYY-MM-DD]`,SKILL 按此收进 schedule。起因:Playbook 预告「10 月 13 日竞争力峰会专访 Séjourné」写在促销栏、日期在两句前的小标题里,旧逻辑三处都够不着、整条漏掉
 
 ### 截图入库 launchd(`attal-screenshot-watch`,**不在 scheduled-tasks/**)
 

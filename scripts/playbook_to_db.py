@@ -82,13 +82,14 @@ def insert_schedule(items: list[dict], email_subject: str) -> int:
     try:
         existing = (
             db.table("schedule")
-            .select("event_date,title,source_url")
-            .eq("person", "Gabriel Attal")
+            .select("person,event_date,title,source_url")
             .ilike("description", f"%{PLAYBOOK_TAG}%")
             .execute().data or []
         )
+        # 曾经只查 Gabriel Attal 的旧行 → Séjourné 的行程从不去重,重跑/连续几天
+        # 重复出现的预告会重复入库。现在两人都查,键里带上 person。
         existing_keys = {
-            (r["event_date"], r["title"][:40].lower())
+            (r.get("person", ""), r["event_date"], (r["title"] or "")[:40].lower())
             for r in existing
         }
     except Exception as e:
@@ -97,7 +98,8 @@ def insert_schedule(items: list[dict], email_subject: str) -> int:
 
     inserted = 0
     for item in items:
-        key = (item.get("event_date",""), item.get("title","")[:40].lower())
+        key = (item.get("person", "Gabriel Attal"), item.get("event_date",""),
+               item.get("title","")[:40].lower())
         if key in existing_keys:
             print(f"   ↩️  Skip (already exists): {item.get('event_date')} · {item.get('title','')[:50]}")
             continue
