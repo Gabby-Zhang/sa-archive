@@ -41,6 +41,11 @@ def _parse_ics(text: str) -> list:
                 pass
         elif line.startswith("LOCATION:"):
             current["location"] = line[9:].replace("\\,", ",").strip()
+        elif line.startswith("DESCRIPTION:") and "description" not in current:
+            # 只取事件本身的第一条（后面 VALARM 里也有 DESCRIPTION）；含 [EU_AV] 即影像库来源
+            current["description"] = line[12:].replace("\\n", " ").replace("\\,", ",").strip()
+        elif line.startswith("URL:"):
+            current["source_url"] = line[4:].strip()
     return events
 
 
@@ -66,6 +71,28 @@ def get_attal_schedule() -> list:
             .order("event_date", desc=False)
             .execute().data)
     return rows or []
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_sejourne_db_schedule() -> list:
+    """Supabase schedule 表里的 Séjourné 行程（Playbook 入库 + 新闻监控抽取的 [NEWS_AUTO]）。
+    失败返回空列表（左栏主数据仍是 ICS，不让这里拖垮整栏）。"""
+    try:
+        rows = (get_supabase_admin()
+                .table("schedule")
+                .select("*")
+                .eq("person", "Stéphane Séjourné")
+                .order("event_date", desc=False)
+                .execute().data) or []
+    except Exception:
+        return []
+    return [{
+        "title":       r.get("title", ""),
+        "date":        str(r.get("event_date", ""))[:10],
+        "location":    r.get("location", "") or "",
+        "source_url":  r.get("source_url", "") or "",
+        "description": r.get("description", "") or "",
+    } for r in rows if r.get("title") and r.get("event_date")]
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -124,6 +151,11 @@ def _event_card(title: str, ev_date: str, location: str,
         an_badge = (f'<span style="color:{SEJOURNE_COLOR};font-size:0.62rem;'
                     f'border:1px solid {SEJOURNE_COLOR};border-radius:3px;padding:0.02rem 0.3rem;'
                     f'margin-left:0.4rem">🇪🇺 例会·推测</span>')
+    elif description and "[NEWS_AUTO]" in description:
+        # 新闻监控从当天 SS 报道里抽出的活动（Sonnet 抽取，可能有误）
+        an_badge = (f'<span style="color:#888;font-size:0.62rem;'
+                    f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
+                    f'margin-left:0.4rem">📰 新闻</span>')
     elif description and "[EU_AV]" in description:
         # 来自欧盟影像库的会议线索
         an_badge = (f'<span style="color:#888;font-size:0.62rem;'
@@ -376,14 +408,25 @@ with col_s:
             st.error(f"读取失败：{_e}")
             s_events = []
 
+    # 补充源 ⓪：Supabase schedule 表里的 SS 行程（Playbook + 新闻监控 [NEWS_AUTO]），
+    # 同日同标题的跳过
+    _known = {(str(e.get("date", ""))[:10], e.get("title", "").strip().lower()) for e in s_events}
+    for _r in get_sejourne_db_schedule():
+        if (_r["date"], _r["title"].strip().lower()) in _known:
+            continue
+        _known.add((_r["date"], _r["title"].strip().lower()))
+        s_events.append(_r)
+
     # 官方日历已有的日期，作为后续两个补充源的去重基准
     _ics_dates = {str(e.get("date", ""))[:10] for e in s_events}
+    # 影像库条目已由 sejourn-calendar 写进 ICS（[EU_AV]）的，按链接去重
+    _known_urls = {e.get("source_url") for e in s_events if e.get("source_url")}
 
     # 补充源 ①：欧盟影像库——日历未列出当天行程时，把影像条目当作会议线索加进来
     # （已加入日历的同一天就跳过，避免重复——“看一下是否已有重复，没有才加”）
     _av_all = get_sejourne_av()       # 完整列表留给底部缩略图框；这里按日期去重后并进行程
     for _it in _av_all:
-        if _it["date"] in _ics_dates:
+        if _it["date"] in _ics_dates or _it["url"] in _known_urls:
             continue
         _ics_dates.add(_it["date"])
         s_events.append({
