@@ -23,7 +23,7 @@ pip install -r requirements.txt
   - `anniversaries.py` / `media_spectrum.py` / `news_fetcher.py` — 对应页面的业务逻辑
 - `scripts/` — 数据写入脚本,**不被网页调用**,由本机 Claude 定时任务和 cron 触发:
   - `playbook_to_db.py` — Politico 邮件抽取结果入库(幂等,自动去重)
-  - `screenshot_to_db.py` — 行程截图解析结果入库(幂等)。**入口是 launchd 任务**(见下「截图入库 launchd」),不在 `scheduled-tasks/`
+  - `screenshot_to_db.py` — 行程截图解析结果入库(幂等)。**入口是 launchd 任务**(见下「截图入库 launchd」与「Séjourné 截图入库」),不在 `scheduled-tasks/`
   - `photo_to_gallery.py` — 照片入图库
   - 其余:抓新闻、备份、纪念日通知等
 - `scheduled-tasks/` — 本机 Claude Code 定时任务的**权威副本**(指令 + 解析逻辑),纳入版本控制做备份。harness 实际从 `~/.claude/scheduled-tasks/<任务名>/` 读取,那边的文件是**软链接指回本目录**,所以改这里两边同步:
@@ -39,6 +39,18 @@ pip install -r requirements.txt
   - **修法:系统设置→隐私与安全性→完全磁盘访问,加入 `/bin/bash`(文件选择器按 ⌘⇧G 输 `/bin/bash`)和 `Claude.app`**。这步只能手动点,TCC 不能用命令授予
   - `run.sh` 已加固:开头显式 `ls "$WATCH"` 探一次,访问不了就大声报错 + `exit 1`,不再伪装成「无图」
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.screenshot-watch`,看 `run.log`。**应急绕过 launchd**:可在有 FDA 的交互式会话里直接 Read 图→拼 `{"schedule":[...]}` JSON→`python3 scripts/screenshot_to_db.py` 入库→删图(2026-06-21 就是这么把积压的两条救回来的)
+
+### Séjourné 截图入库(`sejourne-screenshot-watch`,2026-10-13 加)
+
+Attal 截图任务的 Séjourné 版:iPhone 把 SS 行程截图存进 iCloud「**Sejourne行程截图**」(无重音,避免 macOS 文件名 Unicode NFC/NFD 坑)→ launchd `com.sa-archive.sejourne-screenshot-watch`(每天 8/12/16/20:**20**,和 Attal 的 :15 错开)→ 写 `schedule`(`person = Stéphane Séjourné`)/ `images`。ssga-news-monitor 的邮件 Agenda 和本站行程日历自动显示,不用改那边。
+
+- **逻辑全在 repo**:`local-automation/sejourne-screenshot-watch/` —— `process.py`(驱动)、`PROMPT.md`(给 Claude 的识别指令)、`run.sh`(launchd 包装)、`install.sh`(一次性安装:建文件夹 + 生成/加载 plist + 自检)。plist 直接指向 repo 里的 `run.sh`,`git pull` 即更新;只有 `run.log` / 可选 `.env` 在 `~/.claude/local-automation/sejourne-screenshot-watch/`。
+- **和 Attal 那套的设计差别:Claude 只看图、输出 JSON**(`claude -p` 只开 Read 工具),入库 / 挪文件 / 校验全由 `process.py` 确定性完成,模型不直接写库。
+- **日期校验(吸取 2026-10-12 Attal RMC/BFMTV 截图被读成 08-27 的教训)**:相对日期以**截图保存时间**(文件 mtime)换算;识别出的日期必须在保存日 **-21 ~ +120 天**内,否则不入库、图挪进「待人工」。
+- 处理后的图**不删**:成功 → `已入库/<日期>/`,无法识别 / 日期可疑 → `待人工/`,入库失败 → 原地保留下次重试(且 exit 1 + 告警邮件「⚠️ Séjourné 截图入库报错」)。iCloud 未下载的占位符(`.xxx.icloud`)跳过并触发下载。HEIC 先 `sips` 转 JPEG。
+- **凭据零复制**:`run.sh` 依次载入 `attal-screenshot-watch/.env`(OAuth token)、`paris-playbook-daily/.env`(Gmail 告警)、本任务 `.env`(可覆盖,也可设 `WATCH` / `PYTHON` / `CLAUDE_BIN`)。Supabase 凭据照旧读 `.streamlit/secrets.toml`。
+- **TCC 权限同 Attal**:`/bin/bash` 和 `Claude.app` 要有完全磁盘访问(装过 Attal 那套就已有)。`install.sh` 在 Terminal 里没法自检这项(Terminal 自带权限会误判通过),装完用 kickstart 真跑一次看 `run.log`。
+- 安装:`bash local-automation/sejourne-screenshot-watch/install.sh`;手动跑:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.sejourne-screenshot-watch`;只看识别不入库:`python3 local-automation/sejourne-screenshot-watch/process.py --watch "<文件夹>" --repo . --dry-run`。
 
 ### Paris Playbook 入库(**2026-08-06 起 = GitHub Actions CI `playbook_ingest.yml`**,原 launchd 已退役)
 
