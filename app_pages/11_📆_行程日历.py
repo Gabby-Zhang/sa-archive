@@ -167,7 +167,7 @@ def _event_card(title: str, ev_date: str, location: str,
                     f'border:1px solid {SEJOURNE_COLOR};border-radius:3px;padding:0.02rem 0.3rem;'
                     f'margin-left:0.4rem">🏛️ 议会议程</span>')
     elif description and "[NEWS_AUTO]" in description:
-        # 新闻监控从当天 SS 报道里抽出的活动（Sonnet 抽取，可能有误）
+        # 新闻监控从当天 SS/GA 报道里抽出的活动（Sonnet 抽取，可能有误）
         an_badge = (f'<span style="color:#888;font-size:0.62rem;'
                     f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
                     f'margin-left:0.4rem">📰 新闻</span>')
