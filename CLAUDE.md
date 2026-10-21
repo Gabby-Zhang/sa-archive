@@ -64,6 +64,11 @@ pip install -r requirements.txt
 - repo 里只纳管逻辑(`SKILL_launchd.md`、`extract_playbook.py`、`scripts/fetch_playbook_email.py`、`scripts/send_alert.py`),infra(run.sh/.env/plist)只在 `~/.claude`,与截图任务一致
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.paris-playbook`,看 `run.log`。**应急手动补跑**:在有 Gmail 连接器的交互式会话里仍可走旧 `SKILL.md`(Gmail MCP 版,保留作兜底)
 
+### 手动加行程 / 新闻(GitHub Actions)
+
+- **`add_schedule.yml`**(Actions → "Add schedule entry (manual)",2026-10-21 加):填 人物/日期/标题/地点/链接/备注,`scripts/add_schedule.py` 用仓库 secret `SUPABASE_SERVICE_KEY` 写进 `schedule`(`description` 带 `[MANUAL]`),行程日历和 ssga-news-monitor 邮件 Agenda 都会读到。按 人+日期+链接/标题 幂等。用于新闻里有、自动抽取没收到的行程。**放在本仓库是因为只有这里配了 `SUPABASE_SERVICE_KEY`**(ssga-news-monitor 没配)
+- `add_news.yml`:同理手动补一条新闻进 `news`
+
 ## 数据库(Supabase)
 
 主要表:`news`(新闻)、`schedule`(行程)、`events`(大事记)、`images`(图库)、`files`(上传文件)、`audit_log`(操作日志)。

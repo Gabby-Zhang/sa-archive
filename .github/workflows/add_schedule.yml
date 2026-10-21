@@ -1,0 +1,59 @@
+name: Add schedule entry (manual)
+
+# 手动往 Supabase `schedule` 表加一条行程(sa-archive 行程日历 + ssga-news-monitor 邮件 Agenda都会读到)。
+# Actions → "Add schedule entry" → Run workflow,填表即可。幂等,重跑不重复写。
+on:
+  workflow_dispatch:
+    inputs:
+      person:
+        description: 'Person'
+        required: true
+        type: choice
+        options:
+          - Gabriel Attal
+          - Stéphane Séjourné
+          - S&A
+      event_date:
+        description: 'Date (YYYY-MM-DD)'
+        required: true
+      title:
+        description: 'Title (e.g. Débat présidentiel sur LCI)'
+        required: true
+      location:
+        description: 'Location (optional)'
+        required: false
+        default: ''
+      source_url:
+        description: 'Source article URL (optional)'
+        required: false
+        default: ''
+      note:
+        description: 'Note, e.g. source outlet (optional)'
+        required: false
+        default: ''
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      # 输入一律走 env,不直接插进 shell,避免注入
+      - name: Insert into schedule
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PERSON: ${{ inputs.person }}
+          EVENT_DATE: ${{ inputs.event_date }}
+          TITLE: ${{ inputs.title }}
+          LOCATION: ${{ inputs.location }}
+          SOURCE_URL: ${{ inputs.source_url }}
+          NOTE: ${{ inputs.note }}
+        run: python scripts/add_schedule.py
