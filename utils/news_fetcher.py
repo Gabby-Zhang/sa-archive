@@ -113,6 +113,14 @@ MEDIA_FEEDS = [
     {"url": "https://news.google.com/rss/search?q=Gabriel+Attal&hl=fr&gl=FR&ceid=FR:fr",                              "source": ""},
     {"url": "https://news.google.com/rss/search?q=Stéphane+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                          "source": ""},
     {"url": "https://news.google.com/rss/search?q=Attal+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                             "source": ""},
+    # Séjourné 其它语种：每个 Google News 语言版只返回本语种稿件,他是欧盟委员,
+    # 出访常只有外语媒体报(2026-10-22/23 澳大利亚之行只有意大利 ANSA 报了)
+    {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=en-GB&gl=GB&ceid=GB:en",                 "source": ""},
+    {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=it&gl=IT&ceid=IT:it",                    "source": ""},
+    {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=de&gl=DE&ceid=DE:de",                    "source": ""},
+    {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=es&gl=ES&ceid=ES:es",                    "source": ""},
+    # ANSA 布鲁塞尔栏目(ansa.it/europa)最稳定地报他的行程,单独定向一路
+    {"url": "https://news.google.com/rss/search?q=Séjourné+site:ansa.it&hl=it&gl=IT&ceid=IT:it",                     "source": "ansa.it"},
     # Le Canard Enchaîné（无 RSS，通过 Google News 间接捕捉）
     {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Attal&hl=fr&gl=FR&ceid=FR:fr",                      "source": "lecanardenchaine.fr"},
     {"url": "https://news.google.com/rss/search?q=Canard+Enchaîné+Séjourné&hl=fr&gl=FR&ceid=FR:fr",                   "source": "lecanardenchaine.fr"},
