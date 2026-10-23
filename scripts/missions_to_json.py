@@ -7,7 +7,7 @@
 幂等:按出发日期合并。已有条目里手写的字段原样保留——中文摘要(paris/other)、日历确认的巴黎日期(calp)、
 修正过的路线(stops_fixed=true 时的 stops);只刷新费用、事由原文等官方字段。
 新出现的条目先把法语事由放进 other 顶着(fr=true),中文摘要要手动补进 JSON。
-Location 里出现 utils/missions.py 的 CITIES 没有的地名会直接报错,先补坐标再跑。
+Location 里出现 utils/missions.py 的 CITIES / CITY_COUNTRY 没有的地名会直接报错,先补坐标和国家再跑。
 """
 import json
 import pathlib
@@ -18,7 +18,7 @@ from datetime import datetime
 import openpyxl
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from utils.missions import CITIES, DATA_PATH  # noqa: E402
+from utils.missions import CITIES, CITY_COUNTRY, COUNTRY_LABELS, DATA_PATH  # noqa: E402
 
 # 手写字段:重跑时不覆盖
 MANUAL_FIELDS = ("paris", "other", "fr", "calp", "note")
@@ -56,6 +56,12 @@ def main():
     missing = sorted({s for r in rows for s in r["stops"]} - CITIES.keys())
     if missing:
         sys.exit(f"❌ 这些地名没有坐标,先在 utils/missions.py 的 CITIES 里补上再跑:{missing}")
+    no_country = sorted({s for r in rows for s in r["stops"]} - CITY_COUNTRY.keys())
+    if no_country:
+        sys.exit(f"❌ 这些地名没写所在国家,先在 utils/missions.py 的 CITY_COUNTRY 里补上再跑:{no_country}")
+    no_label = sorted({CITY_COUNTRY[s] for r in rows for s in r["stops"]} - COUNTRY_LABELS.keys())
+    if no_label:
+        print(f"⚠️ 这些国家地图上不会标国名(COUNTRY_LABELS 里没有位置),需要的话补上:{no_label}")
 
     old = {}
     if DATA_PATH.exists():
