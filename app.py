@@ -285,6 +285,7 @@ _pages = [
     st.Page("app_pages/1_📅_大事记.py",    title=t("nav_timeline"),  icon="📖"),
     st.Page("app_pages/3_📰_新闻.py",      title=t("nav_news"),      icon="📰"),
     st.Page("app_pages/11_📆_行程日历.py", title=t("nav_schedule"),  icon="📆"),
+    st.Page("app_pages/14_✈️_出差地图.py", title=t("nav_missions"),  icon="✈️"),
     st.Page("app_pages/2_👤_人物档案.py",  title=t("nav_profiles"),  icon="👤"),
     st.Page("app_pages/10_📜_往期新闻.py", title=t("nav_archives"),  icon="📜"),
     st.Page("app_pages/6_🔗_资源导航.py",  title=t("nav_resources"), icon="🔗"),
