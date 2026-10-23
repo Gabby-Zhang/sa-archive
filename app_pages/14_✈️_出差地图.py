@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from utils.i18n import t
-from utils.missions import BASE, CITIES, ROLE_LABEL, load_missions
+from utils.missions import BASE, CITIES, CITY_COUNTRY, COUNTRY_LABELS, ROLE_LABEL, load_missions
 
 st.title(t("missions_title"))
 st.caption(t("missions_caption"))
@@ -107,6 +107,16 @@ fig = go.Figure()
 fig.add_trace(go.Choropleth(locations=["FRA", "BEL"], z=[1, 0], locationmode="ISO-3",
                             colorscale=[[0, "#dbe6fb"], [1, "#fde2ee"]], showscale=False,
                             marker_line_color="#d8ccb6", marker_line_width=0.6, hoverinfo="skip"))
+# 英文国名:去过的国家深色,其余浅色;全球视图只标欧洲以外去过的国家,免得欧洲挤成一团(那里有爱心和星星)
+been = {CITY_COUNTRY[c] for c in visits} | {"Belgium"}
+for dark in (False, True):
+    labels = [n for n, (_, _, far) in COUNTRY_LABELS.items()
+              if (n in been) == dark and (view == "欧洲" and not far or view == "全球" and dark and far)]
+    if labels:
+        fig.add_trace(go.Scattergeo(
+            lat=[COUNTRY_LABELS[n][0] for n in labels], lon=[COUNTRY_LABELS[n][1] for n in labels],
+            mode="text", text=labels, hoverinfo="skip", showlegend=False,
+            textfont=dict(size=12 if dark else 10, color="#6b5b45" if dark else "#a89a80")))
 fig.add_trace(go.Scattergeo(lat=blue_lat, lon=blue_lon, mode="lines", hoverinfo="skip",
                             line=dict(width=1.4, color=AWAY_BLUE), opacity=0.6, name="其他行程"))
 fig.add_trace(go.Scattergeo(lat=pink_lat, lon=pink_lon, mode="lines", hoverinfo="skip",

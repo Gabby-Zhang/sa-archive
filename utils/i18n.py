@@ -23,7 +23,7 @@ _S = {
     "nav_gallery":      {"zh": "图库",                    "en": "Gallery"},
     "nav_files":        {"zh": "文件存档",                "en": "File Archive"},
     "nav_audit":        {"zh": "操作记录",                "en": "Audit Log"},
-    "nav_missions":     {"zh": "出差地图",                "en": "Missions Map"},
+    "nav_missions":     {"zh": "塞若内行程汇总",          "en": "Séjourné Missions"},
 
     # ── Common ────────────────────────────────────────────
     "all":              {"zh": "全部",                    "en": "All"},
@@ -115,7 +115,7 @@ _S = {
     "news_archived":    {"zh": "🔓 removepaywall",        "en": "🔓 removepaywall"},
 
     # ── 行程日历 ─────────────────────────────────────────
-    "missions_title":   {"zh": "✈️ 出差地图",             "en": "✈️ Missions Map"},
+    "missions_title":   {"zh": "✈️ 塞若内行程汇总",       "en": "✈️ Séjourné Missions"},
     "missions_caption": {"zh": "Séjourné 的欧委会出差记录（官方报销表）· 巴黎标红",
                          "en": "Séjourné's Commission missions (official expense reports) · Paris in red"},
     "schedule_title":   {"zh": "📆 行程日历",             "en": "📆 Schedule"},
