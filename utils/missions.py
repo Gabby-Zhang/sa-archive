@@ -77,6 +77,42 @@ CITIES = {
     "Annecy": ("安纳西", 45.90, 6.13),
 }
 
+# 城市 → 所在国家(英文名,地图上标国名用)
+CITY_COUNTRY = {
+    "Brussels": "Belgium", "Antwerp": "Belgium", "Jodoigne": "Belgium",
+    "Paris": "France", "Strasbourg": "France", "Roissy-En-France": "France", "Flamanville": "France",
+    "Douai": "France", "Le Bourget": "France", "Marseille": "France", "Louviers": "France",
+    "Evian Les Bains": "France", "Dunkerque": "France", "Nice": "France", "Annecy": "France",
+    "Milan": "Italy", "Catania": "Italy", "Rome": "Italy", "Venice": "Italy", "Verona": "Italy",
+    "Stuttgart": "Germany", "Duisburg": "Germany", "Berlin": "Germany", "Munich": "Germany", "Hannover": "Germany",
+    "Bilbao": "Spain", "Barcelona": "Spain", "Madrid": "Spain",
+    "Warsaw": "Poland", "Gdansk": "Poland", "Rzeszow": "Poland",
+    "Helsinki": "Finland", "Kemi": "Finland", "Stockholm": "Sweden", "Kiruna": "Sweden",
+    "Aarhus": "Denmark", "Copenhagen": "Denmark", "Tallinn": "Estonia", "Vilnius": "Lithuania",
+    "Bucharest": "Romania", "Bratislava": "Slovakia", "Prague": "Czechia", "Vienna": "Austria",
+    "Budapest": "Hungary", "Athens": "Greece", "Larnaca": "Cyprus", "Kyiv": "Ukraine",
+    "Davos": "Switzerland", "Luxembourg": "Luxembourg", "Sittard": "Netherlands",
+    "Lisbon": "Portugal", "Dublin": "Ireland",
+    "Ottawa": "Canada", "Toronto": "Canada", "Montreal": "Canada", "Washington D.C.": "United States",
+    "Buenos Aires": "Argentina", "Johannesburg": "South Africa", "Mbombela": "South Africa",
+    "Delhi": "India", "Osaka": "Japan", "Tokyo": "Japan",
+}
+
+# 国名标注位置(纬度, 经度),尽量放在国土中部、避开城市点;far=True 的在全球视图里才标
+COUNTRY_LABELS = {
+    "France": (46.3, 1.2, False), "Belgium": (51.8, 2.5, False), "Netherlands": (52.6, 5.8, False),
+    "Germany": (51.2, 10.4, False), "Italy": (41.4, 14.9, False),
+    "Spain": (39.2, -4.4, False), "Portugal": (39.8, -8.1, False), "Switzerland": (47.25, 8.2, False),
+    "Austria": (47.5, 14.0, False), "Czechia": (49.4, 15.9, False), "Slovakia": (48.8, 19.8, False),
+    "Hungary": (46.6, 19.2, False), "Poland": (52.2, 19.2, False), "Denmark": (56.1, 9.0, False),
+    "Sweden": (62.5, 15.5, False), "Finland": (63.0, 26.5, False), "Estonia": (58.8, 25.8, False),
+    "Lithuania": (55.4, 24.0, False), "Romania": (45.8, 24.8, False), "Greece": (39.6, 22.2, False),
+    "Cyprus": (35.85, 33.2, False), "Ukraine": (49.2, 31.5, False), "Ireland": (52.6, -8.4, False),
+    "United Kingdom": (53.0, -1.8, False),
+    "Canada": (55.0, -100.0, True), "United States": (39.0, -98.0, True), "Argentina": (-29.5, -64.0, True),
+    "South Africa": (-30.5, 23.5, True), "India": (22.5, 79.0, True), "Japan": (40.5, 141.5, True),
+}
+
 ROLE_LABEL = {
     "only": "只去巴黎",
     "end": "最后回巴黎",

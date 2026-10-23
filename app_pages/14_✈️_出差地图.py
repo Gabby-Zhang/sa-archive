@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from utils.i18n import t
-from utils.missions import BASE, CITIES, ROLE_LABEL, load_missions
+from utils.missions import BASE, CITIES, CITY_COUNTRY, COUNTRY_LABELS, ROLE_LABEL, load_missions
 
 st.title(t("missions_title"))
 st.caption(t("missions_caption"))
@@ -83,6 +83,11 @@ shown = paris_trips if only_paris else trips
 paris_only = [x for x in paris_trips if x["role"] == "only"]
 
 # ── 数字 ─────────────────────────────────────────────────
+# Streamlit 默认数字卡字号比页面标题还大,这页压小一些(样式只在本页生效)
+st.markdown("""<style>
+[data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+[data-testid="stMetricLabel"] p { font-size: 0.85rem !important; color: var(--t2) !important; }
+</style>""", unsafe_allow_html=True)
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("出差", f"{len(trips)} 次")
 m2.metric("经过巴黎", f"{len(paris_trips)} 次")
@@ -107,6 +112,16 @@ fig = go.Figure()
 fig.add_trace(go.Choropleth(locations=["FRA", "BEL"], z=[1, 0], locationmode="ISO-3",
                             colorscale=[[0, "#dbe6fb"], [1, "#fde2ee"]], showscale=False,
                             marker_line_color="#d8ccb6", marker_line_width=0.6, hoverinfo="skip"))
+# 英文国名:去过的国家深色,其余浅色;全球视图只标欧洲以外去过的国家,免得欧洲挤成一团(那里有爱心和星星)
+been = {CITY_COUNTRY[c] for c in visits} | {"Belgium"}
+for dark in (False, True):
+    labels = [n for n, (_, _, far) in COUNTRY_LABELS.items()
+              if (n in been) == dark and (view == "欧洲" and not far or view == "全球" and dark and far)]
+    if labels:
+        fig.add_trace(go.Scattergeo(
+            lat=[COUNTRY_LABELS[n][0] for n in labels], lon=[COUNTRY_LABELS[n][1] for n in labels],
+            mode="text", text=labels, hoverinfo="skip", showlegend=False,
+            textfont=dict(size=12 if dark else 10, color="#6b5b45" if dark else "#a89a80")))
 fig.add_trace(go.Scattergeo(lat=blue_lat, lon=blue_lon, mode="lines", hoverinfo="skip",
                             line=dict(width=1.4, color=AWAY_BLUE), opacity=0.6, name="其他行程"))
 fig.add_trace(go.Scattergeo(lat=pink_lat, lon=pink_lon, mode="lines", hoverinfo="skip",
@@ -136,7 +151,8 @@ geo = dict(showland=True, landcolor="#f6f1e7", showcountries=True, countrycolor=
            showocean=True, oceancolor="#d6eaf8", showlakes=True, lakecolor="#d6eaf8",
            showframe=False, coastlinecolor="#b9cfe0")
 if view == "欧洲":
-    geo.update(projection_type="mercator", lataxis_range=[34, 63], lonaxis_range=[-16, 38])
+    # 经度范围按宽屏(约 2:1)取,否则 plotly 为保持比例会在左右两侧留大片空白
+    geo.update(projection_type="mercator", lataxis_range=[35, 61], lonaxis_range=[-28, 56])
 else:
     # 固定取景:北美到日本、阿根廷到北欧,所有出差地都在画面内
     geo.update(projection_type="natural earth", lataxis_range=[-45, 72], lonaxis_range=[-130, 150])

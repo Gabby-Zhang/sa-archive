@@ -145,6 +145,8 @@ pip install -r requirements.txt
 
 ## 出差地图页(`app_pages/14_✈️_出差地图.py`)约定
 
+- 侧边栏名「塞若内行程汇总」,挂在「行程日历」下当子项:`st.Page(..., url_path="sejourne-missions")` + app.py 里按 `a[href$="/sejourne-missions"]` 缩进的 CSS(改 url_path 要同步改 CSS)
+- **改了 `utils/` 里的模块(如 `i18n.py`)后,Streamlit Cloud 自动重部署常不重载已导入的模块**,表现为导航显示成原始 key(`nav_missions`)——去后台 Reboot app
 - 数据 = 欧委会公布的 SS 出差报销表(他委员主页 Transparency → Missions,xlsx,每两个月更新、每份都是上任以来全量),经 `scripts/missions_to_json.py <xlsx>` 转成 **`data/sejourne_missions.json`**(进 git,不入 Supabase)。页面只读这个 JSON,地图用 plotly `Scattergeo`(无需地图 token)
 - 脚本**幂等、按出发日期合并**:手写字段 `paris`/`other`(中文摘要)、`calp`(日历确认的巴黎日期)、`note`、`stops_fixed=true` 的路线修正,重跑都保留;只刷新费用等官方字段。新条目的 `other` 先放法语原文并标 `fr=true`,**中文摘要要手动补**
 - 城市坐标和中文名在 `utils/missions.py` 的 `CITIES`;新报销表出现没见过的地名,脚本直接报错,先补坐标再跑
