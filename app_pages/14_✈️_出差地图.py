@@ -76,9 +76,10 @@ fig.add_trace(go.Scattergeo(lat=[CITIES[BASE][1]], lon=[CITIES[BASE][2]], mode="
 geo = dict(showland=True, landcolor="#e6e9f0", showcountries=True, countrycolor="#c4cbd8",
            showocean=True, oceancolor="#f4f6fb", showframe=False, coastlinecolor="#c4cbd8")
 if view == "欧洲":
-    geo.update(projection_type="mercator", lataxis_range=[33, 69], lonaxis_range=[-12, 36])
+    geo.update(projection_type="mercator", lataxis_range=[34, 63], lonaxis_range=[-16, 38])
 else:
-    geo.update(projection_type="natural earth")
+    # 固定取景:北美到日本、阿根廷到北欧,所有出差地都在画面内
+    geo.update(projection_type="natural earth", lataxis_range=[-45, 72], lonaxis_range=[-130, 150])
 fig.update_geos(**geo)
 fig.update_layout(height=560, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                   legend=dict(orientation="h", y=0.01, x=0.01, bgcolor="rgba(255,255,255,0.7)"))
