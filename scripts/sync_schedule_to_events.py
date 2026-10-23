@@ -140,6 +140,58 @@ def _similar(a: str, b: str) -> bool:
     return len(wa & wb) / min(len(wa), len(wb)) >= 0.6
 
 
+# GA/S&A 的行程同一件事常有 Playbook + 官网文章 + IG 三份、措辞完全不同,
+# 所以额外按「同一家媒体」或「同一个地名」判重(SS 不用:会晤条目常同含 Republic/Croatia 之类)
+_MEDIA = {
+    "rtl": "rtl", "lci": "lci", "france 2": "france2", "france 3": "france3", "france inter": "inter",
+    "franceinfo": "franceinfo", "france info": "franceinfo", "bfm": "bfm", "rmc": "bfm", "tf1": "tf1",
+    "cnews": "cnews", "europe 1": "europe1", "le parisien": "parisien", "le monde": "lemonde",
+    "jdd": "jdd", "la tribune": "tribune", "figaro": "figaro", "politico": "politico",
+    "telegramme": "telegramme", "sud radio": "sudradio", "public senat": "publicsenat",
+}
+_PLACE_STOP = _STOP | {
+    "renaissance", "france", "francais", "francaise", "francaises", "presidentielle", "premier",
+    "ministre", "interview", "europe", "assemblee", "nationale", "lettre", "ecole", "pacte",
+    "jeunesse", "etats", "unis", "sont", "parmi", "edouard", "philippe", "marine", "tondelier",
+    "meeting", "dossiers", "episode", "youtube", "bistrots", "candidat", "invite", "elysee",
+    "elyseenne", "sommet", "suite", "president", "gauche", "droite", "republique", "etat",
+    "deplacement", "cafe", "gare", "visite", "marche", "foire", "festival", "debat", "conference",
+    "presse", "rencontre", "rencontres", "campagne", "equipe", "forum", "plateau", "emission",
+}
+
+
+def _media_keys(title: str) -> set:
+    n = _norm(title)
+    return {v for k, v in _MEDIA.items() if re.search(rf"\b{k}\b", n)}
+
+
+def _place_keys(title: str) -> set:
+    """标题里(除句首外)大写开头的专有名词,当地名用。"""
+    caps = [m.group(1) for m in re.finditer(r"(?<![\w'’])([A-ZÀ-Ý][\w'’-]{3,})", title)
+            if m.start() > 0]  # 句首大写词多是动词(Participe/Entame…),不算
+    keys = set()
+    for c in caps:
+        for w in _norm(c).split():
+            if len(w) > 3 and w not in _PLACE_STOP and not any(w in k.split() for k in _MEDIA):
+                keys.add(w)
+    return keys
+
+
+def _same_event(a: dict, b: dict) -> bool:
+    if a["person"] != b["person"] or a["date"] != b["date"]:
+        return False
+    if _similar(a["title"], b["title"]):
+        return True
+    if a["person"] == SS:
+        return False
+    return bool(_media_keys(a["title"]) & _media_keys(b["title"])
+                or _place_keys(a["title"]) & _place_keys(b["title"]))
+
+
+# Playbook 里抽出的「名单/预告」句,主语不是他本人,不算行程
+_NOISE = re.compile(r"^(sont notamment|parmi les|le match|j-\d+|sont attendus)", re.I)
+
+
 def fingerprint(e: dict) -> str:
     return hashlib.md5(f"{e['person']}|{e['date']}|{_norm(e['title'])}".encode()).hexdigest()
 
@@ -175,12 +227,13 @@ def main():
 
     # schedule 表放前面:同一件事两边都有时,优先保留(通常更具体的)Playbook/手动条目
     cands = load_schedule(since, today) + [e for e in load_ics() if since <= e["date"] <= today]
+    # 重复条目里优先留带链接的(大事记卡片能点开)
+    cands.sort(key=lambda e: not e["source_url"])
     picked = []
     for e in cands:
-        if any(tag in e["description"] for tag in PREDICTED_TAGS):
+        if any(tag in e["description"] for tag in PREDICTED_TAGS) or _NOISE.match(e["title"]):
             continue
-        if any(p["person"] == e["person"] and p["date"] == e["date"] and _similar(p["title"], e["title"])
-               for p in picked):
+        if any(_same_event(p, e) for p in picked):
             continue
         picked.append(e)
     picked.sort(key=lambda e: (e["date"], e["person"]))
