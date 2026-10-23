@@ -1,0 +1,40 @@
+name: Sync schedule → 大事记
+
+# 把行程日历里已发生的 SS/GA 行程同步进大事记(events),交汇时刻页随之更新。
+# 每天自动跑一次(回看 14 天,漏跑也能补上);手动跑可填 since 回溯补录、dry_run 预览。
+# 幂等:同步过的条目记指纹,管理员改标题或删掉都不会被重新加回。
+on:
+  schedule:
+    - cron: '41 22 * * *'   # 每天 22:41 UTC(巴黎深夜,当天行程已入库)
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Start date YYYY-MM-DD (empty = last 14 days)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run (print only, do not write)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Sync schedule into events
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SINCE: ${{ inputs.since }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python scripts/sync_schedule_to_events.py
