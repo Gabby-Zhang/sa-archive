@@ -119,6 +119,8 @@ MEDIA_FEEDS = [
     {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=it&gl=IT&ceid=IT:it",                    "source": ""},
     {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=de&gl=DE&ceid=DE:de",                    "source": ""},
     {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=es&gl=ES&ceid=ES:es",                    "source": ""},
+    # 波兰语版(2026-10-23 加):10/26 华沙「产业之友」会议只有波兰媒体/gov.pl 预告
+    {"url": "https://news.google.com/rss/search?q=%22Stéphane+Séjourné%22&hl=pl&gl=PL&ceid=PL:pl",                    "source": ""},
     # ANSA 布鲁塞尔栏目(ansa.it/europa)最稳定地报他的行程,单独定向一路
     {"url": "https://news.google.com/rss/search?q=Séjourné+site:ansa.it&hl=it&gl=IT&ceid=IT:it",                     "source": "ansa.it"},
     # Le Canard Enchaîné（无 RSS，通过 Google News 间接捕捉）
