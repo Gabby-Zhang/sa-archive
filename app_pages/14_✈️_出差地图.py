@@ -146,7 +146,8 @@ geo = dict(showland=True, landcolor="#f6f1e7", showcountries=True, countrycolor=
            showocean=True, oceancolor="#d6eaf8", showlakes=True, lakecolor="#d6eaf8",
            showframe=False, coastlinecolor="#b9cfe0")
 if view == "欧洲":
-    geo.update(projection_type="mercator", lataxis_range=[34, 63], lonaxis_range=[-16, 38])
+    # 经度范围按宽屏(约 2:1)取,否则 plotly 为保持比例会在左右两侧留大片空白
+    geo.update(projection_type="mercator", lataxis_range=[35, 61], lonaxis_range=[-28, 56])
 else:
     # 固定取景:北美到日本、阿根廷到北欧,所有出差地都在画面内
     geo.update(projection_type="natural earth", lataxis_range=[-45, 72], lonaxis_range=[-130, 150])
