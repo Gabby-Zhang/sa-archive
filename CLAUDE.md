@@ -14,6 +14,7 @@ pip install -r requirements.txt
 ## 目录结构
 
 - `app.py` — 入口:页面配置 + 全局 CSS(主题变量、中文字形缩放、手机端适配) + 侧边栏导航。改全站样式在这里。**侧边栏顺序由 app.py 里的 `st.navigation([...])` 列表决定**,改顺序就调这个列表,文件名里的数字前缀只是历史命名、不再决定顺序
+- `data/` — 进 git 的静态数据(目前只有 `sejourne_missions.json`,出差地图页用)
 - `app_pages/` — 各页面,文件名格式 `序号_emoji_中文名.py`。**目录刻意不叫 `pages/`**:否则 Streamlit 会按文件名再自动生成一份导航菜单,和 `st.navigation` 手写的顺序/名字冲突(表现为顺序乱、名字变成文件名)。`13_🧾_操作记录` 仅在 `is_super_admin()` 时才加入导航
 - `utils/` — 共享模块:
   - `database.py` — Supabase 客户端和查询封装(所有页面共用);含审计日志 `log_audit`/`get_audit_log`,且 `add_event`/`update_event`/`delete_event` 内部已自动记日志(调用方别再重复记一次)
@@ -141,6 +142,14 @@ pip install -r requirements.txt
 - **SS 左栏有两个补充源**,卡片靠 `description` 里的标记出徽章:
   - **`[EU_AV]` 欧盟影像库**:抓欧盟影像服务(audiovisual.ec.europa.eu)里提到 Séjourné 的照片/视频——常含官方日历(ICS)漏掉的会议。逻辑在 `utils/eu_av.py`(`fetch_sejourne_av`),直接查 EU AV 内部 Solr API、客户端按人名(`séjourn`/`sejourn`)过滤标题+摘要,**只读不入库**,页面端 `@st.cache_data(ttl=1800)` 缓存半小时、「🔄」刷新按钮一并清。**两处展示**:① 按日期对 ICS 去重后并进 `s_events` 行程列表(当天已有真实行程就跳过,避免重复),纯文字卡片标「📷 影像库」徽章;② 左栏底部「📷 欧盟影像库」折叠框展示**完整列表**(带缩略图,`_av_card`/`_av_row`),浏览用、不去重。两处管理员都能「⬆️ 收入大事记」(`source_url` 存原图链接,标题仍需手译)。API 细节(无关键词过滤、缩略图前缀拼法)见 `~/Documents/photo-monitor` 的 `sejourn_photo_monitor.py` 与其 CLAUDE.md——同一 API 的上游监控脚本
   - **`[EU_AUTO]` 委员会例会推测**:类比 GA 的 `[AN_AUTO]`,`predict_college_meetings` 为未来约 6 周推算欧盟委员会每周例会。**惯例:平时周三在布鲁塞尔;遇欧洲议会斯特拉斯堡全会周改周二在斯堡**——斯堡全会周(取周一)硬编码在 `_STRASBOURG_WEEK_MONDAYS_2026`(EP 官方 2026 会期表,**换年要更新这个集合**,缺数据则一律按周三),8 月夏休跳过,当天已有真实/影像库行程也跳过。徽章「🇪🇺 例会·推测」,不入库、不出收录按钮。**2026-10-12 起 sejourn-calendar 也把未来 6 周的例会(`[EU_AUTO]`,斯堡周从 EP 开放数据 API 读)写进 ICS 并推 ntfy**,本页按日期去重,自己的推测只补 ICS 没覆盖的日子。同时 ICS 里还有:**`[EP_AGENDA]`** 议会委员会议程点名他(确认)、**`[EP_MAYBE]`** 他分管的 ITRE/IMCO 开会(可能出席)、**`[COUNCIL_AUTO]`** 竞争力理事会(默认出席),分别出徽章「🏛️ 议会议程 / 🏛️ 议会·可能 / 🇪🇺 理事会·推测」;推测类(EU_AUTO/EP_MAYBE/COUNCIL_AUTO)不出收录按钮
+
+## 出差地图页(`app_pages/14_✈️_出差地图.py`)约定
+
+- 数据 = 欧委会公布的 SS 出差报销表(他委员主页 Transparency → Missions,xlsx,每两个月更新、每份都是上任以来全量),经 `scripts/missions_to_json.py <xlsx>` 转成 **`data/sejourne_missions.json`**(进 git,不入 Supabase)。页面只读这个 JSON,地图用 plotly `Scattergeo`(无需地图 token)
+- 脚本**幂等、按出发日期合并**:手写字段 `paris`/`other`(中文摘要)、`calp`(日历确认的巴黎日期)、`note`、`stops_fixed=true` 的路线修正,重跑都保留;只刷新费用等官方字段。新条目的 `other` 先放法语原文并标 `fr=true`,**中文摘要要手动补**
+- 城市坐标和中文名在 `utils/missions.py` 的 `CITIES`;新报销表出现没见过的地名,脚本直接报错,先补坐标再跑
+- 里程是按「布鲁塞尔 → 各站 → 布鲁塞尔」直线距离估算;`role`(只去巴黎/最后回巴黎/途经…)和 `km` 在 `load_missions()` 里现算,不存 JSON
+- 报销表只有整趟起止日,不写哪天在哪;2026-04 起能从 sejourn-calendar 的透明度登记处会议推出具体巴黎日期(写进 `calp`)。日历里 "Mission:" 开头的事件就是同一份报销数据(70/70 一致,DTEND 按 ICS 惯例晚一天)
 
 ## 约定
 
