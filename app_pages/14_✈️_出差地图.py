@@ -83,6 +83,11 @@ shown = paris_trips if only_paris else trips
 paris_only = [x for x in paris_trips if x["role"] == "only"]
 
 # ── 数字 ─────────────────────────────────────────────────
+# Streamlit 默认数字卡字号比页面标题还大,这页压小一些(样式只在本页生效)
+st.markdown("""<style>
+[data-testid="stMetricValue"] { font-size: 1.3rem !important; }
+[data-testid="stMetricLabel"] p { font-size: 0.85rem !important; color: var(--t2) !important; }
+</style>""", unsafe_allow_html=True)
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("出差", f"{len(trips)} 次")
 m2.metric("经过巴黎", f"{len(paris_trips)} 次")
