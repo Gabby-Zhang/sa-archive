@@ -11,8 +11,11 @@ from utils.missions import BASE, CITIES, ROLE_LABEL, load_missions
 st.title(t("missions_title"))
 st.caption(t("missions_caption"))
 
-PARIS_RED = "#c8102e"
-AWAY_BLUE = "#2c58a6"
+PARIS_PINK = "#e8559b"   # 巴黎相关一律粉色
+PARIS_SOFT = "#fad1e4"
+AWAY_BLUE = "#7f92bf"    # 其他出差压暗,让粉色跳出来
+BXL_BLUE = "#1d4ed8"     # 布鲁塞尔蓝星
+FR_BLUE, FR_RED = "#0055a4", "#ef4135"
 WD = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 source_title, trips_all = load_missions()
@@ -45,34 +48,41 @@ m3.metric("估算里程（公里）", f"{sum(x['km'] for x in trips) / 10000:.1f
 m4.metric("只去巴黎 · 住宿 €0", f"{sum(1 for x in paris_only if x['hotel'] == 0)}/{len(paris_only)}")
 m5.metric("包机", f"{sum(1 for x in trips if x['taxi'])} 次")
 
-# ── 地图:每趟出差按 布鲁塞尔 → 各站 → 布鲁塞尔 连线,碰到巴黎的段标红 ──
-red_lat, red_lon, blue_lat, blue_lon = [], [], [], []
+# ── 地图:每趟出差按 布鲁塞尔 → 各站 → 布鲁塞尔 连线,碰到巴黎的段标粉 ──
+pink_lat, pink_lon, blue_lat, blue_lon = [], [], [], []
 for x in shown:
     path = [BASE] + x["stops"] + [BASE]
     for a, b in zip(path, path[1:]):
         if a == b:
             continue
-        lat, lon = (red_lat, red_lon) if "Paris" in (a, b) else (blue_lat, blue_lon)
+        lat, lon = (pink_lat, pink_lon) if "Paris" in (a, b) else (blue_lat, blue_lon)
         lat += [CITIES[a][1], CITIES[b][1], None]
         lon += [CITIES[a][2], CITIES[b][2], None]
 
 visits = Counter(s for x in shown for s in set(x["stops"]))
 fig = go.Figure()
 fig.add_trace(go.Scattergeo(lat=blue_lat, lon=blue_lon, mode="lines", hoverinfo="skip",
-                            line=dict(width=1.2, color=AWAY_BLUE), opacity=0.45, name="其他行程"))
-fig.add_trace(go.Scattergeo(lat=red_lat, lon=red_lon, mode="lines", hoverinfo="skip",
-                            line=dict(width=2.6, color=PARIS_RED), opacity=0.8, name="经过巴黎的行程"))
-names = list(visits)
+                            line=dict(width=1.2, color=AWAY_BLUE), opacity=0.5, name="其他行程"))
+fig.add_trace(go.Scattergeo(lat=pink_lat, lon=pink_lon, mode="lines", hoverinfo="skip",
+                            line=dict(width=3, color=PARIS_PINK), opacity=0.85, name="经过巴黎的行程"))
+names = [c for c in visits if c != "Paris"]
 fig.add_trace(go.Scattergeo(
     lat=[CITIES[c][1] for c in names], lon=[CITIES[c][2] for c in names],
-    mode="markers", name="目的地",
-    marker=dict(size=[7 + 4 * visits[c] ** 0.5 for c in names],
-                color=[PARIS_RED if c == "Paris" else AWAY_BLUE for c in names],
+    mode="markers", name="其他目的地",
+    marker=dict(size=[7 + 4 * visits[c] ** 0.5 for c in names], color=AWAY_BLUE,
                 line=dict(width=1, color="white")),
     text=[f"{CITIES[c][0]} · {visits[c]} 次" for c in names], hoverinfo="text"))
-fig.add_trace(go.Scattergeo(lat=[CITIES[BASE][1]], lon=[CITIES[BASE][2]], mode="markers+text",
-                            marker=dict(size=12, symbol="star", color="#1a1a2e", line=dict(width=1, color="white")),
-                            text=["布鲁塞尔"], textposition="top center", hoverinfo="text", name="工作地"))
+if visits["Paris"]:
+    # 巴黎 = 蓝白红三层嵌套的爱心(plotly 没有爱心符号,用 ♥ 字符叠出来)
+    _, plat, plon = CITIES["Paris"]
+    for size, color in ((46, FR_BLUE), (34, "white"), (22, FR_RED)):
+        fig.add_trace(go.Scattergeo(lat=[plat], lon=[plon], mode="text", text=["♥"],
+                                    textfont=dict(size=size, color=color), textposition="middle center",
+                                    hoverinfo="text", hovertext=[f"巴黎 · {visits['Paris']} 次"],
+                                    showlegend=False))
+fig.add_trace(go.Scattergeo(lat=[CITIES[BASE][1]], lon=[CITIES[BASE][2]], mode="markers",
+                            marker=dict(size=18, symbol="star", color=BXL_BLUE, line=dict(width=1, color="white")),
+                            text=["布鲁塞尔（工作地）"], hoverinfo="text", name="布鲁塞尔"))
 geo = dict(showland=True, landcolor="#e6e9f0", showcountries=True, countrycolor="#c4cbd8",
            showocean=True, oceancolor="#f4f6fb", showframe=False, coastlinecolor="#c4cbd8")
 if view == "欧洲":
@@ -84,7 +94,7 @@ fig.update_geos(**geo)
 fig.update_layout(height=560, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                   legend=dict(orientation="h", y=0.01, x=0.01, bgcolor="rgba(255,255,255,0.7)"))
 st.plotly_chart(fig, use_container_width=True)
-st.caption("线是按「布鲁塞尔 → 各站 → 布鲁塞尔」画的示意，不是实际航线；圆点越大去得越多。")
+st.caption("蓝白红爱心是巴黎，蓝星是布鲁塞尔。线是按「布鲁塞尔 → 各站 → 布鲁塞尔」画的示意，不是实际航线；圆点越大去得越多。")
 
 # ── 日历条:一格一天 ─────────────────────────────────────
 st.subheader("每一天在哪")
@@ -134,14 +144,14 @@ if trips:
 .mcal-we{{background:#cfd6e3}}
 .mcal-none{{visibility:hidden}}
 .mcal-away{{background:#dbe4f5;box-shadow:inset 0 0 0 1.5px {AWAY_BLUE}}}
-.mcal-ptrip{{background:#f4c7cf}}
-.mcal-paris{{background:{PARIS_RED}}}
+.mcal-ptrip{{background:{PARIS_SOFT}}}
+.mcal-paris{{background:{PARIS_PINK}}}
 .mcal-leg{{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--t2);margin:4px 0 10px}}
 .mcal-leg i{{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}}
 </style>
 <div class="mcal-leg">
-  <span><i style="background:{PARIS_RED}"></i>在巴黎</span>
-  <span><i style="background:#f4c7cf"></i>经过巴黎的行程（具体哪天不确定）</span>
+  <span><i style="background:{PARIS_PINK}"></i>在巴黎</span>
+  <span><i style="background:{PARIS_SOFT}"></i>经过巴黎的行程（具体哪天不确定）</span>
   <span><i style="background:#dbe4f5;box-shadow:inset 0 0 0 1.5px {AWAY_BLUE}"></i>其他出差</span>
   <span><i style="background:#cfd6e3"></i>周末</span>
 </div>
@@ -155,7 +165,7 @@ for x in reversed(shown):
     f, to = date.fromisoformat(x["f"]), date.fromisoformat(x["t"])
     when = f"{f:%d/%m/%Y} {WD[f.weekday()]}" + (f" → {to:%d/%m/%Y} {WD[to.weekday()]}" if to != f else "（当天）")
     route = " → ".join(
-        f'<b style="color:{PARIS_RED}">{CITIES[s][0]}</b>' if s == "Paris" else CITIES[s][0] for s in x["stops"])
+        f'<b style="color:{PARIS_PINK}">{CITIES[s][0]}</b>' if s == "Paris" else CITIES[s][0] for s in x["stops"])
     tags = []
     if x["role"]:
         tags.append(ROLE_LABEL[x["role"]])
@@ -170,11 +180,11 @@ for x in reversed(shown):
     if x.get("other"):
         lines.append(f"<b>{'其他站' if x['role'] else '事由'}</b>　{html.escape(x['other'])}")
     if x.get("calp"):
-        lines.append(f'<span style="color:{PARIS_RED}">日历确认在巴黎：' + "、".join(
+        lines.append(f'<span style="color:{PARIS_PINK}">日历确认在巴黎：' + "、".join(
             f"{date.fromisoformat(k):%d/%m} {WD[date.fromisoformat(k).weekday()]}" for k in x["calp"]) + "</span>")
     if x.get("note"):
         lines.append(f'<span style="color:var(--t3)">备注：{html.escape(x["note"])}</span>')
-    border = PARIS_RED if x["role"] else "var(--bd)"
+    border = PARIS_PINK if x["role"] else "var(--bd)"
     st.markdown(f"""
 <div style="background:var(--cb);border-left:4px solid {border};padding:0.7rem 1rem;border-radius:8px;margin-bottom:0.6rem">
   <div style="font-size:0.85rem;color:var(--t2)">{when}</div>
