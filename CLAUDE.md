@@ -73,7 +73,7 @@ pip install -r requirements.txt
 ### 行程自动收入大事记(`sync_schedule_to_events.yml`,2026-10-23 加)
 
 - 「💞 交汇时刻」页只读 `events`(大事记),**不读行程**;过去行程只能靠管理员在行程日历逐条点「⬆️ 收入大事记」,没人点就断更(6 月后断了 4 个月)
-- 现每天 22:41 UTC 由 `scripts/sync_schedule_to_events.py` 把**已发生**的行程(SS:ICS + `schedule`;GA/S&A:`schedule`,跳过 `[AN_AUTO]`/`[EU_AUTO]`/`[EP_MAYBE]`/`[COUNCIL_AUTO]` 推测条目)写进 `events`,标签 `🗓️ 日常行程`、`source="行程同步"`,回看 14 天。同人同日相似标题合并(ICS 与 schedule、Playbook 重复条目)
+- 现每天 22:41 UTC 由 `scripts/sync_schedule_to_events.py` 把**已发生**的行程(SS:ICS + `schedule`;GA/S&A:`schedule`,跳过 `[AN_AUTO]`/`[EU_AUTO]`/`[EP_MAYBE]`/`[COUNCIL_AUTO]` 推测条目)写进 `events`,标签 `🗓️ 日常行程`、`source="行程同步"`,回看 14 天。同人同日相似标题合并(ICS 与 schedule、Playbook 重复条目);GA/S&A 另按「同一家媒体」或「同一地名」合并(Playbook+官网+IG 同一件事三种措辞),优先留带链接的;「Sont notamment…」「J-30」这类 Playbook 名单/预告句丢弃
 - 标题只做轻量中文化(`meets/receives X`→`与X 会晤`、`visits`→`参观`、`participates in`→`参加`),其余保留原文,**管理员事后手改**
 - **幂等靠指纹**:每条同步过的行程在 `profile_items`(person=`S&A`, section=`schedule_sync`)记一行 `key=md5(人|日期|原标题)`,所以改标题、删条目都不会被重新加回。审计日志 `admin_name="行程同步(自动)"`
 - 手动补录/预览:Actions → "Sync schedule → 大事记",`since` 填起始日,`dry_run` 只打印
