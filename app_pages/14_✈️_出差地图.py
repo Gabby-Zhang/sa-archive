@@ -15,7 +15,7 @@ st.caption(t("missions_caption"))
 PARIS_PINK = "#e8559b"   # 巴黎相关一律粉色
 PARIS_SOFT = "#fad1e4"
 AWAY_BLUE = "#4f7bd9"    # 其他出差
-BXL_BLUE = "#1d4ed8"     # 布鲁塞尔蓝星
+BXL_GOLD, EU_BLUE = "#ffcc00", "#003399"   # 布鲁塞尔 = 欧盟旗那样的金黄星,蓝边
 FR_BLUE, FR_RED = "#0055a4", "#ef4135"
 WD = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -121,7 +121,7 @@ fig.add_trace(go.Scattergeo(
 if visits["Paris"]:
     # 巴黎 = 法国国旗配色(蓝|白|红竖条)的爱心,用经纬度多边形画在地图上;压在圆点上面,只让布鲁塞尔的星星在它之上
     hover = f"巴黎 · {visits['Paris']} 次"
-    stripes, outline = _heart_stripes(*CITIES["Paris"][1:], 2.6 if view == "欧洲" else 9)
+    stripes, outline = _heart_stripes(*CITIES["Paris"][1:], 1.7 if view == "欧洲" else 5)
     for lat, lon, color in stripes:
         fig.add_trace(go.Scattergeo(lat=lat, lon=lon, mode="lines", fill="toself", fillcolor=color,
                                     line=dict(width=0, color=color), hoverinfo="text",
@@ -130,7 +130,7 @@ if visits["Paris"]:
     fig.add_trace(go.Scattergeo(lat=outline[0], lon=outline[1], mode="lines", hoverinfo="skip",
                                 line=dict(width=1.2, color="#2b2d42"), showlegend=False))
 fig.add_trace(go.Scattergeo(lat=[CITIES[BASE][1]], lon=[CITIES[BASE][2]], mode="markers",
-                            marker=dict(size=18 if view == "欧洲" else 13, symbol="star", color=BXL_BLUE, line=dict(width=1, color="white")),
+                            marker=dict(size=20 if view == "欧洲" else 14, symbol="star", color=BXL_GOLD, line=dict(width=1.5, color=EU_BLUE)),
                             text=["布鲁塞尔（工作地）"], hoverinfo="text", name="布鲁塞尔"))
 geo = dict(showland=True, landcolor="#f6f1e7", showcountries=True, countrycolor="#d8ccb6",
            showocean=True, oceancolor="#d6eaf8", showlakes=True, lakecolor="#d6eaf8",
@@ -144,7 +144,7 @@ fig.update_geos(**geo)
 fig.update_layout(height=560, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                   legend=dict(orientation="h", y=0.01, x=0.01, bgcolor="rgba(255,255,255,0.7)"))
 st.plotly_chart(fig, use_container_width=True)
-st.caption("国旗色爱心是巴黎，蓝星是布鲁塞尔。线是按「布鲁塞尔 → 各站 → 布鲁塞尔」画的示意，不是实际航线；圆点越大去得越多。")
+st.caption("国旗色爱心是巴黎，黄星是布鲁塞尔。线是按「布鲁塞尔 → 各站 → 布鲁塞尔」画的示意，不是实际航线；圆点越大去得越多。")
 
 # ── 日历条:一格一天 ─────────────────────────────────────
 st.subheader("每一天在哪")
