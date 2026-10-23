@@ -82,7 +82,7 @@ def load_ics() -> list:
             cur = {}
         elif line == "END:VEVENT":
             if cur and cur.get("title") and cur.get("date"):
-                events.append({"person": SS, **cur})
+                events.append({"person": SS, "location": "", "source_url": "", "description": "", **cur})
             cur = None
         elif cur is None:
             continue
