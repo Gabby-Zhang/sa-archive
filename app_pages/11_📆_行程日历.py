@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 import requests
 from datetime import date, timedelta
 from utils.auth import admin_sidebar
@@ -311,6 +312,9 @@ def _sejourne_row(ev: dict, status: str, key: str):
 # 委员会例会惯例：平时周三在布鲁塞尔；遇欧洲议会斯特拉斯堡全会周则改周二在斯堡。
 # 据此为未来若干周推测一条例会，标 [EU_AUTO] 徽章「🇪🇺 例会·推测」，不入库、不出收录按钮。
 # 斯特拉斯堡全会周（取周一）来自 EP 2026 官方会期表；逢 8 月夏休不开会。
+# 惯例有例外（如 2026-10-27 在布鲁塞尔改周二开），所以按周去重：某周行程里已有例会
+# （ICS 的 [EU_AUTO]——sejourn-calendar 已按冯德莱恩日程/例会照片定好日期——或标题是例会的影像库条目），
+# 这一周就不再自己推测。
 _STRASBOURG_WEEK_MONDAYS_2026 = {
     date(2026, 1, 19), date(2026, 2, 9),  date(2026, 3, 9),  date(2026, 4, 27),
     date(2026, 5, 18), date(2026, 6, 15), date(2026, 7, 6),  date(2026, 9, 14),
@@ -318,17 +322,31 @@ _STRASBOURG_WEEK_MONDAYS_2026 = {
 }
 
 
-def predict_college_meetings(busy_dates: set, weeks_ahead: int = 6) -> list:
+_COLLEGE_RE = re.compile(   # 例会标题（排除 College of Europe 之类）
+    r"\b(weekly|hebdomadaire)\b.{0,30}\b(college|collège|von der leyen commission)\b"
+    r"|\bcollege (of commissioners )?meeting"
+    r"|\b(meeting|réunion) (of|du) (the )?(college|collège)\b(?! (of|d.)europe)",
+    re.I,
+)
+
+
+def predict_college_meetings(busy_dates: set, college_dates: set = frozenset(),
+                             weeks_ahead: int = 6) -> list:
     """推测未来 weeks_ahead 周的委员会例会日期。
 
     busy_dates：已有真实行程的日期 ISO 集合——命中则跳过（避免与确定行程重复）。
+    college_dates：行程里已有例会的日期 ISO 集合——所在那一周整周不再推测。
     返回 ev 字典列表（带 [EU_AUTO] 标记）。
     """
     today = date.today()
     out = []
     monday = today - timedelta(days=today.weekday())   # 本周一
+    college_weeks = {d - timedelta(days=d.weekday())
+                     for d in (date.fromisoformat(x) for x in college_dates)}
     for w in range(weeks_ahead + 1):
         wk_mon = monday + timedelta(weeks=w)
+        if wk_mon in college_weeks:                     # 这周的例会已有（ICS 或影像库）
+            continue
         if wk_mon in _STRASBOURG_WEEK_MONDAYS_2026:
             meet, loc = wk_mon + timedelta(days=1), "Strasbourg（斯特拉斯堡）"   # 周二
         else:
@@ -453,7 +471,12 @@ with col_s:
         })
 
     # 补充源 ②：按惯例推测的委员会每周例会（[EU_AUTO]），同样避开已有真实行程的日期
-    s_events.extend(predict_college_meetings(_ics_dates))
+    _college_dates = {
+        str(e.get("date", ""))[:10] for e in s_events
+        if "[EU_AUTO]" in (e.get("description") or "")
+        or _COLLEGE_RE.search(e.get("title") or "")
+    }
+    s_events.extend(predict_college_meetings(_ics_dates, _college_dates))
 
     # 实时计算 status（不依赖缓存时的日期判断）
     _today = date.today()
