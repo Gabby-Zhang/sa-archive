@@ -177,6 +177,11 @@ def _event_card(title: str, ev_date: str, location: str,
         an_badge = (f'<span style="color:#888;font-size:0.62rem;'
                     f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
                     f'margin-left:0.4rem">📷 影像库</span>')
+    elif description and "[TELEGRAM]" in description:
+        # 管理员经 Telegram 机器人发来的截图/文字，Claude 解析入库
+        an_badge = (f'<span style="color:#888;font-size:0.62rem;'
+                    f'border:1px solid #888;border-radius:3px;padding:0.02rem 0.3rem;'
+                    f'margin-left:0.4rem">📱 截图</span>')
 
     loc_html  = (f'<div style="color:var(--t3);font-size:0.73rem;margin-top:0.15rem">'
                  f'📍 {location}</div>') if location else ""

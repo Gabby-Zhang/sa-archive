@@ -1,0 +1,39 @@
+name: Telegram screenshot ingest
+
+# Telegram 机器人收到行程截图/文字 → Cloudflare Worker(telegram-bot/worker.js)发
+# repository_dispatch → 本 workflow:下载图片 → headless claude 解析 → 入库
+# schedule(或图库)→ 机器人回复结果。取代原来 iPhone → iCloud 文件夹 → Mac launchd
+# 那条截图管道(换了三星手机,且不再依赖 Mac 开机)。部署步骤见 telegram-bot/README.md。
+#
+# 每条消息一个 run,刻意不设 concurrency:GH 的 concurrency 只保留一个排队中的 run,
+# 连发几张截图时会把中间的直接取消掉。并行跑没问题,入库脚本按人+日期+标题去重。
+
+on:
+  repository_dispatch:
+    types: [telegram]
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: pip install "supabase>=2.4,<3"
+
+      - name: Install claude-code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Parse → ingest → reply
+        env:
+          TELEGRAM_BOT_TOKEN:      ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SUPABASE_URL:            ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:            ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: bash telegram-bot/run_ci.sh
