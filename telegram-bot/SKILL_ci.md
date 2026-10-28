@@ -14,6 +14,7 @@ description: GitHub Actions 版:解析管理员经 Telegram 机器人发来的�
 读 `/tmp/tg/message.json`:
 - `text`:消息文字或图片说明(可能为空)。管理员的补充说明优先级最高(如「这是 29 号的」)
 - `image_path`:截图路径(为空表示纯文字);**有图就用 Read 工具打开看**
+- `image_url`:截图已传到图床的公开链接(可能为空),入库时要带上,见下
 - `sent_at_paris`:发送时间(巴黎时区),用来推断「今天 / ce soir / demain / 本周三」和年份
 - `forwarded_original_date_paris`:若是转发,原消息发出的时间(推断相对日期时用它更准)
 
@@ -37,8 +38,10 @@ description: GitHub Actions 版:解析管理员经 Telegram 机器人发来的�
 - `location`:有就填(城市/场馆),电视电台可留空
 - `description`:**必须以 `[TELEGRAM]` 开头**(行程日历据此显示「📱 截图」徽章、
   ssga-news-monitor 的 Agenda 照常读),后接来源,如 `[TELEGRAM] 截图 · X @TF1`、
-  `[TELEGRAM] 截图 · IG @gabrielattal`、`[TELEGRAM] 文字 · 管理员`
-- `source_url`:消息文字里若带链接就填,否则 `""`
+  `[TELEGRAM] 截图 · IG @gabrielattal`、`[TELEGRAM] 文字 · 管理员`。
+  **`image_url` 非空时,description 末尾追加 ` | 图: <image_url>`**(行程日历据此显示截图缩略图),
+  例:`[TELEGRAM] 截图 · X @TF1 | 图: https://…/gallery/schedule/2026-10-28_…jpg`
+- `source_url`:消息文字里若带链接就填;没有链接但有 `image_url` 就填 `image_url`;都没有填 `""`
 
 入库(幂等:同人同日标题前 40 字已存在会跳过):
 ```bash
@@ -56,6 +59,7 @@ python3 scripts/photo_to_gallery.py "<image_path>" --title "<中文简短说明>
     --person "<Gabriel Attal|Stéphane Séjourné|S&A>" --tag "<社媒截图|官方活动|私下照片|新闻截图|其他>" \
     --date <照片对应日期,不确定就用发送日> --note "Telegram · <来源>"
 ```
+(这一步会自己再传一份到图库,`image_url` 不用管。)
 同一张图**既有行程又是照片时只走 A**,不要两边都存。
 
 ### C) 都不是

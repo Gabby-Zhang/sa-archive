@@ -47,6 +47,30 @@ def _paris(ts):
     return datetime.fromtimestamp(ts, timezone.utc).astimezone(PARIS).isoformat(timespec="minutes")
 
 
+def _upload(image_path, stem):
+    """截图传到 Supabase Storage 的公开 gallery bucket,返回公开 URL;失败返回 "" 不中断入库。"""
+    base = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY", "")
+    if not base or not key:
+        print("⚠️ 缺 Supabase 凭据,截图不上传", file=sys.stderr)
+        return ""
+    ext = pathlib.Path(image_path).suffix.lower() or ".jpg"
+    obj = f"{stem}{ext}"
+    ctype = {".png": "image/png", ".webp": "image/webp"}.get(ext, "image/jpeg")
+    req = urllib.request.Request(
+        f"{base}/storage/v1/object/gallery/{obj}",
+        data=pathlib.Path(image_path).read_bytes(),
+        headers={"Authorization": f"Bearer {key}", "apikey": key,
+                 "Content-Type": ctype, "x-upsert": "true"},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=60).close()
+    except Exception as e:
+        print(f"⚠️ 截图上传失败(行程照常入库,只是没图): {e}", file=sys.stderr)
+        return ""
+    return f"{base}/storage/v1/object/public/gallery/{obj}"
+
+
 def fetch(outdir):
     out = pathlib.Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
@@ -68,6 +92,9 @@ def fetch(outdir):
         url = f"{API}/file/bot{_token()}/{urllib.parse.quote(fpath)}"
         urllib.request.urlretrieve(url, image_path)
 
+    image_url = _upload(image_path, f"schedule/{_paris(msg['date'])[:10]}_{msg['chat']['id']}_{msg['message_id']}") \
+        if image_path else ""
+
     origin = msg.get("forward_origin") or {}
     info = {
         "chat_id": msg["chat"]["id"],
@@ -77,6 +104,7 @@ def fetch(outdir):
         "forwarded_original_date_paris": _paris(origin["date"]) if origin.get("date") else "",
         "text": msg.get("text") or msg.get("caption") or "",
         "image_path": image_path,
+        "image_url": image_url,
     }
     (out / "message.json").write_text(json.dumps(info, ensure_ascii=False, indent=2))
     print(json.dumps({k: v for k, v in info.items() if k != "chat_id"}, ensure_ascii=False))

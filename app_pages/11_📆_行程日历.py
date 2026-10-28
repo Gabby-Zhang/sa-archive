@@ -106,6 +106,15 @@ def get_sejourne_av() -> list:
 
 
 # ── 卡片渲染 ─────────────────────────────────────────────────────────────────
+_DESC_IMG_RE = re.compile(r"图: (https?://\S+)")
+
+
+def _desc_image(description: str) -> str:
+    """Telegram 截图入库时把图床链接写在 description 的「| 图: <url>」里，取出来显示缩略图。"""
+    m = _DESC_IMG_RE.search(description or "")
+    return m.group(1) if m else ""
+
+
 def _event_card(title: str, ev_date: str, location: str,
                 status: str, color: str, source_url: str = "",
                 description: str = ""):
@@ -187,12 +196,16 @@ def _event_card(title: str, ev_date: str, location: str,
                  f'📍 {location}</div>') if location else ""
     link_html = (f' <a href="{source_url}" target="_blank" '
                  f'style="color:#4A90D9;font-size:0.75rem">🔗</a>') if source_url else ""
+    img_url  = _desc_image(description)
+    img_html = (f'<a href="{img_url}" target="_blank"><img src="{img_url}" '
+                f'style="max-width:160px;max-height:120px;border-radius:6px;'
+                f'margin-top:0.35rem;display:block"></a>') if img_url else ""
 
     st.markdown(
         f'<div style="{bg};border-radius:0 8px 8px 0;padding:0.55rem 0.85rem;margin:0.3rem 0;opacity:{opacity}">'
         f'<div style="color:{date_color};font-size:0.73rem;font-weight:600">{ev_date}{badge}{an_badge}</div>'
         f'<div style="color:var(--t1);font-size:0.88rem;margin-top:0.1rem;line-height:1.35">{title}{link_html}</div>'
-        f'{loc_html}'
+        f'{loc_html}{img_html}'
         f'</div>',
         unsafe_allow_html=True)
 
@@ -270,6 +283,8 @@ def _import_to_timeline(entry: dict):
                         "source_url": i_src or "",
                         "note":       note,
                         "tag":        i_tag,
+                        # Telegram 截图行程：截图一并带进大事记
+                        "image_url":  entry.get("image_url", "") or "",
                     })
                     st.success("✅ 已收入大事记")
                     st.rerun()
@@ -308,6 +323,7 @@ def _sejourne_row(ev: dict, status: str, key: str):
                     "location":   ev.get("location", "") or "",
                     "source_url": src,
                     "person":     "Stéphane Séjourné",
+                    "image_url":  _desc_image(desc),
                 })
     else:
         _card()
@@ -584,6 +600,7 @@ with col_a:
                         "location":   ev.get("location", "") or "",
                         "source_url": ev.get("source_url", "") or "",
                         "person":     "Gabriel Attal",
+                        "image_url":  _desc_image(ev.get("description", "")),
                     })
         with cols[-1]:
             if st.button("🗑️", key=f"{key_prefix}_{ev.get('id')}",

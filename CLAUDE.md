@@ -44,6 +44,7 @@ pip install -r requirements.txt
 ### Telegram 截图机器人(`telegram-bot/` + `telegram_ingest.yml`,2026-10-28 加)
 
 - 用户换了三星手机,iCloud 文件夹那条截图管道用不上了。现在 **GA 和 SS 的行程截图/文字都发给同一个 Telegram 机器人** → Cloudflare Worker(`telegram-bot/worker.js`,校验 webhook secret + `ALLOWED_USER_IDS` 白名单)→ `repository_dispatch`(type `telegram`)→ `telegram_ingest.yml` → `run_ci.sh`:`tg.py fetch` 下载图片 → headless claude 按 `telegram-bot/SKILL_ci.md` 解析 → `scripts/screenshot_to_db.py` 入 `schedule`(纯照片走 `photo_to_gallery.py`)→ `tg.py reply` 回复入库结果。**失败也会回「⚠️ 处理失败」+ run 链接,不静默**
+- **截图本身也存**:`tg.py fetch` 先把图传到 Supabase Storage `gallery` bucket(`schedule/` 前缀,公开链接),写进 `description` 末尾的 `| 图: <url>`(schedule 表没有图片字段);行程日历卡片据此显示缩略图(`_desc_image`),「⬆️ 收入大事记」和 `sync_schedule_to_events.py` 都会把它带进 `events.image_url`。没别的链接时 `source_url` 也填这张图
 - 入库条目 `description` 以 `[TELEGRAM]` 开头,行程日历出「📱 截图」徽章;ssga-news-monitor Agenda、`sync_schedule_to_events` 照常读(都不过滤这个标签)。**只是额外入口**,新闻抽取/ICS/Playbook 都照跑
 - **`repository_dispatch` 只触发默认分支上的 workflow**,改了 workflow 要合并到 main 才生效
 - 每条消息一个 run,**刻意不设 `concurrency`**(GH 只保留一个排队 run,连发会取消中间的)
