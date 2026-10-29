@@ -24,7 +24,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python deps
-        run: pip install "supabase>=2.4,<3"
+        run: pip install "supabase>=2.4,<3" requests
 
       - name: Install claude-code CLI
         run: npm install -g @anthropic-ai/claude-code

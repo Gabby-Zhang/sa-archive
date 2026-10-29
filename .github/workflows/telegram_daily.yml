@@ -1,0 +1,50 @@
+name: Telegram daily summary
+
+# 每天晚上把当天的新闻 / 行程 / 大事记交给 headless claude 写成中文汇总,用 Telegram 机器人发给管理员。
+# 数据收集 telegram-bot/daily.py,写作要求 telegram-bot/SKILL_daily.md。
+# claude 走 CLAUDE_CODE_OAUTH_TOKEN(订阅额度,不额外花钱);claude 失败时退回发原始素材,不静默。
+
+on:
+  schedule:
+    - cron: "13 20 * * *"   # 20:13 UTC = 巴黎冬令时 21:13 / 夏令时 22:13
+  workflow_dispatch:
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          pip install requests
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Collect → summarize → send
+        env:
+          TELEGRAM_BOT_TOKEN:      ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:        ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL:            ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          mkdir -p /tmp/daily
+          python telegram-bot/daily.py /tmp/daily/input.txt
+          for try in 1 2 3; do
+            timeout 300 claude -p \
+              "请读取并严格按照这个文件里的指令执行:$GITHUB_WORKSPACE/telegram-bot/SKILL_daily.md" \
+              --model claude-sonnet-4-6 --dangerously-skip-permissions && [ -s /tmp/daily/summary.txt ] && break
+            sleep $((try * 10))
+          done
+          if [ -s /tmp/daily/summary.txt ]; then
+            python telegram-bot/tg.py send < /tmp/daily/summary.txt
+          else
+            { echo "⚠️ 今天的汇总没写成(claude 出错),先发原始素材:"; head -c 3500 /tmp/daily/input.txt; } \
+              | python telegram-bot/tg.py send
+            exit 1
+          fi
