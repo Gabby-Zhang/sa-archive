@@ -63,7 +63,7 @@
 | 内容 | workflow | 时间 |
 |---|---|---|
 | 任一 workflow 失败 → ⚠️ + run 链接 | `telegram_alerts.yml`(ssga-news-monitor、sejourn-calendar 各有一份) | 失败时 |
-| 新动态:SS / GA / S&A 新闻全推;新行程;欧盟影像库新照片 | `telegram_push.yml` → `push.py` | 每 30 分钟 |
+| 新动态:SS / GA / S&A 新闻全推;新行程;欧盟影像库新照片(标题自动译成中文,下面附原文链接) | `telegram_push.yml` → `push.py` | 每 30 分钟 |
 | 每日汇总(Claude 写的中文汇总) | `telegram_daily.yml` → `daily.py` + `SKILL_daily.md` | 每天 20:13 UTC |
 
 - 实时推送的去重记在 `profile_items`(person=S&A, section=`tg_push_seen`);第一次运行只发「已启动」,不刷屏
