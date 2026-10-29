@@ -4,8 +4,7 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
 
 推什么:
   · 新闻:和 fetch_news 同一份源(utils/news_fetcher.collect_news,不爬 attalpresident.fr),
-    只看 48 小时内发布的。SS / S&A 全推;GA 新闻太多,只推「行程预告」类标题,
-    或一线媒体的专访(规则见 GA_SCHEDULE_RE / GA_INTERVIEW_RE / MAJOR_SOURCES)
+    只看 48 小时内发布的,SS / GA / S&A 全推(2026-10-29 用户要求 GA 也全推,不筛)
   · 新行程:schedule 表里新出现的、今天及以后的 SS/GA/S&A 行程
     (跳过 [AN_AUTO] 推测条目和 [TELEGRAM] 管理员自己发的)
   · 欧盟影像库:新出现的 Séjourné 照片/视频(14 天内)
@@ -14,7 +13,6 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
 第一次运行(一行都没有)只把现有条目全部标记为已推、发一条「已启动」,不刷屏。
 """
 import html
-import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -32,19 +30,6 @@ from utils.news_fetcher import collect_news  # noqa: E402
 PARIS = ZoneInfo("Europe/Paris")
 SEEN_SECTION = "tg_push_seen"
 MAX_PER_GROUP = 12
-
-# GA:标题像行程预告的才推
-GA_SCHEDULE_RE = re.compile(
-    r"invit[ée]|se rendra|sera (?:à|au|aux|en|dans|sur|l'invit)|déplacement|meeting|débat|"
-    r"face aux?|ce soir|ce matin|demain|en direct|conférence de presse|visite", re.I)
-# GA:专访类标题,且来自一线媒体才推
-GA_INTERVIEW_RE = re.compile(r"interview|entretien|exclusi|confie|raconte|se livre|portrait", re.I)
-MAJOR_SOURCES = [
-    "tf1", "france 2", "france 3", "france 5", "franceinfo", "france info", "bfm", "lci", "cnews", "rtl",
-    "france inter", "europe 1", "rmc", "le monde", "le figaro", "libération", "liberation", "le parisien",
-    "jdd", "les echos", "l'express", "le point", "paris match", "politico", "ouest-france", "afp",
-    "reuters", "society", "mediapart", "l'opinion", "la tribune", "public sénat", "lcp",
-]
 
 GROUPS = [  # (分组键, 标题)
     ("S&A", "💞 S&A"),
@@ -64,13 +49,6 @@ def _link(title, url):
     return f'<a href="{html.escape(url)}">{_e(title)}</a>' if url else _e(title)
 
 
-def _ga_wanted(item):
-    title, source = item["title"], (item.get("source") or "").lower()
-    if GA_SCHEDULE_RE.search(title):
-        return True
-    return bool(GA_INTERVIEW_RE.search(title)) and any(m in source for m in MAJOR_SOURCES)
-
-
 def news_candidates():
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=48)
     out = []
@@ -79,8 +57,6 @@ def news_candidates():
             if datetime.fromisoformat(it["published_at"][:19]) < cutoff:
                 continue
         except ValueError:
-            continue
-        if it["person"] == "Gabriel Attal" and not _ga_wanted(it):
             continue
         src = f" — {_e(it['source'])}" if it.get("source") else ""
         out.append((f"n:{it['id']}", it["person"], f"• {_link(it['title'], it['url'])}{src}"))
