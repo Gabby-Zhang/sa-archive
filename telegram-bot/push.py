@@ -10,6 +10,9 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
     (跳过 [AN_AUTO] 推测条目和 [TELEGRAM] 管理员自己发的)
   · 欧盟影像库:新出现的 Séjourné 照片/视频(14 天内)
 
+标题用 Google 翻译免费接口译成中文(不需要 key、不占 Claude 额度),中文在上、原文链接在下;
+翻译失败就只显示原文,不影响推送。
+
 去重:推过的条目在 profile_items(person=S&A, section=tg_push_seen)记 key;新闻同时记 id 和标题两个 key,
 同一篇文章从两条路进来(链接不同,一个是 Google 跳转链、一个是真实链接)也只推一次。
 第一次运行(一行都没有)只把现有条目全部标记为已推、发一条「已启动」,不刷屏。
@@ -18,6 +21,7 @@ import hashlib
 import html
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -26,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import requests  # noqa: E402
 import sb  # noqa: E402
 import tg  # noqa: E402
 from utils.eu_av import fetch_sejourne_av  # noqa: E402
@@ -58,9 +63,34 @@ def _title_key(title):
     return "t:" + hashlib.md5(t[:120].encode()).hexdigest()
 
 
-def _news_line(title, url, source):
-    src = f" — {_e(source)}" if source else ""
-    return f"• {_link(title, url)}{src}"
+def _item(title, url, source="", prefix="", suffix=""):
+    """一条待推送的内容;prefix 如「10/30 GA · 」,suffix 如「 📰」。"""
+    return {"title": title or "", "url": url or "", "source": source or "", "prefix": prefix, "suffix": suffix}
+
+
+def _render(it, zh):
+    src = f" — {_e(it['source'])}" if it["source"] else ""
+    orig = f"{_link(it['title'], it['url'])}{it['suffix']}{src}"
+    if zh and zh.strip().lower() != it["title"].strip().lower():
+        return f"• {_e(it['prefix'])}{_e(zh)}\n   {orig}"
+    return f"• {_e(it['prefix'])}{orig}"
+
+
+_CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
+def _translate(text):
+    """Google 翻译免费接口(translate.googleapis.com, client=gtx),失败返回 ""。"""
+    if not text or _CJK.search(text):
+        return ""
+    try:
+        r = requests.get("https://translate.googleapis.com/translate_a/single", timeout=10, params={
+            "client": "gtx", "sl": "auto", "tl": "zh-CN", "dt": "t", "q": text[:500]})
+        r.raise_for_status()
+        return "".join(seg[0] for seg in r.json()[0] if seg and seg[0]).strip()
+    except Exception as e:
+        print(f"  翻译失败({e}):{text[:50]}")
+        return ""
 
 
 def news_candidates():
@@ -73,7 +103,7 @@ def news_candidates():
         except ValueError:
             continue
         out.append(([f"n:{it['id']}", _title_key(it["title"])], it["person"],
-                    _news_line(it["title"], it["url"], it.get("source"))))
+                    _item(it["title"], it["url"], it.get("source"))))
     return out
 
 
@@ -82,7 +112,7 @@ def news_table_candidates():
     rows = sb.get_all("news", [("select", "id,title,url,source,person,category"),
                                ("published_at", f"gte.{since}")])
     return [([f"n:{r['id']}", _title_key(r.get("title"))], r.get("person"),
-             _news_line(r.get("title"), r.get("url"), r.get("source")))
+             _item(r.get("title"), r.get("url"), r.get("source")))
             for r in rows if r.get("category") != "historical" and r.get("person") in SHORT]
 
 
@@ -99,7 +129,7 @@ def schedule_candidates():
         label = f"{d[5:7]}/{d[8:10]} {SHORT.get(r.get('person'), r.get('person'))}"
         tag = " 📰" if "[NEWS_AUTO]" in desc else ""
         out.append(([f"s:{r['id']}"], "schedule",
-                    f"• {label} · {_link(r.get('title'), r.get('source_url'))}{tag}"))
+                    _item(r.get("title"), r.get("source_url"), prefix=f"{label} · ", suffix=tag)))
     return out
 
 
@@ -109,7 +139,7 @@ def av_candidates():
     for it in fetch_sejourne_av(limit=30):
         if (it.get("date") or "") < cutoff:
             continue
-        out.append(([f"av:{it['ref']}"], "av", f"• {it.get('date', '')} · {_link(it['title'], it.get('url'))}"))
+        out.append(([f"av:{it['ref']}"], "av", _item(it["title"], it.get("url"), prefix=f"{it.get('date', '')} · ")))
     return out
 
 
@@ -129,25 +159,30 @@ def main():
             failed.append(name)
 
     fresh, keys = [], set()
-    for ks, group, line in cands:
+    for ks, group, item in cands:
         if any(k in seen or k in keys for k in ks):
             keys.update(ks)  # 同一篇的另一个 key 也记上,下次另一条路进来就认得
             continue
         keys.update(ks)
-        fresh.append((ks, group, line))
+        fresh.append((ks, group, item))
     print(f"新条目 {len(fresh)} 条(已推过 {len(seen)} 条)")
 
     if not seen:
         tg.send(f"✅ 实时推送已启动。现有 {len(fresh)} 条内容记为已读,之后有新的会推给你。")
     elif fresh:
         now = datetime.now(PARIS).strftime("%m/%d %H:%M")
+        shown = {gkey: [it for _, g, it in fresh if g == gkey] for gkey, _ in GROUPS}
+        todo = [it for items in shown.values() for it in items[:MAX_PER_GROUP]]
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            zh = dict(zip(map(id, todo), pool.map(lambda it: _translate(it["title"]), todo)))
         parts = [f"🔔 <b>新动态</b> · {now}"]
         for gkey, gtitle in GROUPS:
-            lines = [line for _, g, line in fresh if g == gkey]
-            if not lines:
+            items = shown[gkey]
+            if not items:
                 continue
-            more = f"\n…等共 {len(lines)} 条" if len(lines) > MAX_PER_GROUP else ""
-            parts.append(f"<b>{gtitle}</b>\n" + "\n".join(lines[:MAX_PER_GROUP]) + more)
+            lines = [_render(it, zh.get(id(it))) for it in items[:MAX_PER_GROUP]]
+            more = f"\n…等共 {len(items)} 条" if len(items) > MAX_PER_GROUP else ""
+            parts.append(f"<b>{gtitle}</b>\n" + "\n".join(lines) + more)
         tg.send("\n\n".join(parts), html=True)
 
     # 推送成功后才记为已推(推送失败下次会重推,不会漏);首次运行另记一个 init 标记
