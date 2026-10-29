@@ -1,0 +1,41 @@
+name: Telegram bot setup
+
+# 把 Telegram webhook 指向 Cloudflare Worker,并打印 webhook 状态。
+# 用途:本地浏览器/Worker 的 /setup 连不上 api.telegram.org 时(2026-10-29 实际遇到:
+# 用户那边访问超时、Cloudflare 就近节点 504),改由 GitHub 的服务器去调 Telegram。
+# 只打印 getWebhookInfo 的结果,不打印 token。
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_url:
+        description: "Worker 网址"
+        required: true
+        default: "https://sa-archive-tg.junru-zhang10.workers.dev"
+      webhook_secret:
+        description: "和 Cloudflare 里 TELEGRAM_WEBHOOK_SECRET 一样的那串;留空则只查看状态、不修改"
+        required: false
+        default: ""
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: setWebhook + getWebhookInfo
+        env:
+          TOKEN:      ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WORKER_URL: ${{ github.event.inputs.worker_url }}
+          SECRET:     ${{ github.event.inputs.webhook_secret }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "::error::缺 TELEGRAM_BOT_TOKEN secret"; exit 1; fi
+          echo "::add-mask::$SECRET"
+          if [ -n "$SECRET" ]; then
+            echo "== setWebhook"
+            curl -sS -m 30 "https://api.telegram.org/bot${TOKEN}/setWebhook" \
+              -H 'Content-Type: application/json' \
+              -d "{\"url\":\"${WORKER_URL}\",\"secret_token\":\"${SECRET}\",\"allowed_updates\":[\"message\"]}"
+            echo
+          fi
+          echo "== getWebhookInfo"
+          curl -sS -m 30 "https://api.telegram.org/bot${TOKEN}/getWebhookInfo"
+          echo

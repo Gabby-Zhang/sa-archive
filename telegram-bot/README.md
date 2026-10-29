@@ -41,6 +41,8 @@
 5. **把 webhook 指到 Worker**:浏览器打开 `https://<worker名>.<你的子域>.workers.dev/setup`,
    Worker 用自己存的 token/secret 调 setWebhook,返回 `{"ok": true, ...}` 即成功。
    之后随时可开 `/status` 查看 webhook 状态(`last_error_message` 等,不含 token)。
+   **本地连不上 api.telegram.org 时**(`/setup` 报 504/超时):改跑 Actions → "Telegram bot setup",
+   填 webhook secret 后运行,由 GitHub 的服务器去设置;secret 留空则只查看状态。
 6. **加白名单**:Telegram 里给机器人发 `/id`,它回你的用户 ID → 填进 Worker 的
    `ALLOWED_USER_IDS`(多个管理员逗号分隔)。
 7. **测试**:发一张行程截图 → 先回「📥 收到」→ 1–2 分钟后回入库结果。
