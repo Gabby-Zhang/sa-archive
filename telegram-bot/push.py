@@ -3,16 +3,20 @@
 Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就推给管理员。
 
 推什么:
-  · 新闻:和 fetch_news 同一份源(utils/news_fetcher.collect_news,不爬 attalpresident.fr),
-    只看 48 小时内发布的,SS / GA / S&A 全推(2026-10-29 用户要求 GA 也全推,不筛)
+  · 新闻:① 和 fetch_news 同一份源(utils/news_fetcher.collect_news,不爬 attalpresident.fr);
+    ② news 表里 48 小时内的新行——主要是 ssga-news-monitor 早晚两班写进来的、Sonnet 筛过的 SS/S&A 文章
+    (含 Google 快讯才搜得到的)。只看 48 小时内的,SS / GA / S&A 全推(2026-10-29 用户要求 GA 也全推)
   · 新行程:schedule 表里新出现的、今天及以后的 SS/GA/S&A 行程
     (跳过 [AN_AUTO] 推测条目和 [TELEGRAM] 管理员自己发的)
   · 欧盟影像库:新出现的 Séjourné 照片/视频(14 天内)
 
-去重:推过的条目在 profile_items(person=S&A, section=tg_push_seen)记一行 key。
+去重:推过的条目在 profile_items(person=S&A, section=tg_push_seen)记 key;新闻同时记 id 和标题两个 key,
+同一篇文章从两条路进来(链接不同,一个是 Google 跳转链、一个是真实链接)也只推一次。
 第一次运行(一行都没有)只把现有条目全部标记为已推、发一条「已启动」,不刷屏。
 """
+import hashlib
 import html
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -49,6 +53,16 @@ def _link(title, url):
     return f'<a href="{html.escape(url)}">{_e(title)}</a>' if url else _e(title)
 
 
+def _title_key(title):
+    t = re.sub(r"[^0-9a-zà-ÿ]+", " ", (title or "").lower()).strip()
+    return "t:" + hashlib.md5(t[:120].encode()).hexdigest()
+
+
+def _news_line(title, url, source):
+    src = f" — {_e(source)}" if source else ""
+    return f"• {_link(title, url)}{src}"
+
+
 def news_candidates():
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=48)
     out = []
@@ -58,9 +72,18 @@ def news_candidates():
                 continue
         except ValueError:
             continue
-        src = f" — {_e(it['source'])}" if it.get("source") else ""
-        out.append((f"n:{it['id']}", it["person"], f"• {_link(it['title'], it['url'])}{src}"))
+        out.append(([f"n:{it['id']}", _title_key(it["title"])], it["person"],
+                    _news_line(it["title"], it["url"], it.get("source"))))
     return out
+
+
+def news_table_candidates():
+    since = (datetime.now(timezone.utc) - timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%S")
+    rows = sb.get_all("news", [("select", "id,title,url,source,person,category"),
+                               ("published_at", f"gte.{since}")])
+    return [([f"n:{r['id']}", _title_key(r.get("title"))], r.get("person"),
+             _news_line(r.get("title"), r.get("url"), r.get("source")))
+            for r in rows if r.get("category") != "historical" and r.get("person") in SHORT]
 
 
 def schedule_candidates():
@@ -75,7 +98,7 @@ def schedule_candidates():
         d = str(r.get("event_date"))[:10]
         label = f"{d[5:7]}/{d[8:10]} {SHORT.get(r.get('person'), r.get('person'))}"
         tag = " 📰" if "[NEWS_AUTO]" in desc else ""
-        out.append((f"s:{r['id']}", "schedule",
+        out.append(([f"s:{r['id']}"], "schedule",
                     f"• {label} · {_link(r.get('title'), r.get('source_url'))}{tag}"))
     return out
 
@@ -86,7 +109,7 @@ def av_candidates():
     for it in fetch_sejourne_av(limit=30):
         if (it.get("date") or "") < cutoff:
             continue
-        out.append((f"av:{it['ref']}", "av", f"• {it.get('date', '')} · {_link(it['title'], it.get('url'))}"))
+        out.append(([f"av:{it['ref']}"], "av", f"• {it.get('date', '')} · {_link(it['title'], it.get('url'))}"))
     return out
 
 
@@ -94,7 +117,9 @@ def main():
     seen = {r["key"] for r in sb.get_all("profile_items", {
         "select": "key", "person": "eq.S&A", "section": f"eq.{SEEN_SECTION}"})}
     cands, failed = [], []
-    for name, fn in (("新闻", news_candidates), ("行程", schedule_candidates), ("影像库", av_candidates)):
+    sources = (("新闻", news_candidates), ("news 表", news_table_candidates),
+               ("行程", schedule_candidates), ("影像库", av_candidates))
+    for name, fn in sources:
         try:
             got = fn()
             print(f"{name}: {len(got)} 条候选")
@@ -104,10 +129,12 @@ def main():
             failed.append(name)
 
     fresh, keys = [], set()
-    for key, group, line in cands:
-        if key not in seen and key not in keys:
-            keys.add(key)
-            fresh.append((key, group, line))
+    for ks, group, line in cands:
+        if any(k in seen or k in keys for k in ks):
+            keys.update(ks)  # 同一篇的另一个 key 也记上,下次另一条路进来就认得
+            continue
+        keys.update(ks)
+        fresh.append((ks, group, line))
     print(f"新条目 {len(fresh)} 条(已推过 {len(seen)} 条)")
 
     if not seen:
@@ -124,10 +151,10 @@ def main():
         tg.send("\n\n".join(parts), html=True)
 
     # 推送成功后才记为已推(推送失败下次会重推,不会漏);首次运行另记一个 init 标记
-    marks = [k for k, _, _ in fresh] + ([] if seen else ["init"])
+    marks = sorted(keys - seen) + ([] if seen else ["init"])
     sb.insert("profile_items", [{"person": "S&A", "section": SEEN_SECTION, "key": k, "value": ""}
                                 for k in marks])
-    if failed and len(failed) == 3:
+    if len(failed) == len(sources):
         sys.exit("所有来源都抓取失败")
 
 

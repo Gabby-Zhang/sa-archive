@@ -12,6 +12,7 @@ import hashlib
 import base64
 import requests
 from datetime import datetime
+from urllib.parse import quote
 
 _UA_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -65,7 +66,41 @@ def _decode_gnews_url(gnews_url: str, timeout: int = 6, resolve_http: bool = Tru
 
 
 # ── 直接媒体 RSS 源（真实文章 URL，无 Google 跳转）────────────────────────
-MEDIA_FEEDS = [
+# Google News 按相关度排序、只给前 ~100 条:搜人名时前排几乎全是几个月前的旧稿,新稿挤不进来
+# (2026-10-29 每日汇总发现「SS 过去 24 小时 0 条」,而他正在加拿大出访)。`when:2d` 让 Google 只返回
+# 近两天的稿件。搜索词照搬 ssga-news-monitor 的 SEJOURNE_*_QUERIES / ATTAL_EN_QUERIES,放在最前面。
+_GN_EDITIONS = {
+    "fr": "hl=fr&gl=FR&ceid=FR:fr", "en": "hl=en-GB&gl=GB&ceid=GB:en", "it": "hl=it&gl=IT&ceid=IT:it",
+    "de": "hl=de&gl=DE&ceid=DE:de", "es": "hl=es&gl=ES&ceid=ES:es", "pl": "hl=pl&gl=PL&ceid=PL:pl",
+}
+_EU_PRESS_SITES = ("politico.eu", "euractiv.com", "reuters.com", "ft.com", "bloomberg.com",
+                   "euronews.com", "euobserver.com")
+_GN_RECENT_QUERIES = [
+    ("fr", "Stéphane Séjourné when:2d"),
+    ("fr", "Séjourné Commission when:2d"),
+    ("en", '"Stéphane Séjourné" when:2d'),
+    ("en", "Sejourne Commission when:2d"),
+    ("en", "Sejourne (" + " OR ".join(f"site:{d}" for d in _EU_PRESS_SITES) + ") when:2d"),
+    ("it", '"Stéphane Séjourné" when:2d'),
+    ("it", "Séjourné Commissione when:2d"),
+    ("de", '"Stéphane Séjourné" when:2d'),
+    ("de", "Séjourné Kommission when:2d"),
+    ("es", '"Stéphane Séjourné" when:2d'),
+    ("es", "Séjourné Comisión when:2d"),
+    ("es", "Sejourne (site:efe.com OR site:europapress.es) when:2d"),
+    ("pl", '"Stéphane Séjourné" when:2d'),
+    ("pl", "Séjourné Komisja Europejska when:2d"),
+    ("pl", "Sejourne (site:gov.pl OR site:pap.pl) when:2d"),
+    ("fr", "Attal Séjourné when:2d"),
+    ("fr", '"Gabriel Attal" when:2d'),
+    ("en", '"Gabriel Attal" when:2d'),
+]
+_GN_RECENT_FEEDS = [
+    {"url": f"https://news.google.com/rss/search?q={quote(q)}&{_GN_EDITIONS[lang]}", "source": ""}
+    for lang, q in _GN_RECENT_QUERIES
+]
+
+MEDIA_FEEDS = _GN_RECENT_FEEDS + [
     # 法国主流报纸
     {"url": "https://www.lemonde.fr/politique/rss_full.xml",                    "source": "lemonde.fr"},
     {"url": "https://www.lemonde.fr/international/rss_full.xml",                "source": "lemonde.fr"},
