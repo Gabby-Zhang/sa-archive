@@ -41,6 +41,15 @@ pip install -r requirements.txt
   - `run.sh` 已加固:开头显式 `ls "$WATCH"` 探一次,访问不了就大声报错 + `exit 1`,不再伪装成「无图」
 - 手动补跑/验证:`launchctl kickstart -k gui/$(id -u)/com.sa-archive.screenshot-watch`,看 `run.log`。**应急绕过 launchd**:可在有 FDA 的交互式会话里直接 Read 图→拼 `{"schedule":[...]}` JSON→`python3 scripts/screenshot_to_db.py` 入库→删图(2026-06-21 就是这么把积压的两条救回来的)
 
+### Telegram 截图机器人(`telegram-bot/` + `telegram_ingest.yml`,2026-10-28 加)
+
+- 用户换了三星手机,iCloud 文件夹那条截图管道用不上了。现在 **GA 和 SS 的行程截图/文字都发给同一个 Telegram 机器人** → Cloudflare Worker(`telegram-bot/worker.js`,校验 webhook secret + `ALLOWED_USER_IDS` 白名单)→ `repository_dispatch`(type `telegram`)→ `telegram_ingest.yml` → `run_ci.sh`:`tg.py fetch` 下载图片 → headless claude 按 `telegram-bot/SKILL_ci.md` 解析 → `scripts/screenshot_to_db.py` 入 `schedule`(纯照片走 `photo_to_gallery.py`)→ `tg.py reply` 回复入库结果。**失败也会回「⚠️ 处理失败」+ run 链接,不静默**
+- **截图本身也存**:`tg.py fetch` 先把图传到 Supabase Storage `gallery` bucket(`schedule/` 前缀,公开链接),写进 `description` 末尾的 `| 图: <url>`(schedule 表没有图片字段);行程日历卡片据此显示缩略图(`_desc_image`),「⬆️ 收入大事记」和 `sync_schedule_to_events.py` 都会把它带进 `events.image_url`。没别的链接时 `source_url` 也填这张图
+- 入库条目 `description` 以 `[TELEGRAM]` 开头,行程日历出「📱 截图」徽章;ssga-news-monitor Agenda、`sync_schedule_to_events` 照常读(都不过滤这个标签)。**只是额外入口**,新闻抽取/ICS/Playbook 都照跑
+- **`repository_dispatch` 只触发默认分支上的 workflow**,改了 workflow 要合并到 main 才生效
+- 每条消息一个 run,**刻意不设 `concurrency`**(GH 只保留一个排队 run,连发会取消中间的)
+- 部署步骤和排查见 `telegram-bot/README.md`。凭证:Worker 里 `TELEGRAM_BOT_TOKEN`/`TELEGRAM_WEBHOOK_SECRET`/`GITHUB_TOKEN`(fine-grained,Contents RW,会过期)/`GITHUB_REPO`/`ALLOWED_USER_IDS`;Actions secret 新增 `TELEGRAM_BOT_TOKEN`,其余与 Playbook 共用
+
 ### Paris Playbook 入库(**2026-08-06 起 = GitHub Actions CI `playbook_ingest.yml`**,原 launchd 已退役)
 
 每日抓 Politico Paris Playbook 邮件→抽 Attal/Séjourné 行程+新闻→入 `schedule`/`news`。演进史:app 内置任务(`paris-playbook-daily`,睡眠漏跑)→ launchd(`com.sa-archive.paris-playbook`,2026-06-24)→ **GitHub Actions CI(2026-08-06)**。搬到 CI 的原因同截图任务:launchd 靠本机,Mac 睡眠时定时落空(2026-08-04~06 连续断供、Agenda 连日空)。**生产路径现以 CI 为准;下面的 launchd 细节保留作历史 + 本地应急兜底。**

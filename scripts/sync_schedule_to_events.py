@@ -53,6 +53,9 @@ def _get_all(table: str, params) -> list:
         offset += 1000
 
 
+_IMG_RE = re.compile(r"图: (https?://\S+)")
+
+
 def _insert(table: str, data: dict) -> dict:
     r = requests.post(f"{URL}/rest/v1/{table}",
                       headers={**HDR, "Content-Type": "application/json", "Prefer": "return=representation"},
@@ -263,7 +266,9 @@ def main():
         note = f"📍 {e['location']}" if e["location"] else ""
         ev = _insert("events", {"date": e["date"], "person": e["person"], "title": zh,
                                 "source": EVENT_SOURCE, "source_url": e["source_url"],
-                                "note": note, "tag": EVENT_TAG})
+                                "note": note, "tag": EVENT_TAG,
+                                # Telegram 截图行程(description 里「| 图: <url>」)把截图带进大事记
+                                "image_url": (_IMG_RE.search(e["description"]) or [None, ""])[1]})
         _insert("profile_items", {"person": "S&A", "section": SYNC_SECTION, "key": fp,
                                   "value": str(ev.get("id", ""))})
         try:  # 审计日志失败不影响同步
