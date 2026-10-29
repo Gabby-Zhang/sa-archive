@@ -38,11 +38,9 @@
    - `GITHUB_TOKEN`:第 2 步的 token
    - `GITHUB_REPO`:`Gabby-Zhang/sa-archive`
    - `ALLOWED_USER_IDS`:先随便填 `0`,第 6 步再改
-5. **把 webhook 指到 Worker**(浏览器打开即可,把尖括号换掉):
-   ```
-   https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://<worker名>.<你的子域>.workers.dev&secret_token=<WEBHOOK_SECRET>&allowed_updates=["message"]
-   ```
-   返回 `{"ok":true,...}` 即成功。
+5. **把 webhook 指到 Worker**:浏览器打开 `https://<worker名>.<你的子域>.workers.dev/setup`,
+   Worker 用自己存的 token/secret 调 setWebhook,返回 `{"ok": true, ...}` 即成功。
+   之后随时可开 `/status` 查看 webhook 状态(`last_error_message` 等,不含 token)。
 6. **加白名单**:Telegram 里给机器人发 `/id`,它回你的用户 ID → 填进 Worker 的
    `ALLOWED_USER_IDS`(多个管理员逗号分隔)。
 7. **测试**:发一张行程截图 → 先回「📥 收到」→ 1–2 分钟后回入库结果。
@@ -57,7 +55,7 @@
 
 ## 排查
 
-- **没回「📥 收到」** → Worker 没收到或挂了:`https://api.telegram.org/bot<TOKEN>/getWebhookInfo`
+- **没回「📥 收到」** → Worker 没收到或挂了:打开 Worker 的 `/status`
   看 `last_error_message`;Cloudflare 后台 Worker → Logs 看实时日志。
 - **回「⚠️ 没转出去(GitHub 401/403/404)」** → `GITHUB_TOKEN` 过期/权限不对,或 workflow 还没合并到 main。
 - **回了「📥 收到」但迟迟没有结果** → 看 Actions → "Telegram screenshot ingest" 的 run;

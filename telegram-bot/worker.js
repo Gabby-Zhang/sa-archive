@@ -16,7 +16,21 @@
 
 export default {
   async fetch(request, env) {
-    if (request.method !== "POST") return new Response("ok");
+    if (request.method !== "POST") {
+      // 浏览器打开 /setup:用本 Worker 里存的 token/secret 把 Telegram webhook 指向自己,
+      // 不用手拼带 token 的 setWebhook 链接;/status 查看 webhook 状态(不含 token)
+      const path = new URL(request.url).pathname;
+      if (path === "/setup") {
+        const r = await tg(env, "setWebhook", {
+          url: new URL(request.url).origin,
+          secret_token: env.TELEGRAM_WEBHOOK_SECRET,
+          allowed_updates: ["message"],
+        });
+        return json(r);
+      }
+      if (path === "/status") return json(await tg(env, "getWebhookInfo", {}));
+      return new Response("ok");
+    }
 
     // 只认 Telegram 带着我们 secret 的请求,防止别人伪造
     if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== env.TELEGRAM_WEBHOOK_SECRET) {
@@ -80,6 +94,21 @@ export default {
     return new Response("ok");
   },
 };
+
+async function tg(env, method, payload) {
+  const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return resp.json();
+}
+
+function json(obj) {
+  return new Response(JSON.stringify(obj, null, 2), {
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
+}
 
 async function reply(env, chatId, replyTo, text) {
   await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
