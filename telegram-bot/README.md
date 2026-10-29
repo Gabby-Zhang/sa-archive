@@ -50,10 +50,24 @@
 ## 用法
 
 - 截图 → 分享 → Telegram → 机器人。三星分享菜单会记住常用对象。
-- 可在图片说明里补一句(如「这是 29 号的」「这条是 SS」),解析时优先采信。
+- **什么都能丢**:行程截图、新闻链接、新闻截图、两人照片、一句话。Claude 判断存到哪:
+  行程 → `schedule`;新闻 → `news`;两人互动/关系/重大的事 → `events`(大事记,中文标题);
+  没行程信息的照片 → 图库。一条消息可以同时存多处(如同框新闻 → 新闻 + 大事记)。
+- 想指定存哪,在说明里写「行程」「新闻」「大事记」「图库」即可;也可补日期(「这是 29 号的」)。
 - 纯文字也行:`GA 明早 8h20 France Inter`。
 - 相册一次发多张 = 每张各跑一次,互不影响。
-- 发错了:目前没有机器人删除命令,去行程日历页手动删。
+- 发错了:目前没有机器人删除命令,去网站对应页面手动删。
+
+## 机器人还会主动推给你
+
+| 内容 | workflow | 时间 |
+|---|---|---|
+| 任一 workflow 失败 → ⚠️ + run 链接 | `telegram_alerts.yml`(ssga-news-monitor、sejourn-calendar 各有一份) | 失败时 |
+| 新动态:SS / GA / S&A 新闻全推;新行程;欧盟影像库新照片 | `telegram_push.yml` → `push.py` | 每 30 分钟 |
+| 每日汇总(Claude 写的中文汇总) | `telegram_daily.yml` → `daily.py` + `SKILL_daily.md` | 每天 20:13 UTC |
+
+- 实时推送的去重记在 `profile_items`(person=S&A, section=`tg_push_seen`);第一次运行只发「已启动」,不刷屏
+- 推送对象是 Actions secret `TELEGRAM_CHAT_ID`(你的 Telegram 用户 ID,逗号分隔可多人)
 
 ## 排查
 

@@ -211,10 +211,11 @@ def fetch_attal_officiel() -> list:
     return items
 
 
-def collect_news() -> list:
+def collect_news(include_official: bool = True) -> list:
     """
     抓取全部新闻源（媒体 RSS + Google News + attalpresident.fr），
     返回去重后的条目列表，不写数据库 — 由调用方负责入库。
+    include_official=False 跳过 attalpresident.fr（它要逐篇爬全站，Telegram 每 30 分钟的实时推送不跑）。
     """
     results = []
     seen_urls = set()
@@ -267,7 +268,8 @@ def collect_news() -> list:
                 "summary":      summary[:500],
             })
 
-    results.extend(fetch_attal_officiel())
+    if include_official:
+        results.extend(fetch_attal_officiel())
     return results
 
 

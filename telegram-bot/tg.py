@@ -7,8 +7,10 @@ Telegram 机器人入库的两个小工具(workflow telegram_ingest.yml 调用),
       下载图片到 <outdir>/image.<ext>,写 <outdir>/message.json 给 claude 读。
   python3 telegram-bot/tg.py reply <outdir> < 正文
       把正文回复到原消息下面(chat_id / message_id 从 message.json 取)。
+  python3 telegram-bot/tg.py send < 正文
+      主动推送给管理员(报错推送、实时推送、每日汇总用;其他脚本 import tg 调 send())。
 
-环境变量:TELEGRAM_BOT_TOKEN
+环境变量:TELEGRAM_BOT_TOKEN;send 另需 TELEGRAM_CHAT_ID(逗号分隔可多人)
 """
 import json
 import os
@@ -125,7 +127,32 @@ def reply(outdir):
     })
 
 
+def send(text, html=False):
+    """推给 TELEGRAM_CHAT_ID 里的每个人;超长自动按行切成多条(单条上限 4096)。"""
+    chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
+    if not chats:
+        sys.exit("缺 TELEGRAM_CHAT_ID")
+    chunks, cur = [], ""
+    for line in text.strip().splitlines():
+        if len(cur) + len(line) + 1 > 3800:
+            chunks.append(cur)
+            cur = ""
+        cur += line + "\n"
+    if cur.strip():
+        chunks.append(cur)
+    for chat in chats:
+        for chunk in chunks:
+            payload = {"chat_id": chat, "text": chunk, "link_preview_options": {"is_disabled": True}}
+            if html:
+                payload["parse_mode"] = "HTML"
+            _api("sendMessage", payload)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3 or sys.argv[1] not in ("fetch", "reply"):
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd == "send" and len(sys.argv) == 2:
+        send(sys.stdin.read())
+    elif cmd in ("fetch", "reply") and len(sys.argv) == 3:
+        {"fetch": fetch, "reply": reply}[cmd](sys.argv[2])
+    else:
         sys.exit(__doc__)
-    {"fetch": fetch, "reply": reply}[sys.argv[1]](sys.argv[2])

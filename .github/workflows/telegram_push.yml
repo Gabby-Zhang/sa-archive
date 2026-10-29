@@ -1,0 +1,36 @@
+name: Telegram realtime push
+
+# 每 30 分钟查一次新闻 / 新行程 / 欧盟影像库,有新的就用 Telegram 机器人推给管理员。
+# 逻辑见 telegram-bot/push.py。公开仓库 Actions 不限分钟数,全程免费。
+# GH 自带 schedule 偶尔延迟,对「实时推送」影响不大;要更准可在 cron-job.org 打 workflow_dispatch。
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: telegram-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: pip install feedparser requests
+
+      - name: Check sources → push
+        env:
+          TELEGRAM_BOT_TOKEN:   ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:     ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python telegram-bot/push.py
