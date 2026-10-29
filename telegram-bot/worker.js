@@ -96,12 +96,29 @@ export default {
 };
 
 async function tg(env, method, payload) {
-  const resp = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/${method}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return resp.json();
+  // 出错时返回诊断信息而不是抛异常(只报 token 的格式,不泄露 token 本身)
+  const token = env.TELEGRAM_BOT_TOKEN || "";
+  const diag = {
+    token_set: Boolean(token),
+    token_format_ok: /^\d+:[A-Za-z0-9_-]{30,}$/.test(token),
+    token_has_whitespace: /\s/.test(token),
+    webhook_secret_length: (env.TELEGRAM_WEBHOOK_SECRET || "").length,
+  };
+  try {
+    const resp = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const text = await resp.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { ok: false, http_status: resp.status, body: text.slice(0, 300), ...diag };
+    }
+  } catch (e) {
+    return { ok: false, error: String(e), ...diag };
+  }
 }
 
 function json(obj) {
