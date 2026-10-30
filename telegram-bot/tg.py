@@ -127,8 +127,10 @@ def reply(outdir):
     })
 
 
-def send(text, html=False):
-    """推给 TELEGRAM_CHAT_ID 里的每个人;超长自动按行切成多条(单条上限 4096)。"""
+def send(text, html=False, preview_url=None):
+    """推给 TELEGRAM_CHAT_ID 里的每个人;超长自动按行切成多条(单条上限 4096)。
+
+    默认关链接预览;给 preview_url 时用它出一张大图预览(新照片推送用)。"""
     chats = [c.strip() for c in os.environ.get("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
     if not chats:
         sys.exit("缺 TELEGRAM_CHAT_ID")
@@ -142,7 +144,9 @@ def send(text, html=False):
         chunks.append(cur)
     for chat in chats:
         for chunk in chunks:
-            payload = {"chat_id": chat, "text": chunk, "link_preview_options": {"is_disabled": True}}
+            preview = ({"url": preview_url, "prefer_large_media": True} if preview_url
+                       else {"is_disabled": True})
+            payload = {"chat_id": chat, "text": chunk, "link_preview_options": preview}
             if html:
                 payload["parse_mode"] = "HTML"
             _api("sendMessage", payload)
