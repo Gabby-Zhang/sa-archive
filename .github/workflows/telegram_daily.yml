@@ -4,9 +4,9 @@ name: Telegram daily summary
 # 数据收集 telegram-bot/daily.py,写作要求 telegram-bot/SKILL_daily.md。
 # claude 走 CLAUDE_CODE_OAUTH_TOKEN(订阅额度,不额外花钱);claude 失败时退回发原始素材,不静默。
 
+# 触发:只靠 cron-job.org 每天伦敦时间 20:13(= 巴黎 21:13,随夏令时自动调整)打 workflow_dispatch。
+# 刻意不留 GH 自带 schedule:它常延迟/漏跑,而且和 cron-job.org 同时存在会一天发两份汇总。
 on:
-  schedule:
-    - cron: "13 20 * * *"   # 20:13 UTC = 巴黎冬令时 21:13 / 夏令时 22:13
   workflow_dispatch:
 
 jobs:
