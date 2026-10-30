@@ -8,14 +8,17 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
     (含 Google 快讯才搜得到的)。只看 48 小时内的,SS / GA / S&A 全推(2026-10-29 用户要求 GA 也全推)
   · 新行程:schedule 表里新出现的、今天及以后的 SS/GA/S&A 行程
     (跳过 [AN_AUTO] 推测条目和 [TELEGRAM] 管理员自己发的)
-  · 欧盟影像库:新出现的 Séjourné 照片/视频(14 天内)
+  · 新照片:photo-monitor 仓库(Getty / Alamy / Imago / Flickr / 欧盟影像库 / 欧洲议会 / Reuters /
+    Shutterstock,SS 和 GA)每发现一张新图就写进 Supabase `photo_alerts` 表,这里读新行,单独发一条
+    消息并打开第一张的链接预览(表里没存图片地址,靠图库页面的预览图)。photo-monitor 自己的 ntfy 照旧
 
 标题用 Google 翻译免费接口译成中文(不需要 key、不占 Claude 额度),中文在上、原文链接在下;
 翻译失败就只显示原文,不影响推送。
 
 去重:推过的条目在 profile_items(person=S&A, section=tg_push_seen)记 key;新闻同时记 id 和标题两个 key,
 同一篇文章从两条路进来(链接不同,一个是 Google 跳转链、一个是真实链接)也只推一次。
-第一次运行(一行都没有)只把现有条目全部标记为已推、发一条「已启动」,不刷屏。
+第一次运行(一行都没有)只把现有条目全部标记为已推、发一条「已启动」,不刷屏;
+之后新加的来源同理:seen 里还没有这个来源前缀(如 p:)时,它的现有条目静默记为已推。
 """
 import hashlib
 import html
@@ -33,7 +36,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import requests  # noqa: E402
 import sb  # noqa: E402
 import tg  # noqa: E402
-from utils.eu_av import fetch_sejourne_av  # noqa: E402
 from utils.news_fetcher import collect_news  # noqa: E402
 
 PARIS = ZoneInfo("Europe/Paris")
@@ -45,8 +47,9 @@ GROUPS = [  # (分组键, 标题)
     ("Stéphane Séjourné", "🔵 Séjourné"),
     ("Gabriel Attal", "🟡 Attal"),
     ("schedule", "🗓️ 新行程"),
-    ("av", "📷 欧盟影像库 · Séjourné"),
 ]
+PHOTO_GROUP = "photos"
+SILENT_FIRST_RUN = ("p:",)  # 新加的来源:第一次见到时现有条目静默记为已推
 SHORT = {"Stéphane Séjourné": "SS", "Gabriel Attal": "GA", "S&A": "S&A"}
 
 
@@ -133,14 +136,12 @@ def schedule_candidates():
     return out
 
 
-def av_candidates():
-    cutoff = (datetime.now(PARIS).date() - timedelta(days=14)).isoformat()
-    out = []
-    for it in fetch_sejourne_av(limit=30):
-        if (it.get("date") or "") < cutoff:
-            continue
-        out.append(([f"av:{it['ref']}"], "av", _item(it["title"], it.get("url"), prefix=f"{it.get('date', '')} · ")))
-    return out
+def photo_candidates():
+    rows = sb.get_all("photo_alerts", {"select": "id,person,source,title,url"})
+    return [([f"p:{r['id']}"], PHOTO_GROUP,
+             _item(r.get("title") or "(无标题)", r.get("url"),
+                   source=r.get("source"), prefix=f"{SHORT.get(r.get('person'), r.get('person'))} · "))
+            for r in rows if r.get("id")]
 
 
 def main():
@@ -148,7 +149,7 @@ def main():
         "select": "key", "person": "eq.S&A", "section": f"eq.{SEEN_SECTION}"})}
     cands, failed = [], []
     sources = (("新闻", news_candidates), ("news 表", news_table_candidates),
-               ("行程", schedule_candidates), ("影像库", av_candidates))
+               ("行程", schedule_candidates), ("新照片", photo_candidates))
     for name, fn in sources:
         try:
             got = fn()
@@ -159,7 +160,11 @@ def main():
             failed.append(name)
 
     fresh, keys = [], set()
+    silent = {p for p in SILENT_FIRST_RUN if seen and not any(k.startswith(p) for k in seen)}
     for ks, group, item in cands:
+        if any(k.startswith(p) for k in ks for p in silent):
+            keys.update(ks)  # 新来源第一次运行:只记为已推,不发
+            continue
         if any(k in seen or k in keys for k in ks):
             keys.update(ks)  # 同一篇的另一个 key 也记上,下次另一条路进来就认得
             continue
@@ -183,7 +188,17 @@ def main():
             lines = [_render(it, zh.get(id(it))) for it in items[:MAX_PER_GROUP]]
             more = f"\n…等共 {len(items)} 条" if len(items) > MAX_PER_GROUP else ""
             parts.append(f"<b>{gtitle}</b>\n" + "\n".join(lines) + more)
-        tg.send("\n\n".join(parts), html=True)
+        if len(parts) > 1:
+            tg.send("\n\n".join(parts), html=True)
+
+        photos = [it for _, g, it in fresh if g == PHOTO_GROUP]
+        if photos:
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                pz = list(pool.map(lambda it: _translate(it["title"]), photos[:MAX_PER_GROUP]))
+            lines = [_render(it, z) for it, z in zip(photos, pz)]
+            more = f"\n…等共 {len(photos)} 张" if len(photos) > MAX_PER_GROUP else ""
+            tg.send(f"📸 <b>新照片</b> · {now}\n" + "\n".join(lines) + more,
+                    html=True, preview_url=photos[0]["url"] or None)
 
     # 推送成功后才记为已推(推送失败下次会重推,不会漏);首次运行另记一个 init 标记
     marks = sorted(keys - seen) + ([] if seen else ["init"])
