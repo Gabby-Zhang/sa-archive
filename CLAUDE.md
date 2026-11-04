@@ -81,6 +81,7 @@ pip install -r requirements.txt
 
 - **`add_schedule.yml`**(Actions → "Add schedule entry (manual)",2026-10-21 加):填 人物/日期/标题/地点/链接/备注,`scripts/add_schedule.py` 用仓库 secret `SUPABASE_SERVICE_KEY` 写进 `schedule`(`description` 带 `[MANUAL]`),行程日历和 ssga-news-monitor 邮件 Agenda 都会读到。按 人+日期+链接/标题 幂等。用于新闻里有、自动抽取没收到的行程。**放在本仓库是因为只有这里配了 `SUPABASE_SERVICE_KEY`**(ssga-news-monitor 没配)
 - `add_news.yml`:同理手动补一条新闻进 `news`
+- **`delete_schedule.yml`**(Actions → "Delete schedule entry (manual)",2026-11-04 加):按 人+日期+标题关键词 删一条错误行程(SS 的条目在行程日历里没有删除按钮)。默认 `dry_run` 只打印命中条目,确认后取消再跑;命中多条默认拒绝;顺带删掉 `sync_schedule_to_events` 已同步进大事记的同一条(`source="行程同步"`),都记 `audit_log`(`admin_name="手动删除(workflow)"`)
 
 ### 行程自动收入大事记(`sync_schedule_to_events.yml`,2026-10-23 加)
 

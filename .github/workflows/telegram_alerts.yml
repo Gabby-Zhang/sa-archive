@@ -11,6 +11,7 @@ on:
     workflows:
       - "Add news item (manual)"
       - "Add schedule entry (manual)"
+      - "Delete schedule entry (manual)"
       - "每日纪念日提醒"
       - "每日新闻链接存档"
       - "每周数据备份"
