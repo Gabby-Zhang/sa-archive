@@ -1,0 +1,59 @@
+name: Delete schedule entry (manual)
+
+# 手动从 Supabase `schedule` 表删一条错误行程(SS 的条目在行程日历里没有删除按钮)。
+# 默认 dry_run 只打印命中的条目;确认后取消 dry_run 再跑。同时删掉已同步进大事记的同一条。
+on:
+  workflow_dispatch:
+    inputs:
+      person:
+        description: 'Person'
+        required: true
+        type: choice
+        options:
+          - Stéphane Séjourné
+          - Gabriel Attal
+          - S&A
+      event_date:
+        description: 'Date (YYYY-MM-DD)'
+        required: true
+      match:
+        description: 'Title keyword (case-insensitive substring, ≥3 chars)'
+        required: true
+      dry_run:
+        description: 'Dry run (only print, do not delete)'
+        type: boolean
+        default: true
+      allow_multiple:
+        description: 'Allow deleting several matching entries'
+        type: boolean
+        default: false
+      also_events:
+        description: 'Also delete the synced 大事记 copy'
+        type: boolean
+        default: true
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      # 输入一律走 env,不直接插进 shell,避免注入
+      - name: Delete from schedule
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PERSON: ${{ inputs.person }}
+          EVENT_DATE: ${{ inputs.event_date }}
+          MATCH: ${{ inputs.match }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ALLOW_MULTIPLE: ${{ inputs.allow_multiple }}
+          ALSO_EVENTS: ${{ inputs.also_events }}
+        run: python scripts/delete_schedule.py
