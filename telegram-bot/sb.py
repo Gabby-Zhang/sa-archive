@@ -45,3 +45,19 @@ def audit(action, table, record_id, detail, who="Telegram 机器人"):
                              "detail": str(detail)[:200]})
     except Exception:
         pass
+
+
+def delete(table, params):
+    """按条件删除,返回被删的行。"""
+    r = requests.delete(f"{URL}/rest/v1/{table}", headers={**HDR, "Prefer": "return=representation"},
+                        params=params, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
+def delete_storage(bucket, path):
+    """删 Storage 里的一个文件,失败不抛(数据库行已删,图片残留无害)。"""
+    try:
+        requests.delete(f"{URL}/storage/v1/object/{bucket}/{path}", headers=HDR, timeout=30)
+    except Exception:
+        pass

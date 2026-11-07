@@ -26,7 +26,13 @@ jobs:
       - name: Install Python deps
         run: pip install "supabase>=2.4,<3" requests
 
+      # 「撤回」命令不需要 claude,跳过安装省半分钟
+      - name: Detect undo command
+        id: kind
+        run: python3 telegram-bot/undo.py detect >> "$GITHUB_OUTPUT"
+
       - name: Install claude-code CLI
+        if: steps.kind.outputs.undo != 'true'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Parse → ingest → reply

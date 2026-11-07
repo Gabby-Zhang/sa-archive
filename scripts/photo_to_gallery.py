@@ -10,6 +10,8 @@
 拿到公开 URL 后写入 images 表（drive_url 字段存任意 URL 均可正常显示）。
 """
 import argparse
+import json
+import os
 import mimetypes
 import pathlib
 import sys
@@ -19,13 +21,22 @@ from datetime import date
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 
+def _ledger(table, row_id, label, storage=""):
+    """Telegram 撤回用:把本次写入的行记进 $TG_LEDGER(每行一条 JSON);没设这个变量就什么都不做。"""
+    path = os.environ.get("TG_LEDGER")
+    if not path or not row_id:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"table": table, "id": str(row_id), "label": label, "storage": storage},
+                           ensure_ascii=False) + "\n")
+
+
 def _load_creds():
     secrets_path = pathlib.Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
     if secrets_path.exists():
         import toml
         s = toml.load(str(secrets_path))
         return s["SUPABASE_URL"], (s.get("SUPABASE_SERVICE_KEY") or s["SUPABASE_KEY"])
-    import os
     return os.environ["SUPABASE_URL"], (os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"])
 
 
@@ -61,7 +72,7 @@ def main():
     )
     public_url = db.storage.from_("gallery").get_public_url(path)
 
-    db.table("images").insert({
+    res = db.table("images").insert({
         "title":     args.title,
         "person":    args.person,
         "tag":       args.tag,
@@ -69,6 +80,7 @@ def main():
         "drive_url": public_url,
         "note":      args.note,
     }).execute()
+    _ledger("images", (res.data or [{}])[0].get("id"), f"图库 · {args.person} · {args.title[:50]}", path)
 
     print(f"✅ 已入图库: {args.title[:50]} → {public_url}")
 
