@@ -120,11 +120,13 @@ def reply(outdir):
         msg = json.loads(pathlib.Path(os.environ["GITHUB_EVENT_PATH"]).read_text())["client_payload"]["message"]
         info = {"chat_id": msg["chat"]["id"], "message_id": msg["message_id"]}
     text = sys.stdin.read().strip() or "(无输出)"
-    _api("sendMessage", {
+    sent = _api("sendMessage", {
         "chat_id": info["chat_id"],
         "text": text[:4000],
         "reply_parameters": {"message_id": info["message_id"], "allow_sending_without_reply": True},
     })
+    # 记下结果回复的 id:用户回复这条「撤回」时,undo.py 能找回原消息
+    (pathlib.Path(outdir) / "reply_id.txt").write_text(str(sent.get("message_id", "")))
 
 
 def send(text, html=False, preview_url=None):

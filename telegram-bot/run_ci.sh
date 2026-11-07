@@ -12,13 +12,24 @@ OUT="/tmp/tg"
 SKILL="$ROOT/telegram-bot/SKILL_ci.md"
 RUN_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/actions/runs/${GITHUB_RUN_ID:-}"
 mkdir -p "$OUT"
+# 各入库脚本把新写入的行记到这里,结束时存成撤回清单(见 undo.py)
+export TG_LEDGER="$OUT/ledger.jsonl"
 
 fail() {
   echo "::error::$1"
   printf '⚠️ 处理失败:%s\n日志:%s\n可以稍后重发一次。' "$1" "$RUN_URL" \
     | python3 telegram-bot/tg.py reply "$OUT" || true
+  python3 telegram-bot/undo.py record "$OUT" || true   # 失败前已写进去的条目也能撤回
   exit 1
 }
+
+# Step 0 — 「撤回」命令:不用 claude,直接按清单删
+if [ "$(python3 telegram-bot/undo.py detect)" = "undo=true" ]; then
+  python3 telegram-bot/undo.py run > "$OUT/reply.txt" || fail "撤回失败"
+  cat "$OUT/reply.txt"
+  python3 telegram-bot/tg.py reply "$OUT" < "$OUT/reply.txt" || { echo "::error::回复 Telegram 失败"; exit 1; }
+  exit 0
+fi
 
 # Step 1 — 取消息 + 下载图片
 python3 telegram-bot/tg.py fetch "$OUT" || fail "下载 Telegram 消息/图片失败"
@@ -45,5 +56,7 @@ done
 
 # Step 3 — 回复结果
 cat "$OUT/reply.txt"
-python3 telegram-bot/tg.py reply "$OUT" < "$OUT/reply.txt" || { echo "::error::回复 Telegram 失败"; exit 1; }
+python3 telegram-bot/tg.py reply "$OUT" < "$OUT/reply.txt" || echo "::error::回复 Telegram 失败"
+python3 telegram-bot/undo.py record "$OUT" || echo "::warning::撤回清单没存上(这条消息之后撤回不了)"
+[ -s "$OUT/reply_id.txt" ] || exit 1
 echo "✅ Telegram 入库完成"

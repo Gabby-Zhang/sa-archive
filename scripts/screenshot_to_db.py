@@ -26,6 +26,16 @@ import sys
 import json
 import pathlib
 
+def _ledger(table, row_id, label, storage=""):
+    """Telegram 撤回用:把本次写入的行记进 $TG_LEDGER(每行一条 JSON);没设这个变量就什么都不做。"""
+    path = os.environ.get("TG_LEDGER")
+    if not path or not row_id:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"table": table, "id": str(row_id), "label": label, "storage": storage},
+                           ensure_ascii=False) + "\n")
+
+
 def _load_creds():
     secrets_path = pathlib.Path(__file__).parent.parent / ".streamlit" / "secrets.toml"
     if secrets_path.exists():
@@ -84,7 +94,7 @@ def main():
             print(f"↩️ 已存在，跳过: {ev_date} · {title[:50]}")
             continue
 
-        db.table("schedule").insert({
+        res = db.table("schedule").insert({
             "person":      person,
             "event_date":  ev_date,
             "title":       title,
@@ -92,6 +102,7 @@ def main():
             "description": item.get("description", "截图 · auto"),
             "source_url":  item.get("source_url", ""),
         }).execute()
+        _ledger("schedule", (res.data or [{}])[0].get("id"), f"行程 {ev_date} · {person} · {title[:60]}")
         inserted += 1
         print(f"✅ 已写入: {ev_date} · {title[:60]}")
 

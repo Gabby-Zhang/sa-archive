@@ -11,11 +11,22 @@ event:同 日期+人物+标题 已存在则跳过;写审计日志(admin_name「T
 """
 import hashlib
 import json
+import os
 import sys
 
 import sb
 
 PEOPLE = {"Gabriel Attal", "Stéphane Séjourné", "S&A"}
+
+
+def _ledger(table, row_id, label, storage=""):
+    """Telegram 撤回用:把本次写入的行记进 $TG_LEDGER(每行一条 JSON);没设这个变量就什么都不做。"""
+    path = os.environ.get("TG_LEDGER")
+    if not path or not row_id:
+        return
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps({"table": table, "id": str(row_id), "label": label, "storage": storage},
+                           ensure_ascii=False) + "\n")
 
 
 def save_news(d):
@@ -33,6 +44,8 @@ def save_news(d):
     }
     existed = sb.get_all("news", {"select": "id", "id": f"eq.{row['id']}"})
     sb.insert("news", row, upsert_on="id")
+    if not existed:  # 本来就有的新闻撤回时不能删
+        _ledger("news", row["id"], f"新闻 · {row['person']} · {row['title'][:60]}")
     print(f"{'↩️ 新闻已存在(已更新)' if existed else '✅ 新闻已入库'}: {row['person']} · {row['title'][:60]}")
 
 
@@ -48,6 +61,7 @@ def save_event(d):
     row["source"] = "Telegram"
     ev = (sb.insert("events", row) or [{}])[0]
     sb.audit("insert", "events", ev.get("id"), row["title"])
+    _ledger("events", ev.get("id"), f"大事记 {row['date']} · {row['person']} · {row['title'][:60]}")
     print(f"✅ 大事记已入库: {row['date']} · {row['person']} · {row['title'][:60]}")
 
 
