@@ -2,6 +2,8 @@
 
 关于 Stéphane Séjourné (SS) 和 Gabriel Attal (GA) 的中文粉丝档案站。核心是记录两人的关系与互动,政治/新闻内容是辅助背景。Streamlit 多页应用,部署在 Streamlit Cloud,数据存 Supabase。
 
+> 🇬🇧 **用户在英国**(只是说中文,不在中国):回复里所有时间一律换成**英国时间**(冬令 GMT = UTC,夏令 BST = UTC+1),不要写北京时间。
+
 ## 常用命令
 
 ```bash
