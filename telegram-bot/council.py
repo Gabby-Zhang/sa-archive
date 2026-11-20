@@ -9,8 +9,9 @@
 难点:理事会的图说经常只写「Plenary session」,不写人名(那次 25 张里只有 1 张写了他,还标错了头衔)。
 所以按两档推,每个活动一条:
   ✅ 有他 —— 照片图说 / 标签 / 相册名 或 视频标题 / 简介 / 标签 里出现 Séjourné / Attal
-  ❓ 可能有他 —— 名字没出现,但活动类型是他常去的(峰会、竞争力理事会、欧洲理事会……),
-                或者他的 ICS 日历当天有个关键词对得上的条目;推活动链接,自己去翻
+  ❓ 可能有他 —— 名字没出现,但 schedule 表当天有对得上的行程(用户一般会提前发给 Telegram 机器人)、
+                ICS 日历当天关键词对得上,或活动类型是他常去的(峰会、竞争力理事会…);推活动链接,自己去翻
+每个活动 ✅ 只推一次(用户看到一张有他就会去翻整个活动,不需要按新照片重复推);❓ 之后变 ✅ 会再推一次
 接口:newsroomapi.consilium.europa.eu/api/events(列表)、/api/events/<urlName>(照片+视频列表)、
 /api/videos/<urlName>(视频简介、标签)。全部公开、免 key。
 """
@@ -36,7 +37,7 @@ _STOP = {"the", "of", "and", "for", "with", "in", "on", "at", "to", "a", "an", "
          "february", "march", "april", "may", "june", "july", "august", "september", "october", "2026",
          "2027", "president", "minister", "ministers", "prime", "meets", "vice", "executive", "participation",
          "presentation", "stéphane", "séjourné", "sejourne", "brussels", "bruxelles", "state", "states", "member",
-         "high", "level", "conference", "forum", "session", "date", "per", "agenda", "informal", "visit", "weekly", "college"}
+         "conseil", "européen", "europe", "union", "uni", "réunion", "high", "level", "conference", "forum", "session", "date", "per", "agenda", "informal", "visit", "weekly", "college"}
 
 
 def _get(path, **params):
@@ -45,8 +46,37 @@ def _get(path, **params):
     return r.json()
 
 
+# 行程表里的标题多是法语(Telegram 入库)或中文,理事会活动名是英语:常见词先统一成英语再比
+_SYNONYM = {"sommet": "summit", "峰会": "summit", "compétitivité": "competitiveness",
+            "competitivite": "competitiveness", "竞争力": "competitiveness", "royaume": "kingdom",
+            "英国": "kingdom", "industrie": "industry", "industriel": "industry", "工业": "industry",
+            "产业": "industry", "marché": "market", "intérieur": "internal", "espace": "space", "航天": "space",
+            "acier": "steel", "钢铁": "steel", "automobile": "automotive", "汽车": "automotive"}
+
+
 def _words(s):
-    return {w for w in re.findall(r"[a-zà-ÿ]{3,}", (s or "").lower()) if w not in _STOP}
+    s = (s or "").lower()
+    out = {_SYNONYM.get(w, w) for w in re.findall(r"[a-zà-ÿ]{3,}", s)}
+    out |= {en for zh, en in _SYNONYM.items() if not zh.isascii() and zh in s}
+    out |= {"kingdom"} if re.search(r"\buk\b|united kingdom|royaume-uni", s) else set()
+    return out - _STOP
+
+
+def _schedule_by_date(since):
+    """schedule 表里 SS / S&A 的行程(你提前发给 Telegram 机器人的、Playbook、新闻抽取…):
+    {日期: [(标题, 关键词)]}。失败返回 {}。"""
+    try:
+        import sb  # 只在 CI 里有 Supabase 凭据;本地试跑没有就跳过
+        rows = sb.get_all("schedule", [("select", "person,event_date,title"),
+                                       ("event_date", f"gte.{since.date().isoformat()}"),
+                                       ("person", "in.(Stéphane Séjourné,S&A)")])
+    except Exception as e:
+        print(f"  理事会:读 schedule 表失败({e})")
+        return {}
+    out = {}
+    for r in rows:
+        out.setdefault(str(r.get("event_date"))[:10], []).append((r.get("title") or "", _words(r.get("title"))))
+    return out
 
 
 def _ics_by_date():
@@ -84,6 +114,7 @@ def scan():
     since = now - timedelta(days=LOOKBACK_DAYS)
     events = _get("events", pagesize=40, page=1, orderBy="date", orderDirection="descending")["data"]
     ics = _ics_by_date()
+    sched = _schedule_by_date(since)
     out = []
     for ev in events:
         try:
@@ -122,15 +153,18 @@ def scan():
             if hit_videos:
                 bits.append("视频:" + "、".join(v.get("title", "") for v in hit_videos[:3]))
             person = "S&A" if len(people) > 1 else people.pop()
-            out.append({"key": f"c:{ev['urlName']}:y{len(hit_photos)}v{len(hit_videos)}", "person": person,
+            out.append({"key": f"c:{ev['urlName']}:y", "person": person,
                         "status": "yes", "title": ev["title"], "url": url,
                         "detail": f"✅ {';'.join(bits)}({counts})",
                         "preview": hit_photos[0]["urlName"] if hit_photos else None})
             continue
 
-        overlap = _words(ev["title"]) & ics.get(day, set())
-        if LIKELY_EVENT.search(ev["title"]) or overlap:
-            why = f"日历当天有「{'/'.join(sorted(overlap))}」" if overlap else "他常出席的活动类型"
+        ev_words = _words(ev["title"])
+        planned = [t for t, w in sched.get(day, []) if ev_words & w]
+        overlap = ev_words & ics.get(day, set())
+        if planned or overlap or LIKELY_EVENT.search(ev["title"]):
+            why = (f"行程表当天有「{planned[0][:40]}」" if planned
+                   else f"日历当天有「{'/'.join(sorted(overlap))}」" if overlap else "他常出席的活动类型")
             out.append({"key": f"c:{ev['urlName']}:m{'p' if photos else 'v'}", "person": "Stéphane Séjourné",
                         "status": "maybe", "title": ev["title"], "url": url,
                         "detail": f"❓ 图说没写名字,{why}({counts})", "preview": None})
