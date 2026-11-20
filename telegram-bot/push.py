@@ -11,6 +11,9 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
   · 新照片:photo-monitor 仓库(Getty / Alamy / Imago / Flickr / 欧盟影像库 / 欧洲议会 / Reuters /
     Shutterstock,SS 和 GA)每发现一张新图就写进 Supabase `photo_alerts` 表,这里读新行,单独发一条
     消息并打开第一张的链接预览(表里没存图片地址,靠图库页面的预览图)。photo-monitor 自己的 ntfy 照旧
+  · 欧盟理事会 Newsroom(council.py,2026-11-20 加):理事会主办的峰会/理事会会议照片视频只发在那里,
+    EC 影像库没有。每个活动一条,✅ 图说/视频写了名字;❓ 没写名字但是他常去的活动类型或日历当天对得上,
+    和新照片放在同一条消息里
 
 标题用 Google 翻译免费接口译成中文(不需要 key、不占 Claude 额度),中文在上、原文链接在下;
 翻译失败就只显示原文,不影响推送。
@@ -36,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import requests  # noqa: E402
 import sb  # noqa: E402
 import tg  # noqa: E402
+import council  # noqa: E402
 from utils.news_fetcher import collect_news  # noqa: E402
 
 PARIS = ZoneInfo("Europe/Paris")
@@ -49,7 +53,7 @@ GROUPS = [  # (分组键, 标题)
     ("schedule", "🗓️ 新行程"),
 ]
 PHOTO_GROUP = "photos"
-SILENT_FIRST_RUN = ("p:",)  # 新加的来源:第一次见到时现有条目静默记为已推
+SILENT_FIRST_RUN = ("p:",)  # 新加的来源:第一次见到时现有条目静默记为已推(理事会只看 4 天、条目少,刻意不静默)
 SHORT = {"Stéphane Séjourné": "SS", "Gabriel Attal": "GA", "S&A": "S&A"}
 
 
@@ -144,12 +148,21 @@ def photo_candidates():
             for r in rows if r.get("id")]
 
 
+def council_candidates():
+    return [([it["key"]], PHOTO_GROUP,
+             {**_item(it["title"], it["url"], prefix=f"{SHORT.get(it['person'], it['person'])} · 欧盟理事会 · ",
+                      suffix=f"\n   {_e(it['detail'])}"),
+              "preview": it["preview"] or it["url"]})
+            for it in council.scan()]
+
+
 def main():
     seen = {r["key"] for r in sb.get_all("profile_items", {
         "select": "key", "person": "eq.S&A", "section": f"eq.{SEEN_SECTION}"})}
     cands, failed = [], []
     sources = (("新闻", news_candidates), ("news 表", news_table_candidates),
-               ("行程", schedule_candidates), ("新照片", photo_candidates))
+               ("行程", schedule_candidates), ("新照片", photo_candidates),
+               ("欧盟理事会", council_candidates))
     for name, fn in sources:
         try:
             got = fn()
@@ -198,7 +211,7 @@ def main():
             lines = [_render(it, z) for it, z in zip(photos, pz)]
             more = f"\n…等共 {len(photos)} 张" if len(photos) > MAX_PER_GROUP else ""
             tg.send(f"📸 <b>新照片</b> · {now}\n" + "\n".join(lines) + more,
-                    html=True, preview_url=photos[0]["url"] or None)
+                    html=True, preview_url=photos[0].get("preview") or photos[0]["url"] or None)
 
     # 推送成功后才记为已推(推送失败下次会重推,不会漏);首次运行另记一个 init 标记
     marks = sorted(keys - seen) + ([] if seen else ["init"])
