@@ -31,6 +31,10 @@ on:
         description: 'Also delete the synced 大事记 copy'
         type: boolean
         default: true
+      event_match:
+        description: 'Also delete 大事记 of any source whose title contains this keyword (optional)'
+        required: false
+        default: ''
 
 jobs:
   delete:
@@ -56,4 +60,5 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           ALLOW_MULTIPLE: ${{ inputs.allow_multiple }}
           ALSO_EVENTS: ${{ inputs.also_events }}
+          EVENT_MATCH: ${{ inputs.event_match }}
         run: python scripts/delete_schedule.py

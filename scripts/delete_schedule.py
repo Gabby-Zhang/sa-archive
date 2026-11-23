@@ -7,6 +7,10 @@
 需要更精确的关键词或打开 allow_multiple。DRY_RUN=true(默认)只打印不删。
 同时删掉 sync_schedule_to_events 已经同步进 `events`(大事记)的同一条
 (source="行程同步"、同人同日、标题含同一关键词)。删除都记 audit_log。
+
+EVENT_MATCH(可选):再删掉当天标题含这个关键词的大事记,不限来源——Telegram 机器人
+直接存的大事记(中文标题、source 不是「行程同步」)上面那条规则删不到。dry-run 时
+会列出该人当天全部大事记,方便挑关键词。
 """
 import os
 import sys
@@ -30,6 +34,7 @@ def main():
     dry_run = _truthy(os.environ.get("DRY_RUN", "true"))
     allow_multiple = _truthy(os.environ.get("ALLOW_MULTIPLE", "false"))
     also_events = _truthy(os.environ.get("ALSO_EVENTS", "true"))
+    event_match = os.environ.get("EVENT_MATCH", "").strip()
 
     if not url or not key:
         sys.exit("缺少 SUPABASE_URL / SUPABASE_SERVICE_KEY secret。")
@@ -41,14 +46,17 @@ def main():
         sys.exit(f"event_date 必须是 YYYY-MM-DD,收到: {date!r}")
     if len(match) < 3:
         sys.exit("标题关键词至少 3 个字符,防止误删。")
+    if event_match and len(event_match) < 2:
+        sys.exit("大事记关键词至少 2 个字符,防止误删。")
 
     hdr = {"apikey": key, "Authorization": f"Bearer {key}"}
     needle = match.lower()
 
-    def find(table, params):
+    def find(table, params, kw=None):
+        kw = (needle if kw is None else kw).lower()
         r = requests.get(f"{url}/rest/v1/{table}", headers=hdr, params=params, timeout=10)
         r.raise_for_status()
-        return [row for row in r.json() if needle in (row.get("title") or "").lower()]
+        return [row for row in r.json() if kw in (row.get("title") or "").lower()]
 
     def delete(table, rows, label):
         for row in rows:
@@ -70,10 +78,17 @@ def main():
             except Exception:
                 pass  # 审计失败不影响删除
 
+    if dry_run:
+        day = find("events", {"select": "id,title,source", "person": f"eq.{person}",
+                              "date": f"eq.{date}"}, kw="")
+        print(f"该人 {date} 全部大事记 {len(day)} 条:")
+        for row in day:
+            print(f"  id={row['id']} [{row.get('source') or ''}] {row.get('title')}")
+
     sched = find("schedule", {"select": "id,title,description",
                               "person": f"eq.{person}", "event_date": f"eq.{date}"})
     print(f"schedule 命中 {len(sched)} 条({person} {date} 标题含 {match!r})")
-    if not sched:
+    if not sched and not event_match:
         sys.exit("没找到匹配的行程,什么都没删。检查日期/人物/关键词。")
     if len(sched) > 1 and not allow_multiple:
         for row in sched:
@@ -85,6 +100,16 @@ def main():
         evs = find("events", {"select": "id,title,source", "person": f"eq.{person}",
                               "date": f"eq.{date}", "source": "eq.行程同步"})
         print(f"大事记(行程同步)命中 {len(evs)} 条")
+        delete("events", evs, person)
+
+    if event_match:
+        evs = find("events", {"select": "id,title,source", "person": f"eq.{person}",
+                              "date": f"eq.{date}"}, kw=event_match)
+        evs = [e for e in evs if not (also_events and e.get("source") == "行程同步"
+                                      and needle in (e.get("title") or "").lower())]
+        print(f"大事记(标题含 {event_match!r},任意来源)命中 {len(evs)} 条")
+        if len(evs) > 1 and not allow_multiple:
+            sys.exit("大事记命中多条,已拒绝。请用更精确的关键词,或勾选 allow_multiple。")
         delete("events", evs, person)
 
     print("dry-run 完成,未改动数据库。确认无误后取消勾选 dry_run 再跑一次。" if dry_run
