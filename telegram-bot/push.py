@@ -8,6 +8,10 @@ Telegram 实时推送(telegram_push.yml 每 30 分钟跑一次):有新内容就�
     (含 Google 快讯才搜得到的)。只看 48 小时内的,SS / GA / S&A 全推(2026-10-29 用户要求 GA 也全推)
   · 新行程:schedule 表里新出现的、今天及以后的 SS/GA/S&A 行程
     (跳过 [AN_AUTO] 推测条目和 [TELEGRAM] 管理员自己发的)
+  · Séjourné 日历新条目:sejourn-calendar 的 sejourn.ics 里新出现的条目(官方议程、透明度登记会议、
+    EC Presscorner 讲话、欧盟影像库 [EU_AV]、议会议程 [EP_AGENDA]…),附来源和原始链接——
+    原来只推 ntfy,ntfy 看不到链接。跳过推测条目([EU_AUTO]/[EP_MAYBE]/[COUNCIL_AUTO])和
+    从 schedule 表同步过去的(那些已经走上面的「新行程」推过)。回看 14 天(影像库、透明度登记常事后才出)
   · 新照片:photo-monitor 仓库(Getty / Alamy / Imago / Flickr / 欧盟影像库 / 欧洲议会 / Reuters /
     Shutterstock,SS 和 GA)每发现一张新图就写进 Supabase `photo_alerts` 表,这里读新行,单独发一条
     消息并打开第一张的链接预览(表里没存图片地址,靠图库页面的预览图)。photo-monitor 自己的 ntfy 照旧
@@ -31,11 +35,13 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import requests  # noqa: E402
 import sb  # noqa: E402
 import tg  # noqa: E402
+from sync_schedule_to_events import load_ics  # noqa: E402
 from utils.news_fetcher import collect_news  # noqa: E402
 
 PARIS = ZoneInfo("Europe/Paris")
@@ -49,7 +55,7 @@ GROUPS = [  # (分组键, 标题)
     ("schedule", "🗓️ 新行程"),
 ]
 PHOTO_GROUP = "photos"
-SILENT_FIRST_RUN = ("p:",)  # 新加的来源:第一次见到时现有条目静默记为已推
+SILENT_FIRST_RUN = ("p:", "i:")  # 新加的来源:第一次见到时现有条目静默记为已推
 SHORT = {"Stéphane Séjourné": "SS", "Gabriel Attal": "GA", "S&A": "S&A"}
 
 
@@ -64,6 +70,11 @@ def _link(title, url):
 def _title_key(title):
     t = re.sub(r"[^0-9a-zà-ÿ]+", " ", (title or "").lower()).strip()
     return "t:" + hashlib.md5(t[:120].encode()).hexdigest()
+
+
+def _domain(url):
+    m = re.match(r"https?://(?:www\.)?([^/]+)", url or "")
+    return m.group(1) if m else ""
 
 
 def _item(title, url, source="", prefix="", suffix=""):
@@ -132,7 +143,29 @@ def schedule_candidates():
         label = f"{d[5:7]}/{d[8:10]} {SHORT.get(r.get('person'), r.get('person'))}"
         tag = " 📰" if "[NEWS_AUTO]" in desc else ""
         out.append(([f"s:{r['id']}"], "schedule",
-                    _item(r.get("title"), r.get("source_url"), prefix=f"{label} · ", suffix=tag)))
+                    _item(r.get("title"), r.get("source_url"), source=_domain(r.get("source_url")),
+                          prefix=f"{label} · ", suffix=tag)))
+    return out
+
+
+ICS_SKIP = ("[EU_AUTO]", "[EP_MAYBE]", "[COUNCIL_AUTO]", "Source: sa-archive schedule")
+ICS_BADGE = (("[EU_AV]", " 📷"), ("[EP_AGENDA]", " 🏛️"))
+
+
+def ics_candidates():
+    today = datetime.now(PARIS).date()
+    lo, hi = (today - timedelta(days=14)).isoformat(), (today + timedelta(days=90)).isoformat()
+    out = []
+    for ev in load_ics():
+        d, desc = ev["date"], ev.get("description") or ""
+        if not lo <= d <= hi or any(t in desc for t in ICS_SKIP):
+            continue
+        m = re.search(r"Source:\s*(.+?)(?:\s+https?://|$)", desc)
+        src = m.group(1).strip() if m else _domain(ev.get("source_url"))
+        badge = "".join(b for t, b in ICS_BADGE if t in desc)
+        key = "i:" + hashlib.md5(f"{d}|{ev['title']}".encode()).hexdigest()
+        out.append(([key], "schedule", _item(ev["title"], ev.get("source_url"), source=src,
+                                             prefix=f"{d[5:7]}/{d[8:10]} SS · ", suffix=badge)))
     return out
 
 
@@ -149,7 +182,7 @@ def main():
         "select": "key", "person": "eq.S&A", "section": f"eq.{SEEN_SECTION}"})}
     cands, failed = [], []
     sources = (("新闻", news_candidates), ("news 表", news_table_candidates),
-               ("行程", schedule_candidates), ("新照片", photo_candidates))
+               ("行程", schedule_candidates), ("SS 日历", ics_candidates), ("新照片", photo_candidates))
     for name, fn in sources:
         try:
             got = fn()
