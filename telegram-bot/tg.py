@@ -16,6 +16,8 @@ import json
 import os
 import pathlib
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
@@ -32,14 +34,34 @@ def _token():
     return tok
 
 
+def _retry(fn, what, tries=4):
+    """GitHub runner 连 api.telegram.org 偶发瞬时网络错(TLS 握手时 Connection reset 等),
+    重试几次再放弃。HTTP 4xx/5xx 是 Telegram 的真实回答,不重试。"""
+    for i in range(tries):
+        try:
+            return fn()
+        except urllib.error.HTTPError:
+            raise
+        except (urllib.error.URLError, ConnectionError, TimeoutError) as e:
+            if i == tries - 1:
+                raise
+            wait = 3 * (i + 1)
+            print(f"⚠️ {what} 网络错误({e}),{wait}s 后重试 ({i + 1}/{tries - 1})", file=sys.stderr)
+            time.sleep(wait)
+
+
 def _api(method, payload):
     req = urllib.request.Request(
         f"{API}/bot{_token()}/{method}",
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=30) as r:
-        data = json.load(r)
+
+    def call():
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.load(r)
+
+    data = _retry(call, f"Telegram {method}")
     if not data.get("ok"):
         raise RuntimeError(f"Telegram {method} 失败: {data}")
     return data["result"]
@@ -92,7 +114,7 @@ def fetch(outdir):
         ext = pathlib.Path(fpath).suffix or ".jpg"
         image_path = str(out / f"image{ext}")
         url = f"{API}/file/bot{_token()}/{urllib.parse.quote(fpath)}"
-        urllib.request.urlretrieve(url, image_path)
+        _retry(lambda: urllib.request.urlretrieve(url, image_path), "下载图片")
 
     image_url = _upload(image_path, f"schedule/{_paris(msg['date'])[:10]}_{msg['chat']['id']}_{msg['message_id']}") \
         if image_path else ""
